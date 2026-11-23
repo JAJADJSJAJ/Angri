@@ -64,6 +64,13 @@ BORRAR_LUGAR_VACIO = True     # llegar a un lugar recordado y no ver nada lo bor
 PRIORIDAD_BASE = 0.1          # cuánto pesa en el repaso un momento sin alivio ni dolor
 TOPE_LUGAR = 3.0              # fuerza máxima de un lugar recordado
 
+# --- Tálamo (etapa 5): los módulos compiten por la atención ---
+TALAMO = False                # (apagado: medido, no mejora) False = atiende siempre a la necesidad más desviada (etapa 4)
+GANANCIA_URGENCIA = 3.0       # cuánto pesa lo urgente en la saliencia
+TEMPERATURA_FOCO = 0.3        # exploración de la atención
+INERCIA_FOCO = 0.5            # ventaja del foco actual (ignición: no picotear entre metas)
+APRENDE_TALAMO = 0.02
+
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---
 EQUILIBRIO = {
     "energia": 0.8,

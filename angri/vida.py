@@ -14,6 +14,7 @@ from .corteza import Corteza
 from .cuerpo import Cuerpo
 from .ganglios import Ganglios
 from .hipocampo import Hipocampo
+from .talamo import Talamo
 from .mente import Mente
 from .mundo import COMIDA, DESCANSO, NOVEDAD, PELIGRO, Mundo
 from .quimica import Quimica
@@ -33,8 +34,10 @@ class Angri:
             self.mente = Ganglios(semilla, guardado.get("ganglios"))
             self.corteza = Corteza(guardado.get("corteza")) if C.CORTEZA else None
             self.hipocampo = Hipocampo(self.mente.rng) if C.HIPOCAMPO else None
+            self.talamo = Talamo(self.mente.rng, guardado.get("talamo")) if C.TALAMO else None
         else:
             self.hipocampo = None
+            self.talamo = None
             self.mente = Mente(semilla)
             self.corteza = None
         self.mundo = Mundo(None if semilla is None else semilla + 1)
@@ -53,7 +56,8 @@ class Angri:
 
         if self.despierto:
             vista = self.mundo.vecindad(self.x, self.y)
-            necesidad = self.cuerpo.necesidad_urgente()
+            necesidad = (self.talamo.elegir(vista, self.cuerpo.v) if self.talamo
+                         else self.cuerpo.necesidad_urgente())
             if isinstance(self.mente, Ganglios):
                 dx, dy = self.mente.elegir(vista, self.cuerpo.v, necesidad, (self.x, self.y),
                                            self.quimica.noradrenalina, self._malestar)
@@ -85,8 +89,10 @@ class Angri:
                 sorpresa = self.corteza.comparar(encontrado, malestar - malestar_antes)
                 recompensa += C.PESO_CURIOSIDAD * self.corteza.progreso
             vista = self.mundo.vecindad(self.x, self.y)
-            self.mente.aprender(recompensa, vista, self.cuerpo.v,
-                                self.cuerpo.necesidad_urgente(), (self.x, self.y))
+            foco = self.talamo.foco if self.talamo else self.cuerpo.necesidad_urgente()
+            self.mente.aprender(recompensa, vista, self.cuerpo.v, foco, (self.x, self.y))
+            if self.talamo:
+                self.talamo.aprender(self.mente.dopamina)
             if self.hipocampo and self.mente.ultimo:
                 self.hipocampo.anotar(self.mente.ultimo)
         self.quimica.actualizar(self.despierto, malestar, self.cuerpo.v["estres"], sorpresa)
@@ -116,6 +122,8 @@ class Angri:
             self.suenos += 1
             if isinstance(self.mente, Ganglios):
                 self.mente.olvidar_paso()
+            if self.talamo:
+                self.talamo.olvidar_paso()
             if self.hipocampo:
                 # consolidación: repasa el día y poda lugares
                 self.hipocampo.dormir(self.mente)
@@ -144,6 +152,8 @@ class Angri:
         }
         if isinstance(self.mente, Ganglios):
             datos["ganglios"] = self.mente.estado()
+        if self.talamo:
+            datos["talamo"] = self.talamo.estado()
         if self.corteza:
             datos["corteza"] = self.corteza.estado()
         with open(ARCHIVO_ESTADO, "w", encoding="utf-8") as f:

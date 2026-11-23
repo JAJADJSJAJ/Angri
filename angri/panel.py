@@ -38,7 +38,8 @@ def dibujar(angri):
         f"  {'dopamina':<11}{q.dopamina:+.2f}",
         "",
         f"malestar: {_barra(angri.cuerpo.malestar())} {angri.cuerpo.malestar():.2f}"
-        f" · necesidad urgente: {angri.cuerpo.necesidad_urgente()}",
+        f" · necesidad urgente: {angri.cuerpo.necesidad_urgente()}"
+        + (f" · foco: {angri.talamo.foco}" if getattr(angri, "talamo", None) else ""),
         "",
         "Ctrl+C para pausar (guarda su estado y sigue desde ahí la próxima vez)",
     ]

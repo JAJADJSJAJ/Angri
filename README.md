@@ -169,13 +169,36 @@ nueva; tope 2500 si no la encuentra) y **ronda vieja** (ticks despierto cerca de
 - Lo que evita la perseveración es **borrar al instante un lugar que llega y encuentra vacío**: sin eso
   ronda la fuente seca 3 veces más y es la peor variante. La poda nocturna sola es demasiado lenta.
 
+## Etapa 5 — estado (probada, apagada)
+
+`angri/talamo.py`: cada necesidad es un módulo que compite por el **foco**. Saliencia = urgencia normalizada
+× `GANANCIA_URGENCIA` + un sesgo aprendido según si lo que la alivia (o un peligro) está a la vista. Gana uno
+por softmax, con **inercia** (el foco actual tiene ventaja, para no picotear), y el ganador se difunde: es la
+necesidad con la que los ganglios eligen y aprenden. El tálamo aprende con la misma dopamina.
+
+32 vidas de 50.000 ticks (con sueño y estaciones):
+
+| Variante | Malestar | Mal. final | % hambre | Encuentra |
+|---|---|---|---|---|
+| Sin tálamo (foco = necesidad más desviada) | 0,179 | **0,142** | 28,9 | **1096** |
+| Tálamo (`GANANCIA_URGENCIA=3`, inercia 0,5) | 0,186 | 0,155 | 33,5 | 1229 |
+| Tálamo sin inercia | 0,183 | 0,161 | 30,7 | 1255 |
+| Tálamo con urgencia ×10 | **0,173** | 0,143 | **24,8** | 1329 |
+
+No mejora de forma clara: cuanto más manda la urgencia, más se parece a no tener tálamo. Lo que aprende tiene
+sentido: atender a la **energía cuando no ve comida** (sesgo +1,0) y no cuando la ve (−1,2), porque ir a la
+comida visible ya lo hacen los ganglios con cualquier foco. Es decir, el foco sirve para *buscar*, no para
+*agarrar*. Pero en este mundo hay una sola cosa urgente a la vez casi siempre (coincide con la más desviada
+78–92 % del tiempo), así que no hay mucho por lo que competir. Queda en el código para cuando haya módulos
+de verdad distintos (corteza, recuerdos, lenguaje) y no solo necesidades.
+
 ## Hoja de ruta
 
 1. ✅ Mundo y cuerpo
 2. ✅ Dopamina: actor-crítico que aprende a mantenerse en equilibrio (supera a los reflejos en vidas largas)
 3. 🔶 Predicción del mundo y curiosidad por progreso de aprendizaje (hecha y medida; apagada porque no mejora en este mundo)
 4. ✅ Hipocampo y sueño real: estaciones, replay corregido, poda de lugares y dolor (mejora modesta; el sueño consolida pero no acelera el reaprendizaje)
-5. Tálamo y espacio global: módulos que compiten por la atención
+5. 🔶 Tálamo y espacio global: necesidades compiten por el foco (hecho y medido; apagado porque no mejora)
 6. Lenguaje, con un modelo chico como maestro
 7. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
 
