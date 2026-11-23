@@ -12,9 +12,14 @@ ANCHO = 24
 ALTO = 14
 COMIDA_INICIAL = 10
 NOVEDADES_INICIALES = 4
-PELIGROS = 3
+PELIGROS = 5
 PROB_NUEVA_COMIDA = 0.02      # por tick
 PROB_NUEVA_NOVEDAD = 0.01     # por tick
+COMIDA_MAXIMA = 10            # tope de comida en el mundo a la vez
+PROB_MUEVE_PELIGRO = 0.02     # por tick: un peligro da un paso
+
+# --- Mente ---
+REFLEJOS = False              # False = azar puro (la vara sin cerebro)
 
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---
 EQUILIBRIO = {

@@ -2,6 +2,7 @@
 
     python medir.py                  -> 50.000 ticks, semillas 0..4
     python medir.py 20000 10         -> 20.000 ticks, 10 semillas
+    python medir.py 50000 5 reflejos -> con los reflejos innatos prendidos
 
 Cada Angri nace de cero (no toca datos/). Misma semilla = misma vida exacta,
 así dos versiones de la mente se pueden comparar en igualdad de condiciones.
@@ -9,6 +10,8 @@ así dos versiones de la mente se pueden comparar en igualdad de condiciones.
 import statistics as st
 import sys
 
+import angri.config as C
+import angri.mente as M
 from angri.vida import Angri
 
 
@@ -37,6 +40,8 @@ def una_vida(semilla, ticks):
 def main():
     ticks = int(sys.argv[1]) if len(sys.argv) > 1 else 50_000
     n = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+    if "reflejos" in sys.argv:
+        C.REFLEJOS = M.REFLEJOS = True
     vidas = [una_vida(s, ticks) for s in range(n)]
     print(f"{n} vidas de {ticks} ticks\n")
     print(f"{'métrica':<10} {'promedio':>10} {'desvío':>9}")

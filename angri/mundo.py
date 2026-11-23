@@ -41,10 +41,27 @@ class Mundo:
 
     def avanzar(self):
         """El mundo también cambia solo."""
-        if self.rng.random() < C.PROB_NUEVA_COMIDA:
+        if self.rng.random() < C.PROB_NUEVA_COMIDA and self._contar(COMIDA) < C.COMIDA_MAXIMA:
             self._poner(COMIDA)
+        if self.rng.random() < C.PROB_MUEVE_PELIGRO:
+            self._mover_un_peligro()
         if self.rng.random() < C.PROB_NUEVA_NOVEDAD:
             self._poner(NOVEDAD)
+
+    def _contar(self, cosa):
+        return sum(fila.count(cosa) for fila in self.grilla)
+
+    def _mover_un_peligro(self):
+        """Los peligros deambulan: lo aprendido sobre ellos no sirve para siempre."""
+        peligros = [(x, y) for y, fila in enumerate(self.grilla)
+                    for x, c in enumerate(fila) if c == PELIGRO]
+        if not peligros:
+            return
+        x, y = self.rng.choice(peligros)
+        dx, dy = self.rng.choice([(0, -1), (0, 1), (-1, 0), (1, 0)])
+        nx, ny = x + dx, y + dy
+        if 0 <= nx < C.ANCHO and 0 <= ny < C.ALTO and self.grilla[ny][nx] == VACIO:
+            self.grilla[y][x], self.grilla[ny][nx] = VACIO, PELIGRO
 
     def vecindad(self, x, y, radio=2):
         """Lo que Angri 've' a su alrededor."""

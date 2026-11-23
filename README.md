@@ -33,6 +33,18 @@ Para que "renazca" desde cero, borrá la carpeta `datos/`.
 Objetivo: verificar que está **vivo**: que se cansa, se duerme solo, se despierta recuperado y mantiene su equilibrio, sin que nada externo le diga cuándo.
 En una prueba de 20.000 ticks durmió 21 veces y terminó con un malestar de 0,10.
 
+## Vara de medir
+
+`python medir.py` corre 5 vidas de 50.000 ticks reproducibles (semillas 0–4) sin tocar `datos/`.
+El mundo está calibrado para que sin cerebro **sufra**: poca comida (tope de 10), 5 peligros que deambulan.
+
+| Mente | Malestar | Heridas | % tiempo con hambre |
+|---|---|---|---|
+| Azar puro (`REFLEJOS = False`) — el piso | ~0,58 | ~600 | ~46 % |
+| Reflejos innatos (`python medir.py 50000 5 reflejos`) | ~0,14 | 0 | ~24 % |
+
+La etapa 2 tiene que aprender sola a superar el piso y, idealmente, alcanzar o pasar a los reflejos.
+
 ## Hoja de ruta
 
 1. ✅ Mundo y cuerpo

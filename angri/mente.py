@@ -7,6 +7,7 @@ actor-crítico guiado por dopamina.
 """
 import random
 
+from .config import REFLEJOS
 from .mundo import COMIDA, DESCANSO, NOVEDAD, PELIGRO
 
 MOVIMIENTOS = [(0, -1), (0, 1), (-1, 0), (1, 0), (0, 0)]
@@ -25,6 +26,8 @@ class Mente:
         self.prediccion = None  # qué espera encontrar en el próximo paso
 
     def elegir(self, vista, necesidad):
+        if not REFLEJOS:
+            return self.rng.choice(MOVIMIENTOS)
         objetivo = ALIVIA.get(necesidad)
         # reflejo: si lo que necesita está pegado, ir ahí
         if objetivo:
