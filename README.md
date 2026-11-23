@@ -252,6 +252,27 @@ Los ganglios tienen un rasgo nuevo: "voy adonde me dijeron".
   dicha desde donde la oyó y, al caminar, se pasa de largo. Queda prendido porque no empeora y es lo que le da
   palabras con significado propio (la base para hablar en español).
 
+### Etapa 6c — ajuste de parámetros (prendido: léxico solo)
+
+Barrido de a un parámetro (16 vidas, léxico solo) y confirmación con 32. Lo que movió la aguja fue aprender
+las palabras **más despacio** (`APRENDE_PALABRA` 0,2 → 0,1: una sola experiencia rara no le cambia el
+significado) y **esperar más para comprobar** (`ESPERA_VERIFICAR` 30 → 60 ticks: si no lo ve enseguida, igual
+cuenta como prueba). Limitar los pasos que sigue una dirección (`PASOS_DICHA`), la certeza para seguirla y cuánto
+habla el maestro no cambiaron nada fuera del ruido.
+
+| Variante (32 vidas) | Malestar | Mal. final | % hambre | Encuentra | Entiende |
+|---|---|---|---|---|---|
+| Sin maestro | 0,179 | 0,142 | 28,9 | 1096 | — |
+| Frase entera (6a) | 0,156 | 0,130 | 18,1 | 935 | — |
+| **Léxico ajustado** | **0,137** | **0,098** | **12,6** | **708** | 97,5 % |
+| Léxico ajustado + frase entera | 0,143 | 0,106 | 13,5 | 878 | 94,6 % |
+| Léxico ajustado, maestro que miente | 0,188 | 0,153 | 32,5 | 1154 | 35 % (confianza 0,26) |
+| Léxico ajustado, cambia el sentido a mitad | 0,186 | 0,176 | 30,5 | 1201 | 80 % |
+
+- Ahora **entender sí le mejora la vida**: es la mejor versión de todas (hambre 29 → 13 %), y sin la frase
+  entera, que queda apagada (`FRASE=False`): con palabras que significan algo por sí solas no hace falta.
+- Con un maestro que miente queda casi como sin maestro: la confianza baja y el daño se contiene.
+
 ## Hoja de ruta
 
 1. ✅ Mundo y cuerpo
@@ -259,7 +280,7 @@ Los ganglios tienen un rasgo nuevo: "voy adonde me dijeron".
 3. 🔶 Predicción del mundo y curiosidad por progreso de aprendizaje (hecha y medida; apagada porque no mejora en este mundo)
 4. ✅ Hipocampo y sueño real: estaciones, replay corregido, poda de lugares y dolor (mejora modesta; el sueño consolida pero no acelera el reaprendizaje)
 5. 🔶 Tálamo y espacio global: necesidades compiten por el foco (hecho y medido; apagado porque no mejora)
-6. 🔶 Lenguaje: entiende frases (mejora) y compone palabras aprendidas por sorpresa (entiende, todavía no mejora la vida); falta usarlo mejor, hablar en español y un modelo de verdad como maestro
+6. 🔶 Lenguaje: entiende frases (mejora) y compone palabras aprendidas por sorpresa (ajustado: mejor versión, hambre 29 → 13 %); falta usarlo mejor, hablar en español y un modelo de verdad como maestro
 7. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
 
 ## Reglas del proyecto

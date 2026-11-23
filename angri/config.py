@@ -78,16 +78,17 @@ MEMORIA_PALABRA = 6           # ticks que una palabra oída sigue sonando
 MAESTRO_MIENTE = False        # control: dice palabras al azar
 PALABRA_SUELTA = False        # rasgo por (palabra, movimiento) (apagado: la palabra de la cosa se vuelve una manía de dirección y empeora)
 LEXICO = True                 # significado de cada palabra aprendido por sorpresa (compone)
-APRENDE_PALABRA = 0.2
+APRENDE_PALABRA = 0.1 
 PISO_PALABRA = 0.25           # nunca aprende menos que esta fracción (anti-ego)
 EGO = False                   # prueba: aprende cada vez menos con la experiencia
-ESPERA_VERIFICAR = 30         # ticks que espera ver lo que le dijeron para comprobarlo
+ESPERA_VERIFICAR = 60         # ticks que espera ver lo que le dijeron para comprobarlo
+PASOS_DICHA = 99              # cuántos pasos sigue una dirección dicha antes de soltarla
 CERTEZA_DICHA = 0.4           # cuánto tiene que creer en una dirección para seguirla
 CONFIANZA_INICIAL = 1.0       # de chico le cree todo al maestro
 APRENDE_CONFIANZA = 0.01
 CONFIANZA_MINIMA = 0.15       # por debajo deja de hacerle caso
 CAMBIO_SIGNIFICADO = 0        # tick en que las palabras de dirección cambian de sentido (0 = nunca)
-FRASE = True                  # rasgo por (par de palabras oídas juntas, movimiento)
+FRASE = False                 # rasgo por (par de palabras oídas juntas, movimiento)
 
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---
 EQUILIBRIO = {

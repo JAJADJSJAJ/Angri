@@ -82,6 +82,8 @@ class Angri:
                 self.corteza.predecir(vista.get((dx, dy), "#"), necesidad,
                                       (dx, dy) == (0, 0), (self.x, self.y))
             se_movio = (nx, ny) != (self.x, self.y)
+            if C.LEXICO and se_movio:
+                self.oido.caminar({(0, -1): 0, (0, 1): 1, (-1, 0): 2, (1, 0): 3}[(dx, dy)])
             self.x, self.y = nx, ny
             aqui = self.mundo.en(self.x, self.y)
             if C.LEXICO:

@@ -102,7 +102,8 @@ class Oido:
         self.frases = set()
         self.aciertos = []  # (acertó, frase nueva)
         self.sorpresa = 0.0
-        self.indice_cambio = None  # para medir: dónde empezó el cambio de significado
+        self.indice_cambio = None
+        self.pasos = 0  # para medir: dónde empezó el cambio de significado
 
     def apuesta(self, frase):
         """Para dónde cree que está, combinando lo que significa cada palabra."""
@@ -114,8 +115,9 @@ class Oido:
 
     def direccion_dicha(self):
         """La dirección que le dijeron (0..3), o 4 si no cree saberla."""
-        if not self.pendiente or self.confianza < C.CONFIANZA_MINIMA:
-            return 4
+        if (not self.pendiente or self.confianza < C.CONFIANZA_MINIMA
+                or self.pasos > C.PASOS_DICHA):
+            return 4  # (pasos: ya caminó bastante para ese lado; no seguir de largo)
         ap = self.pendiente[4]
         d = max(range(4), key=ap.__getitem__)
         return d if ap[d] >= C.CERTEZA_DICHA else 4
@@ -128,6 +130,16 @@ class Oido:
             self.pendiente = (pos, objetivo, f, C.ESPERA_VERIFICAR, self.apuesta(f),
                               f not in self.frases)
             self.frases.add(f)
+            self.pasos = 0
+
+    def caminar(self, d):
+        """Cuenta cuántos pasos dio hacia donde le dijeron."""
+        if self.pendiente and d == self.direccion_dicha_cruda():
+            self.pasos += 1
+
+    def direccion_dicha_cruda(self):
+        ap = self.pendiente[4]
+        return max(range(4), key=ap.__getitem__)
 
     def ver(self, vista, pos):
         """Si aparece lo que le dijeron, compara con lo que apostaba y aprende."""
