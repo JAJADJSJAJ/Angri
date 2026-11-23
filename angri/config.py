@@ -17,8 +17,9 @@ PROB_NUEVA_COMIDA = 0.02      # por tick
 PROB_NUEVA_NOVEDAD = 0.01     # por tick
 FUENTES_COMIDA = 3            # lugares fijos donde crece la comida (como árboles)
 RADIO_FUENTE = 2              # la comida aparece a esta distancia de una fuente
-COMIDA_MAXIMA = 10
-NOVEDAD_MAXIMA = 6            # tope de novedades (sin tope, si las esquiva, tapan el mundo)            # tope de comida en el mundo a la vez
+COMIDA_MAXIMA = 10            # tope de comida en el mundo a la vez
+NOVEDAD_MAXIMA = 6            # tope de novedades (sin tope, si las esquiva, tapan el mundo)
+ESTACION = 5000               # cada cuántos ticks una fuente se seca y brota en otro lado (0 = fijas)
 PROB_MUEVE_PELIGRO = 0.02     # por tick: un peligro da un paso
 
 # --- Mente ---
@@ -47,6 +48,17 @@ ESCALA_ERROR_MALESTAR = 10.0  # Δmalestar es chico: se agranda para compararlo 
 CURIOSIDAD_RAPIDO = 0.1       # promedio del error reciente
 CURIOSIDAD_LENTO = 0.01       # promedio del error de antes
 PESO_CURIOSIDAD = 1.0         # (con CORTEZA) recompensa por progreso de aprendizaje (0 = sin curiosidad)
+
+# --- Hipocampo (etapa 4): memoria del día y sueño ---
+HIPOCAMPO = False             # (apagado: medido, empeora) guarda el día y lo repasa al dormir
+CAPACIDAD_DIA = 3000          # cuántos momentos del día entran (los más viejos se van)
+REPASOS = 2                   # cuántas veces repasa el día por noche
+REPASO_ACTOR = False          # el repaso también entrena al actor (no solo al crítico)
+APRENDE_REPASO = 0.5          # fracción del ritmo de aprendizaje despierto
+UMBRAL_LUGAR = 2.0            # alivio para que un momento marque un lugar
+PODA_LUGARES = 0.6            # al dormir, los lugares que no se reconfirmaron se debilitan así
+PRIORIDAD_BASE = 0.1          # cuánto pesa en el repaso un momento sin alivio ni dolor
+TOPE_LUGAR = 3.0              # fuerza máxima de un lugar recordado
 
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---
 EQUILIBRIO = {

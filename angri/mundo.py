@@ -14,6 +14,7 @@ class Mundo:
     def __init__(self, semilla=None):
         self.rng = random.Random(semilla)
         self.fuentes = []
+        self.tiempo = 0
         self.grilla = [[VACIO] * C.ANCHO for _ in range(C.ALTO)]
         # una zona fija de descanso, como una "cama"
         for y in range(1, 4):
@@ -53,12 +54,31 @@ class Mundo:
 
     def avanzar(self):
         """El mundo también cambia solo."""
+        self.tiempo += 1
+        if C.ESTACION and self.tiempo % C.ESTACION == 0:
+            self._cambiar_estacion()
         if self.rng.random() < C.PROB_NUEVA_COMIDA and self._contar(COMIDA) < C.COMIDA_MAXIMA:
             self._poner(COMIDA)
         if self.rng.random() < C.PROB_MUEVE_PELIGRO:
             self._mover_un_peligro()
         if self.rng.random() < C.PROB_NUEVA_NOVEDAD and self._contar(NOVEDAD) < C.NOVEDAD_MAXIMA:
             self._poner(NOVEDAD)
+
+    def _cambiar_estacion(self):
+        """Una fuente se seca y brota otra lejos: lo que sabía de memoria deja de
+        valer y hay que reaprender (acá es donde se nota si olvida o no)."""
+        i = self.rng.randrange(len(self.fuentes))
+        vieja = self.fuentes[i]
+        for _ in range(100):
+            nueva = (self.rng.randrange(C.ANCHO), self.rng.randrange(5, C.ALTO))
+            if abs(nueva[0] - vieja[0]) + abs(nueva[1] - vieja[1]) > 8:
+                break
+        self.fuentes[i] = nueva
+        vx, vy = vieja
+        for y in range(max(0, vy - C.RADIO_FUENTE), min(C.ALTO, vy + C.RADIO_FUENTE + 1)):
+            for x in range(max(0, vx - C.RADIO_FUENTE), min(C.ANCHO, vx + C.RADIO_FUENTE + 1)):
+                if self.grilla[y][x] == COMIDA:
+                    self.grilla[y][x] = VACIO
 
     def _contar(self, cosa):
         return sum(fila.count(cosa) for fila in self.grilla)

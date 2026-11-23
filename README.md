@@ -95,12 +95,37 @@ poco que queda por predecir es casi ruido; la diferencia entre vidas (desvío ~0
 Lección: medir con 16 vidas, no 8 (con 8 apareció una mejora falsa). Queda en el código para cuando el mundo
 tenga cosas que valga la pena predecir (lugares fuera de la vista, ciclos de comida) o para la etapa 4.
 
+## Etapa 4 — estado (probada, apagada)
+
+**Mundo con estaciones** (queda prendido): cada `ESTACION` = 5000 ticks una fuente de comida se seca y brota
+lejos. Lo aprendido de memoria deja de valer; el hambre sube (12 % → 26 % con 2 vidas cortas), así que el
+mundo ahora sí tiene algo que olvidar y reaprender.
+
+`angri/hipocampo.py` anota cada momento del día y al dormirse: marca **lugares** donde sintió un gran alivio
+(se refuerzan si se repiten, la **poda** los debilita noche a noche), y hace **replay** del día priorizando lo
+intenso, reentrenando a los ganglios sin vivirlo. Al despertar borra el día.
+
+Medido con 16 vidas de 50.000 ticks (con estaciones):
+
+| Variante | Malestar | Mal. final | % hambre |
+|---|---|---|---|
+| Sin hipocampo | **0,190** | **0,154** | **37,9** |
+| Solo lugares + poda (`REPASOS=0`) | 0,232 | 0,228 | 47,3 |
+| Replay solo del crítico (`REPASO_ACTOR=False`) | 0,213 | 0,184 | 40,6 |
+| Replay crítico + actor (`APRENDE_REPASO=0.1`) | 0,280 | 0,246 | 62,0 |
+
+Ninguna mejora. El replay del actor es lo peor: repasa acciones elegidas con otra temperatura y con lo que
+sabía antes (aprendizaje *off-policy* sin corrección), y la primera noche lo deja trabado (pesos congelados,
+hambre 93 % con el repaso al 0,5). Los lugares recordados lo arrastran a fuentes que ya se secaron.
+Pendiente si se retoma: corrección por importancia (ρ = π_hoy/π_entonces) en el replay del actor, y que un
+lugar visitado sin alivio se borre al instante.
+
 ## Hoja de ruta
 
 1. ✅ Mundo y cuerpo
 2. ✅ Dopamina: actor-crítico que aprende a mantenerse en equilibrio (supera a los reflejos en vidas largas)
 3. 🔶 Predicción del mundo y curiosidad por progreso de aprendizaje (hecha y medida; apagada porque no mejora en este mundo)
-4. Hipocampo y sueño real: replay del día, poda y medir olvido con y sin dormir
+4. 🔶 Hipocampo y sueño real: mundo con estaciones (prendido); replay del día y poda (hechos y medidos; apagados porque empeoran)
 5. Tálamo y espacio global: módulos que compiten por la atención
 6. Lenguaje, con un modelo chico como maestro
 7. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua

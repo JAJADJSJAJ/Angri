@@ -110,6 +110,7 @@ class Ganglios:
         self._rasgos = None
         self._probs = None
         self.dopamina = 0.0  # último error TD
+        self.ultimo = None   # última transición vivida
 
     def _resumen(self, vista, cuerpo, necesidad):
         """Lo que el crítico mira para estimar el futuro."""
@@ -168,6 +169,8 @@ class Ganglios:
             self.lugares[self._necesidad][tuple(pos)] = 1.0
         s = self._s
         s2 = self._resumen(vista, cuerpo, necesidad)
+        # lo vivido, para que el hipocampo lo guarde y lo repase de noche
+        self.ultimo = (s, self._rasgos, self._a, recompensa, s2, tuple(pos), self._necesidad)
         v = self.V.get(s, 0.0)
         delta = recompensa + C.SEROTONINA * self.V.get(s2, 0.0) - v
         self.dopamina = delta
@@ -194,6 +197,34 @@ class Ganglios:
                 hw[i] -= p
         for i in range(N_RASGOS):
             self.w[i] += self._ritmo(C.APRENDE_ACTOR, self.exp_w[i]) * delta * hw[i]
+
+    def repasar(self, momento, fraccion):
+        """Replay: vuelve a aprender de un momento guardado, sin vivirlo.
+
+        Sin huellas (cada momento suelto) y con las probabilidades de HOY: si ya
+        aprendió algo nuevo, el recuerdo se reinterpreta con lo que sabe ahora.
+        """
+        s, rasgos, a, r, s2 = momento[:5]
+        delta = r + C.SEROTONINA * self.V.get(s2, 0.0) - self.V.get(s, 0.0)
+        self.V[s] = self.V.get(s, 0.0) + fraccion * self._ritmo(
+            C.APRENDE_CRITICO, self.exp_V.get(s, 0)) * delta
+        if not C.REPASO_ACTOR:
+            return delta
+        h = [sum(self.w[i] for i in rs) for rs in rasgos]
+        temp = C.TEMPERATURA_BASE
+        m = max(h)
+        e = [math.exp((x - m) / temp) for x in h]
+        z = sum(e)
+        grad = [0.0] * N_RASGOS
+        for i in rasgos[a]:
+            grad[i] += 1.0
+        for b, x in enumerate(e):
+            for i in rasgos[b]:
+                grad[i] -= x / z
+        for i, g in enumerate(grad):
+            if g:
+                self.w[i] += fraccion * self._ritmo(C.APRENDE_ACTOR, self.exp_w[i]) * delta * g
+        return delta
 
     def olvidar_paso(self):
         """Al dormirse: lo último que hizo no se encadena con lo que viene al despertar."""

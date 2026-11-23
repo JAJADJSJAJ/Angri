@@ -13,6 +13,7 @@ from . import config as C
 from .corteza import Corteza
 from .cuerpo import Cuerpo
 from .ganglios import Ganglios
+from .hipocampo import Hipocampo
 from .mente import Mente
 from .mundo import COMIDA, DESCANSO, NOVEDAD, PELIGRO, Mundo
 from .quimica import Quimica
@@ -31,7 +32,9 @@ class Angri:
         if C.MENTE == "aprende":
             self.mente = Ganglios(semilla, guardado.get("ganglios"))
             self.corteza = Corteza(guardado.get("corteza")) if C.CORTEZA else None
+            self.hipocampo = Hipocampo(self.mente.rng) if C.HIPOCAMPO else None
         else:
+            self.hipocampo = None
             self.mente = Mente(semilla)
             self.corteza = None
         self.mundo = Mundo(None if semilla is None else semilla + 1)
@@ -80,6 +83,8 @@ class Angri:
             vista = self.mundo.vecindad(self.x, self.y)
             self.mente.aprender(recompensa, vista, self.cuerpo.v,
                                 self.cuerpo.necesidad_urgente(), (self.x, self.y))
+            if self.hipocampo and self.mente.ultimo:
+                self.hipocampo.anotar(self.mente.ultimo)
         self.quimica.actualizar(self.despierto, malestar, self.cuerpo.v["estres"], sorpresa)
         self._regular_sueno()
         self.edad += 1
@@ -107,11 +112,13 @@ class Angri:
             self.suenos += 1
             if isinstance(self.mente, Ganglios):
                 self.mente.olvidar_paso()
+            if self.hipocampo:
+                # consolidación: repasa el día y poda lugares
+                self.hipocampo.dormir(self.mente)
             self.evento = "se duerme"
         elif not self.despierto and q.adenosina <= C.UMBRAL_DESPERTAR:
             self.despierto = True
             self.evento = "se despierta"
-        # ETAPA 4: acá va la consolidación (replay del día, poda, etc.)
 
     # --- memoria en disco ---
     def _cargar(self):
