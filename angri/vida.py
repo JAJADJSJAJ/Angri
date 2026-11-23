@@ -14,6 +14,7 @@ from .corteza import Corteza
 from .cuerpo import Cuerpo
 from .ganglios import Ganglios
 from .hipocampo import Hipocampo
+from .maestro import Maestro, Oido
 from .talamo import Talamo
 from .mente import Mente
 from .mundo import COMIDA, DESCANSO, NOVEDAD, PELIGRO, Mundo
@@ -35,7 +36,9 @@ class Angri:
             self.corteza = Corteza(guardado.get("corteza")) if C.CORTEZA else None
             self.hipocampo = Hipocampo(self.mente.rng) if C.HIPOCAMPO else None
             self.talamo = Talamo(self.mente.rng, guardado.get("talamo")) if C.TALAMO else None
+            self.maestro = Maestro(semilla) if C.MAESTRO else None
         else:
+            self.maestro = None
             self.hipocampo = None
             self.talamo = None
             self.mente = Mente(semilla)
@@ -47,6 +50,7 @@ class Angri:
         self.suenos = guardado.get("suenos", 0)
         self._malestar = self.cuerpo.malestar()
         self.evento = "nace" if self.edad == 0 else "despierta del apagado"
+        self.oido = Oido()
 
     # --- un instante de vida ---
     def tick(self):
@@ -58,9 +62,13 @@ class Angri:
             vista = self.mundo.vecindad(self.x, self.y)
             necesidad = (self.talamo.elegir(vista, self.cuerpo.v) if self.talamo
                          else self.cuerpo.necesidad_urgente())
+            self.oido.pasar()
+            if self.maestro:
+                self.oido.oir(self.maestro.hablar(self.mundo, self.x, self.y, necesidad, vista))
             if isinstance(self.mente, Ganglios):
                 dx, dy = self.mente.elegir(vista, self.cuerpo.v, necesidad, (self.x, self.y),
-                                           self.quimica.noradrenalina, self._malestar)
+                                           self.quimica.noradrenalina, self._malestar,
+                                           self.oido.palabras())
             else:
                 dx, dy = self.mente.elegir(vista, necesidad)
             nx = max(0, min(C.ANCHO - 1, self.x + dx))

@@ -25,6 +25,7 @@ Para que "renazca" desde cero, borrá la carpeta `datos/`.
 | `angri/mundo.py` | El entorno | Grilla 2D con comida `*`, descanso `~`, novedades `?` y peligros `X` |
 | `angri/ganglios.py` | Ganglios basales | Etapa 2: actor-crítico que aprende con dopamina (error TD) |
 | `angri/corteza.py` | Corteza | Etapa 3: predice qué va a encontrar y cómo cambia su malestar; curiosidad por progreso de aprendizaje (apagada) |
+| `angri/maestro.py` | Lenguaje | Etapa 6: un maestro le dice con palabras inventadas dónde está lo que necesita; el significado se aprende con dopamina |
 | `angri/mente.py` | — | Mente vieja (azar / reflejos), queda como vara de comparación |
 | `medir.py` | — | Vara de medir: vidas reproducibles sin panel |
 | `angri/vida.py` | El bucle | Latido continuo; se duerme y se despierta solo por adenosina |
@@ -192,6 +193,33 @@ comida visible ya lo hacen los ganglios con cualquier foco. Es decir, el foco si
 78–92 % del tiempo), así que no hay mucho por lo que competir. Queda en el código para cuando haya módulos
 de verdad distintos (corteza, recuerdos, lenguaje) y no solo necesidades.
 
+## Etapa 6 — estado (prendida)
+
+`angri/maestro.py`: un maestro chico (con reglas, sin librerías) ve todo el mundo; cuando lo que Angri necesita
+no está a la vista, con probabilidad `PROB_HABLA` le dice dos palabras: qué es y para dónde queda. Las palabras
+son sílabas mezcladas por semilla: Angri no nace sabiendo ninguna. Lo oído suena `MEMORIA_PALABRA` ticks en la
+memoria de trabajo y el actor tiene rasgos (palabras oídas, movimiento) que aprende con la misma dopamina.
+
+32 vidas de 50.000 ticks (con sueño y estaciones):
+
+| Variante | Malestar | Mal. final | % hambre | Encuentra |
+|---|---|---|---|---|
+| Sin maestro (etapa 5) | 0,179 | 0,142 | 28,9 | 1096 |
+| Palabras sueltas | 0,217 | 0,182 | 41,7 | 1352 |
+| Palabras sueltas, habla ×5 | 0,266 | 0,224 | 58,1 | 1629 |
+| Palabras sueltas, maestro que miente | 0,193 | 0,165 | 31,3 | 1122 |
+| **Frase entera** | **0,156** | **0,130** | **18,1** | **935** |
+| Frase entera + sueltas | 0,180 | 0,142 | 27,9 | 1031 |
+| Frase entera, maestro que miente | 0,187 | 0,140 | 28,3 | 1232 |
+
+- Con **palabras sueltas empeora**, y más cuanto más habla: la palabra de la *cosa* ("comida") aparece en cada
+  frase, se queda con el crédito y se vuelve una manía de dirección fija (sirve para la fuente de esta estación
+  y después estorba), tapando a las palabras de dirección.
+- Con **la frase entera como unidad** mejora en todas las métricas (hambre 29 → 18 %), y el control con un
+  maestro que miente no mejora: lo que ayuda es el *contenido*, no oír algo.
+- Todavía no compone (no sabe que "norte" significa lo mismo en "comida norte" y "cama norte") ni habla él.
+  Eso es lo siguiente: separar significado de palabra sin la manía, y producción.
+
 ## Hoja de ruta
 
 1. ✅ Mundo y cuerpo
@@ -199,7 +227,7 @@ de verdad distintos (corteza, recuerdos, lenguaje) y no solo necesidades.
 3. 🔶 Predicción del mundo y curiosidad por progreso de aprendizaje (hecha y medida; apagada porque no mejora en este mundo)
 4. ✅ Hipocampo y sueño real: estaciones, replay corregido, poda de lugares y dolor (mejora modesta; el sueño consolida pero no acelera el reaprendizaje)
 5. 🔶 Tálamo y espacio global: necesidades compiten por el foco (hecho y medido; apagado porque no mejora)
-6. Lenguaje, con un modelo chico como maestro
+6. 🔶 Lenguaje: entiende frases de un maestro con reglas (mejora); falta componer, hablar y un modelo de verdad como maestro
 7. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
 
 ## Reglas del proyecto

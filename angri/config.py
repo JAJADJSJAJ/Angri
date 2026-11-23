@@ -71,6 +71,14 @@ TEMPERATURA_FOCO = 0.3        # exploración de la atención
 INERCIA_FOCO = 0.5            # ventaja del foco actual (ignición: no picotear entre metas)
 APRENDE_TALAMO = 0.02
 
+# --- Lenguaje (etapa 6): un maestro le habla ---
+MAESTRO = True                # un maestro que ve todo el mundo le dice dónde está lo que necesita
+PROB_HABLA = 0.1              # por tick, si lo que necesita no está a la vista
+MEMORIA_PALABRA = 6           # ticks que una palabra oída sigue sonando
+MAESTRO_MIENTE = False        # control: dice palabras al azar
+PALABRA_SUELTA = False        # rasgo por (palabra, movimiento) (apagado: la palabra de la cosa se vuelve una manía de dirección y empeora)
+FRASE = True                  # rasgo por (par de palabras oídas juntas, movimiento)
+
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---
 EQUILIBRIO = {
     "energia": 0.8,

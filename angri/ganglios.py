@@ -47,7 +47,7 @@ def _hacia(vista, objetivo):
 CELDAS = ["·", COMIDA, DESCANSO, NOVEDAD, PELIGRO, "#"]  # "#" = borde
 
 
-def _rasgos(vista, necesidad, dir_comida, dir_objetivo, dir_recuerdo, a):
+def _rasgos(vista, necesidad, dir_comida, dir_objetivo, dir_recuerdo, a, palabras=()):
     """Qué 'significa' el movimiento a en esta situación (índices de rasgos activos).
 
     El actor no memoriza situaciones exactas: aprende el valor de rasgos simples
@@ -68,10 +68,18 @@ def _rasgos(vista, necesidad, dir_comida, dir_objetivo, dir_recuerdo, a):
     r.append(50 + destino)                      # 50..55: qué hay adonde voy, sea cual sea
     if a == 4:                                  #         la necesidad ("la X duele siempre")
         r.append(56)                            # 56: me quedo quieto, sea cual sea
+    if C.PALABRA_SUELTA:
+        for p in palabras:                      # 57..96: oí la palabra p y hago a
+            r.append(57 + p * 5 + a)            #         (etapa 6: el significado se aprende)
+    if C.FRASE:
+        for i, p in enumerate(palabras):        # 97..: oí p y q juntas y hago a
+            for q in palabras[i + 1:]:          #       (la frase entera significa)
+                r.append(97 + (p * N_PALABRAS + q) * 5 + a)
     return r
 
 
-N_RASGOS = 57
+N_PALABRAS = 8
+N_RASGOS = 97 + N_PALABRAS * N_PALABRAS * 5
 
 
 def _direccion(dx, dy):
@@ -99,7 +107,8 @@ class Ganglios:
             self.V = {ast.literal_eval(k): v for k, v in estado["V"].items()}
             self.w = estado["w"] + [0.0] * (N_RASGOS - len(estado["w"]))
             self.exp_V = {ast.literal_eval(k): v for k, v in estado.get("exp_V", {}).items()}
-            self.exp_w = estado.get("exp_w", self.exp_w)
+            self.exp_w = estado.get("exp_w", [])
+            self.exp_w = self.exp_w + [0] * (N_RASGOS - len(self.exp_w))
             for n, lugares in estado.get("lugares", {}).items():
                 self.lugares[n] = {ast.literal_eval(k): f for k, f in lugares.items()}
         self.huella_V = {}             # huellas de elegibilidad: lo reciente
@@ -133,11 +142,11 @@ class Ganglios:
         return mejor
 
     # --- decidir ---
-    def elegir(self, vista, cuerpo, necesidad, pos, noradrenalina=0.0, malestar=0.0):
+    def elegir(self, vista, cuerpo, necesidad, pos, noradrenalina=0.0, malestar=0.0, palabras=()):
         dc = _hacia(vista, COMIDA)
         do = _hacia(vista, ALIVIA.get(necesidad))
         dr = self._recuerdo(necesidad, pos)
-        rasgos = [_rasgos(vista, necesidad, dc, do, dr, a) for a in range(len(MOVIMIENTOS))]
+        rasgos = [_rasgos(vista, necesidad, dc, do, dr, a, palabras) for a in range(len(MOVIMIENTOS))]
         h = [sum(self.w[i] for i in r) for r in rasgos]
         # cuanto peor la pasa, más varía lo que hace: si lo de siempre no funciona,
         # probar otra cosa (antídoto contra la indefensión aprendida)
