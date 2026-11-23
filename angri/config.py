@@ -88,6 +88,10 @@ CONFIANZA_INICIAL = 1.0       # de chico le cree todo al maestro
 APRENDE_CONFIANZA = 0.01
 CONFIANZA_MINIMA = 0.15       # por debajo deja de hacerle caso
 CAMBIO_SIGNIFICADO = 0        # tick en que las palabras de dirección cambian de sentido (0 = nunca)
+COMPOSICION = 0               # prueba: hasta este tick el maestro solo habla de comida, después solo de la cama (0 = apagado)
+HOLISTICO = False             # control: aprende cada frase entera como un todo (no puede componer)
+RITMO_MAXIMO = 0.9            # tope del ritmo de aprendizaje de una palabra
+SORPRESA_RITMO = 0.0          # aprende más rápido cuando viene sorprendido (x(1 + k·sorpresa reciente))
 FRASE = False                 # rasgo por (par de palabras oídas juntas, movimiento)
 
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---

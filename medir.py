@@ -88,6 +88,14 @@ def _lenguaje(a, ticks):
            "confianza": a.oido.confianza}
     if nuevas:
         out["frase nueva %"] = 100 * st.mean(nuevas)
+    if C.COMPOSICION and a.oido.indice_composicion is not None:
+        # primeras 20 apuestas con frases de cama nunca oídas (las palabras de
+        # dirección solo las aprendió con comida)
+        # (también suma aciertos y casos, para el % juntando todas las vidas)
+        nuevas = [x for x, n in ac[a.oido.indice_composicion:] if n][:20]
+        out["examen %"] = 100 * st.mean(a.oido.examen)
+        out["compone n"] = len(nuevas)
+        out["compone ok"] = sum(nuevas)
     if C.CAMBIO_SIGNIFICADO:
         # tras el cambio: % de aciertos en las 100 apuestas siguientes
         i = a.oido.indice_cambio

@@ -283,6 +283,59 @@ habla el maestro no cambiaron nada fuera del ruido.
 6. 🔶 Lenguaje: entiende frases (mejora) y compone palabras aprendidas por sorpresa (ajustado: mejor versión, hambre 29 → 13 %); falta usarlo mejor, hablar en español y un modelo de verdad como maestro
 7. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
 
+## Etapa 6d: cierre del lenguaje (composición, cambio de significado, barrido, memoria)
+
+Mejor versión sin cambios: `LEXICO=True, FRASE=False, APRENDE_PALABRA=0.1, ESPERA_VERIFICAR=60`
+→ **malestar 0,137 · hambre 12,6 %** (32 vidas). Nada nuevo la superó; todo lo agregado queda apagado.
+
+**Composición** (`COMPOSICION=t`: hasta el tick t el maestro solo habla de comida, después solo de la cama).
+En el tick t se toma un examen sin aprender: las 4 frases "cama + dirección", que nunca oyó.
+Control `HOLISTICO=True`: aprende cada frase entera, no puede componer.
+
+| 32 vidas | examen (128 frases nuevas) | aciertos en vida (pocas: 8 y 4 casos) | malestar |
+|---|---|---|---|
+| léxico, cambio de tema a 25.000 | **97,7 %** | 8/8 | 0,169 |
+| holístico, cambio a 25.000 | 25,0 % (azar) | 2/4 | 0,194 |
+| léxico, cambio a 5.000 | 81,3 % | 3/4 | 0,182 |
+| holístico, cambio a 5.000 | 25,0 % | 3/6 | 0,175 |
+| holístico, maestro normal | – | – | 0,188 (vs 0,137) |
+
+Compone: entiende frases que nunca oyó. Y componer importa: sin eso el maestro ayuda mucho menos (0,188).
+Los aciertos "en vida" con frases nuevas son muy pocos (la cama casi nunca hace falta lejos de la vista); el examen es la medida confiable.
+
+**Cambio de significado** (`CAMBIO_SIGNIFICADO=25000`, 32 vidas):
+
+| variante | malestar | hambre % | reaprende % (100 apuestas) |
+|---|---|---|---|
+| sin ajuste | 0,186 | 30,5 | 58,2 |
+| `EGO=True` | 0,194 | 32,1 | 27,2 |
+| ritmo según sorpresa (`SORPRESA_RITMO=1, RITMO_MAXIMO=0.2`) | 0,199 | 34,9 | 67,4 |
+| confianza más sensible (`CONFIANZA_MINIMA=0.5, APRENDE_CONFIANZA=0.05`) | **0,178** | 27,7 | 57,0 |
+| ambas | 0,192 | 34,6 | 64,8 |
+| ego + confianza sensible | 0,186 | 33,2 | 41,6 |
+
+El ritmo por sorpresa reaprende más rápido (58→67 %) pero vive peor, y sin cambio también empeora (0,151 con 16 vidas):
+apura el aprendizaje al principio, cuando todo sorprende. La confianza sensible ayuda tras el cambio (deja de
+seguir al maestro mientras no le entiende) pero sin cambio empeora: **0,165 / 23,1 %** (32 vidas). Ninguno se prende.
+
+**Barrido fino** (16 vidas; la base da 0,142 / 13,3 % con esas 16):
+
+| parámetro | valores | malestar |
+|---|---|---|
+| `PISO_PALABRA` | 0 · 0,5 · 1 | 0,142 (sin efecto: solo actúa con `EGO`) |
+| `MEMORIA_PALABRA` | 3 · 12 | 0,142 (sin efecto: solo lo usan `FRASE`/`PALABRA_SUELTA`, apagados) |
+| `APRENDE_CONFIANZA` | 0 · 0,003 · 0,03 | 0,142 (la confianza nunca baja de la mínima) |
+| `CONFIANZA_INICIAL` | 0,5 · 0,7 | 0,142 |
+| `CONFIANZA_MINIMA` | 0 · 0,3 · 0,9 | 0,142 · 0,142 · 0,164 |
+| `PROB_HABLA` | 0,05 · 0,07 · 0,15 · 0,2 · 0,4 | 0,207 · 0,193 · 0,153 · 0,154 · 0,169 |
+| `EGO` (piso 0,25 / 0) | | 0,158 / 0,157 |
+
+0,1 sigue siendo lo mejor para `PROB_HABLA`: hablarle menos ayuda menos; hablarle más también empeora.
+
+**Memoria**: `guardar`/`_cargar` ahora conservan el léxico, la confianza y las frases oídas del `Oido`,
+y el significado secreto del maestro (antes, sin semilla, el maestro cambiaba de idioma en cada arranque).
+El panel muestra la confianza en el maestro.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

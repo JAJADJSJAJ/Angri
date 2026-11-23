@@ -42,11 +42,22 @@ class Maestro:
         ps = ps[1:] + ps[:1]
         self.palabra_dir = dict(zip(DIRECCIONES, ps))
 
-    def hablar(self, mundo, x, y, necesidad, vista):
+    def estado(self):
+        return {"dir": self.palabra_dir, "cosa": self.palabra_cosa}
+
+    def restaurar(self, d):
+        if d:
+            self.palabra_dir = dict(d["dir"])
+            self.palabra_cosa = dict(d["cosa"])
+
+    def hablar(self, mundo, x, y, necesidad, vista, edad=0):
+        self.edad = edad
         """Devuelve una lista de palabras (índices) o [] si se calla."""
         objetivo = ALIVIA.get(necesidad)
         if objetivo is None or self.rng.random() >= C.PROB_HABLA:
             return []
+        if C.COMPOSICION and objetivo != (COMIDA if self.edad < C.COMPOSICION else DESCANSO):
+            return []  # prueba de composición: primero solo comida, después solo cama
         if any(c == objetivo for c in vista.values()):
             return []  # ya lo ve: no hace falta decir nada
         lugar = self._cerca(mundo, x, y, objetivo)
@@ -103,10 +114,37 @@ class Oido:
         self.aciertos = []  # (acertó, frase nueva)
         self.sorpresa = 0.0
         self.indice_cambio = None
+        self.sorpresa_media = 0.0
+        self.indice_composicion = None
+        self.examen = []
+        self.holistico = {}  # control HOLISTICO: frase entera -> P(dirección)
         self.pasos = 0  # para medir: dónde empezó el cambio de significado
+
+    def estado(self):
+        return {"sentido": self.sentido, "veces": self.veces, "confianza": self.confianza,
+                "frases": [list(f) for f in self.frases],
+                "sorpresa_media": self.sorpresa_media}
+
+    def restaurar(self, d):
+        if not d:
+            return
+        self.sentido = [list(s) for s in d["sentido"]]
+        self.veces = list(d["veces"])
+        self.confianza = d["confianza"]
+        self.frases = {tuple(f) for f in d["frases"]}
+        self.sorpresa_media = d.get("sorpresa_media", 0.0)
+
+    def probar_composicion(self, maestro):
+        """Examen sin aprender: las 4 frases "cama + dirección" (nunca oídas).
+        ¿Apuesta bien la dirección? Guarda un acierto (bool) por frase."""
+        cama = maestro.palabra_cosa[DESCANSO]
+        self.examen = [max(range(4), key=self.apuesta((cama, maestro.palabra_dir[d])).__getitem__) == i
+                       for i, d in enumerate(DIRECCIONES)]
 
     def apuesta(self, frase):
         """Para dónde cree que está, combinando lo que significa cada palabra."""
+        if C.HOLISTICO:
+            return list(self.holistico.get(tuple(frase), [0.25] * 4))
         prob = [1.0] * 4
         for p in frase:
             prob = [a * b for a, b in zip(prob, self.sentido[p])]
@@ -158,10 +196,19 @@ class Oido:
             return
         d = (0 if dy < 0 else 1) if abs(dy) >= abs(dx) else (2 if dx < 0 else 3)
         self.sorpresa = 1.0 - ap[d]
+        self.sorpresa_media += 0.05 * (self.sorpresa - self.sorpresa_media)
         self.aciertos.append((max(range(4), key=ap.__getitem__) == d, nueva))
         # confianza: ¿lo que me dijo me sirvió más que adivinar?
         util = (ap[d] - 0.25) / 0.75
         self.confianza += C.APRENDE_CONFIANZA * (max(0.0, util) - self.confianza)
+        if C.HOLISTICO:
+            s = self.holistico.setdefault(frase, [0.25] * 4)
+            for i in range(4):
+                s[i] = max(s[i] + C.APRENDE_PALABRA * ((1.0 if i == d else 0.0) - ap[i]), 0.02)
+            z = sum(s)
+            self.holistico[frase] = [v / z for v in s]
+            self.pendiente = None
+            return
         # Rescorla-Wagner: cada palabra se corrige según el error de la frase entera
         for p in frase:
             self.veces[p] += 1
@@ -169,6 +216,7 @@ class Oido:
             if C.EGO:
                 ritmo = ritmo / (1 + self.veces[p] / 20)
             ritmo = max(ritmo, C.APRENDE_PALABRA * C.PISO_PALABRA)
+            ritmo = min(C.RITMO_MAXIMO, ritmo * (1 + C.SORPRESA_RITMO * self.sorpresa_media))
             s = self.sentido[p]
             for i in range(4):
                 s[i] += ritmo * ((1.0 if i == d else 0.0) - ap[i])

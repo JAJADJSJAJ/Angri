@@ -51,6 +51,9 @@ class Angri:
         self._malestar = self.cuerpo.malestar()
         self.evento = "nace" if self.edad == 0 else "despierta del apagado"
         self.oido = Oido()
+        self.oido.restaurar(guardado.get("oido"))
+        if self.maestro:
+            self.maestro.restaurar(guardado.get("maestro"))
 
     # --- un instante de vida ---
     def tick(self):
@@ -67,7 +70,10 @@ class Angri:
                 if C.CAMBIO_SIGNIFICADO and self.edad == C.CAMBIO_SIGNIFICADO:
                     self.maestro.cambiar_significados()
                     self.oido.indice_cambio = len(self.oido.aciertos)
-                self.oido.oir(self.maestro.hablar(self.mundo, self.x, self.y, necesidad, vista),
+                if C.COMPOSICION and self.edad == C.COMPOSICION:
+                    self.oido.indice_composicion = len(self.oido.aciertos)
+                    self.oido.probar_composicion(self.maestro)
+                self.oido.oir(self.maestro.hablar(self.mundo, self.x, self.y, necesidad, vista, self.edad),
                               (self.x, self.y), ALIVIA.get(necesidad))
             dicha = self.oido.direccion_dicha() if C.LEXICO else 4
             if isinstance(self.mente, Ganglios):
@@ -171,6 +177,9 @@ class Angri:
             datos["ganglios"] = self.mente.estado()
         if self.talamo:
             datos["talamo"] = self.talamo.estado()
+        datos["oido"] = self.oido.estado()
+        if self.maestro:
+            datos["maestro"] = self.maestro.estado()
         if self.corteza:
             datos["corteza"] = self.corteza.estado()
         with open(ARCHIVO_ESTADO, "w", encoding="utf-8") as f:
