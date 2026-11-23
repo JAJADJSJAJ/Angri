@@ -57,7 +57,7 @@ class Mundo:
             self._poner(COMIDA)
         if self.rng.random() < C.PROB_MUEVE_PELIGRO:
             self._mover_un_peligro()
-        if self.rng.random() < C.PROB_NUEVA_NOVEDAD:
+        if self.rng.random() < C.PROB_NUEVA_NOVEDAD and self._contar(NOVEDAD) < C.NOVEDAD_MAXIMA:
             self._poner(NOVEDAD)
 
     def _contar(self, cosa):

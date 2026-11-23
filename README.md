@@ -43,22 +43,22 @@ poca comida (tope de 10) y 5 peligros que deambulan.
 
 | Mente (5–8 vidas × 50.000 ticks) | Malestar | Malestar final (último 20 %) | % tiempo con hambre |
 |---|---|---|---|
-| Azar puro — el piso | 0,56 | 0,58 | ~47 % |
-| **Aprende (etapa 2)** | **0,22** | **0,23** | 45 % |
-| Reflejos innatos — la meta | 0,18 | 0,19 | ~27 % |
+| Azar puro — el piso | 0,57 | 0,58 | ~47 % |
+| **Aprende (etapa 2)** | **0,19** | **0,16** | 36 % |
+| **Aprende, vida larga (4 × 150.000)** | **0,14** | **0,13** | 17 % |
+| Reflejos innatos — la meta | 0,17 | 0,17 | ~27 % |
 
 La comida ahora crece alrededor de 3 **fuentes fijas** (como árboles frutales), así que el mundo tiene
 estructura que vale la pena aprender.
 
 ## Etapa 2 — estado
 
-Funciona: sin saber qué es la comida ni el peligro, aprende solo a esquivar peligros y sufre la mitad que el azar.
-Lo que todavía falla:
+Funciona: sin saber qué es la comida ni el peligro, aprende solo y **en vidas largas supera a los reflejos innatos**.
+Lo que todavía se puede mejorar:
 
 - **Hambre:** moverse cuesta energía al instante y la comida es rara, así que a veces aprende que
   "quedarse quieto" es mejor. Con hambre extrema (energía en 0) haga lo que haga se siente igual: no hay señal.
-- **Olvido en vidas largas:** en 150.000 ticks algunas vidas que comían bien dejan de comer
-  (malestar final 0,33 con mucha variación entre vidas). Todavía no se sabe por qué.
+- **Infancia desigual:** en 50.000 ticks algunas vidas tardan mucho en aprender a comer (mucha variación entre vidas).
 
 Arreglado:
 
@@ -66,6 +66,8 @@ Arreglado:
   otra necesidad urgente no lo sabía. Ahora hay rasgos que valen para cualquier necesidad. Heridas: de cientos a ~10.
 - **Indefensión aprendida:** si de chico casi no comía, nunca aprendía que comer es bueno y se quedaba
   en un círculo vicioso. Ahora **cuanto peor la pasa, más varía lo que hace** (`TEMPERATURA_MALESTAR`).
+- **"Olvido" en vidas largas que no era olvido:** aprendía a esquivar las novedades `?` (le bajan la curiosidad
+  de más), nadie las consumía y llenaban el mundo hasta encerrar la comida. Ahora tienen tope (`NOVEDAD_MAXIMA`).
 
 Probado y **apagado** porque empeoraba (regla: si no mejora, se saca):
 
@@ -81,7 +83,7 @@ La memoria de lugares queda en el código para la etapa 4 (hipocampo + sueño), 
 ## Hoja de ruta
 
 1. ✅ Mundo y cuerpo
-2. 🔶 Dopamina: actor-crítico que aprende a mantenerse en equilibrio (funciona, falta estabilizar)
+2. ✅ Dopamina: actor-crítico que aprende a mantenerse en equilibrio (supera a los reflejos en vidas largas)
 3. Predicción del mundo y curiosidad por progreso de aprendizaje
 4. Hipocampo y sueño real: replay del día, poda y medir olvido con y sin dormir
 5. Tálamo y espacio global: módulos que compiten por la atención

@@ -17,7 +17,8 @@ PROB_NUEVA_COMIDA = 0.02      # por tick
 PROB_NUEVA_NOVEDAD = 0.01     # por tick
 FUENTES_COMIDA = 3            # lugares fijos donde crece la comida (como árboles)
 RADIO_FUENTE = 2              # la comida aparece a esta distancia de una fuente
-COMIDA_MAXIMA = 10            # tope de comida en el mundo a la vez
+COMIDA_MAXIMA = 10
+NOVEDAD_MAXIMA = 6            # tope de novedades (sin tope, si las esquiva, tapan el mundo)            # tope de comida en el mundo a la vez
 PROB_MUEVE_PELIGRO = 0.02     # por tick: un peligro da un paso
 
 # --- Mente ---
