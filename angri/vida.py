@@ -11,6 +11,7 @@ import time
 
 from . import config as C
 from .cuerpo import Cuerpo
+from .ganglios import Ganglios
 from .mente import Mente
 from .mundo import COMIDA, DESCANSO, NOVEDAD, PELIGRO, Mundo
 from .quimica import Quimica
@@ -26,12 +27,16 @@ class Angri:
         guardado = self._cargar() if cargar else {}
         self.cuerpo = Cuerpo(guardado.get("cuerpo"))
         self.quimica = Quimica(guardado.get("quimica"))
-        self.mente = Mente(semilla)
+        if C.MENTE == "aprende":
+            self.mente = Ganglios(semilla, guardado.get("ganglios"))
+        else:
+            self.mente = Mente(semilla)
         self.mundo = Mundo(None if semilla is None else semilla + 1)
         self.x, self.y = guardado.get("pos", (8, 7))
         self.despierto = guardado.get("despierto", True)
         self.edad = guardado.get("edad", 0)  # ticks vividos
         self.suenos = guardado.get("suenos", 0)
+        self._malestar = self.cuerpo.malestar()
         self.evento = "nace" if self.edad == 0 else "despierta del apagado"
 
     # --- un instante de vida ---
@@ -42,7 +47,12 @@ class Angri:
 
         if self.despierto:
             vista = self.mundo.vecindad(self.x, self.y)
-            dx, dy = self.mente.elegir(vista, self.cuerpo.necesidad_urgente())
+            necesidad = self.cuerpo.necesidad_urgente()
+            if isinstance(self.mente, Ganglios):
+                dx, dy = self.mente.elegir(vista, self.cuerpo.v, necesidad,
+                                           self.quimica.noradrenalina)
+            else:
+                dx, dy = self.mente.elegir(vista, necesidad)
             nx = max(0, min(C.ANCHO - 1, self.x + dx))
             ny = max(0, min(C.ALTO - 1, self.y + dy))
             se_movio = (nx, ny) != (self.x, self.y)
@@ -52,7 +62,13 @@ class Angri:
             self._interactuar(aqui)
 
         self.cuerpo.vivir(self.despierto, se_movio)
-        malestar = self.cuerpo.malestar()
+        malestar_antes = self._malestar
+        malestar = self._malestar = self.cuerpo.malestar()
+        if self.despierto and isinstance(self.mente, Ganglios):
+            recompensa = (C.RECOMPENSA_ALIVIO * (malestar_antes - malestar)
+                          - C.RECOMPENSA_ESTADO * malestar)
+            vista = self.mundo.vecindad(self.x, self.y)
+            self.mente.aprender(recompensa, vista, self.cuerpo.v, self.cuerpo.necesidad_urgente())
         self.quimica.actualizar(self.despierto, malestar, self.cuerpo.v["estres"], sorpresa)
         self._regular_sueno()
         self.edad += 1
@@ -78,6 +94,8 @@ class Angri:
         if self.despierto and q.adenosina >= C.UMBRAL_DORMIR:
             self.despierto = False
             self.suenos += 1
+            if isinstance(self.mente, Ganglios):
+                self.mente.olvidar_paso()
             self.evento = "se duerme"
         elif not self.despierto and q.adenosina <= C.UMBRAL_DESPERTAR:
             self.despierto = True
@@ -102,6 +120,8 @@ class Angri:
             "edad": self.edad,
             "suenos": self.suenos,
         }
+        if isinstance(self.mente, Ganglios):
+            datos["ganglios"] = self.mente.estado()
         with open(ARCHIVO_ESTADO, "w", encoding="utf-8") as f:
             json.dump(datos, f, indent=2)
 

@@ -19,7 +19,18 @@ COMIDA_MAXIMA = 10            # tope de comida en el mundo a la vez
 PROB_MUEVE_PELIGRO = 0.02     # por tick: un peligro da un paso
 
 # --- Mente ---
-REFLEJOS = False              # False = azar puro (la vara sin cerebro)
+MENTE = "aprende"             # "aprende" (etapa 2), o "azar" (vieja mente.py)
+REFLEJOS = False              # solo para MENTE="azar": False = azar puro (el piso)
+
+# --- Ganglios basales (etapa 2) ---
+SEROTONINA = 0.95             # γ: cuánto mira al futuro
+APRENDE_CRITICO = 0.1
+APRENDE_ACTOR = 0.03
+HUELLA = 0.8                  # λ: cuánto tiempo atrás llega el crédito de la dopamina
+TEMPERATURA_BASE = 0.3        # exploración de fondo
+TEMPERATURA_SORPRESA = 0.5    # la noradrenalina sube la exploración
+RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
+RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)
 
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---
 EQUILIBRIO = {
@@ -45,6 +56,7 @@ SUBE_CANSANCIO_DESPIERTO = 0.0006
 SUBE_CURIOSIDAD = 0.0010      # el aburrimiento crece solo
 CALMA_ESTRES = 0.004          # el estrés vuelve a la calma de a poco
 RECUPERA_INTEGRIDAD = 0.0005
+DANO_INANICION = 0.0          # sin energía, se consume (0 = apagado: probado, empeora)
 
 # --- Química ---
 ADENOSINA_POR_ACTIVIDAD = 0.0009  # se acumula estando despierto

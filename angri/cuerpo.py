@@ -28,6 +28,10 @@ class Cuerpo:
             v["energia"] += C.GASTO_ENERGIA_BASE * 0.5  # durmiendo gasta menos
         v["estres"] -= C.CALMA_ESTRES * v["estres"]
         v["integridad"] += C.RECUPERA_INTEGRIDAD
+        # inanición: sin energía el cuerpo se consume (si no, el hambre extrema
+        # sería una meseta sin salida y no habría nada que aprender)
+        if v["energia"] < 0.05:
+            v["integridad"] -= C.DANO_INANICION
         # hambre y daño generan estrés
         if v["energia"] < 0.3:
             v["estres"] += 0.002
