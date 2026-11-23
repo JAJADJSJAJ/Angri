@@ -25,9 +25,36 @@ def una_vida(semilla, ticks):
     corte = int(ticks * 0.8)
     malestar = heridas = comidas = novedades = 0
     hambre = 0  # ticks con energía < 0.3
+    # olvido: tras cada estación, cuánto tarda en comer en la fuente nueva y
+    # cuántos ticks sigue rondando la vieja (perseveración) en la ventana siguiente
+    tardanzas, rondas = [], []
+    pendiente = None  # [nueva, vieja, ticks desde el cambio, ticks cerca de la vieja]
+    ventana = C.ESTACION // 2 if C.ESTACION else 0
+
+    def cerca(p):
+        return abs(a.x - p[0]) <= C.RADIO_FUENTE and abs(a.y - p[1]) <= C.RADIO_FUENTE
+
     for t in range(ticks):
         a.evento = ""
+        cambio = a.mundo.cambio
         a.tick()
+        if a.mundo.cambio is not cambio:
+            if pendiente:
+                tardanzas.append(ventana)
+                rondas.append(pendiente[3])
+            vieja, nueva = a.mundo.cambio
+            pendiente = [nueva, vieja, 0, 0]
+        if pendiente:
+            pendiente[2] += 1
+            pendiente[3] += cerca(pendiente[1]) and a.despierto
+            if a.evento == "come" and cerca(pendiente[0]):
+                tardanzas.append(pendiente[2])
+                rondas.append(pendiente[3])
+                pendiente = None
+            elif pendiente[2] >= ventana:
+                tardanzas.append(ventana)
+                rondas.append(pendiente[3])
+                pendiente = None
         m = a.cuerpo.malestar()
         malestar += m
         if t >= corte:
@@ -44,6 +71,8 @@ def una_vida(semilla, ticks):
         "novedades": novedades,
         "suenos": a.suenos,
         "% hambre": 100 * hambre / ticks,
+        "encuentra": st.mean(tardanzas) if tardanzas else 0.0,
+        "ronda vieja": st.mean(rondas) if rondas else 0.0,
     }
 
 

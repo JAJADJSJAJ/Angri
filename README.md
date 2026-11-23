@@ -149,14 +149,32 @@ se siente aunque la integridad ya esté en 0 o el malestar en su tope. Con 32 vi
 | Dolor ×10 + sueño | 0,184 | 0,150 | 30,2 | 4 ± 1 |
 
 La trampa desaparece y el sueño mejora todo, aunque por poco (≈1–2 desvíos estándar de la media): queda
-**prendido**. Falta medir el olvido en sí (cuánto tarda en encontrar una fuente nueva tras cada estación).
+**prendido**.
+
+### Olvido tras cada estación
+
+`medir.py` ahora mide, después de cada cambio de estación, **encuentra** (ticks hasta comer en la fuente
+nueva; tope 2500 si no la encuentra) y **ronda vieja** (ticks despierto cerca de la fuente que se secó).
+32 vidas de 50.000 ticks:
+
+| Variante | Encuentra | Ronda vieja | % hambre |
+|---|---|---|---|
+| Sin sueño | 1163 ± 465 | 61 ± 45 | 37,4 |
+| **Sueño completo** | 1096 ± 427 | 75 ± 42 | **28,9** |
+| Solo lugares, sin replay (`REPASOS=0`) | 1213 | 82 | 32,8 |
+| Sueño sin borrar lugares vacíos | 1337 | **184** | 44,9 |
+
+- El sueño **no acelera** el reaprendizaje tras un cambio (1096 vs 1163 está dentro del ruido): lo que gana
+  viene de consolidar lo que ya sirve, no de olvidar más rápido.
+- Lo que evita la perseveración es **borrar al instante un lugar que llega y encuentra vacío**: sin eso
+  ronda la fuente seca 3 veces más y es la peor variante. La poda nocturna sola es demasiado lenta.
 
 ## Hoja de ruta
 
 1. ✅ Mundo y cuerpo
 2. ✅ Dopamina: actor-crítico que aprende a mantenerse en equilibrio (supera a los reflejos en vidas largas)
 3. 🔶 Predicción del mundo y curiosidad por progreso de aprendizaje (hecha y medida; apagada porque no mejora en este mundo)
-4. ✅ Hipocampo y sueño real: estaciones, replay corregido, poda de lugares y dolor (mejora modesta; falta medir el olvido tras cada estación)
+4. ✅ Hipocampo y sueño real: estaciones, replay corregido, poda de lugares y dolor (mejora modesta; el sueño consolida pero no acelera el reaprendizaje)
 5. Tálamo y espacio global: módulos que compiten por la atención
 6. Lenguaje, con un modelo chico como maestro
 7. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua

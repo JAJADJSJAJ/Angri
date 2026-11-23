@@ -15,6 +15,7 @@ class Mundo:
         self.rng = random.Random(semilla)
         self.fuentes = []
         self.tiempo = 0
+        self.cambio = None
         self.grilla = [[VACIO] * C.ANCHO for _ in range(C.ALTO)]
         # una zona fija de descanso, como una "cama"
         for y in range(1, 4):
@@ -74,6 +75,7 @@ class Mundo:
             if abs(nueva[0] - vieja[0]) + abs(nueva[1] - vieja[1]) > 8:
                 break
         self.fuentes[i] = nueva
+        self.cambio = (vieja, nueva)  # para medir cuánto tarda en enterarse
         vx, vy = vieja
         for y in range(max(0, vy - C.RADIO_FUENTE), min(C.ALTO, vy + C.RADIO_FUENTE + 1)):
             for x in range(max(0, vx - C.RADIO_FUENTE), min(C.ANCHO, vx + C.RADIO_FUENTE + 1)):
