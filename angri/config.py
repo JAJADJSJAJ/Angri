@@ -15,6 +15,8 @@ NOVEDADES_INICIALES = 4
 PELIGROS = 5
 PROB_NUEVA_COMIDA = 0.02      # por tick
 PROB_NUEVA_NOVEDAD = 0.01     # por tick
+FUENTES_COMIDA = 3            # lugares fijos donde crece la comida (como árboles)
+RADIO_FUENTE = 2              # la comida aparece a esta distancia de una fuente
 COMIDA_MAXIMA = 10            # tope de comida en el mundo a la vez
 PROB_MUEVE_PELIGRO = 0.02     # por tick: un peligro da un paso
 
@@ -27,6 +29,10 @@ SEROTONINA = 0.95             # γ: cuánto mira al futuro
 APRENDE_CRITICO = 0.1
 APRENDE_ACTOR = 0.03
 HUELLA = 0.8                  # λ: cuánto tiempo atrás llega el crédito de la dopamina
+CALMA = 1e12                  # experiencia a partir de la cual aprende más despacio (1e12 = apagado: probado con 2000, empeora)
+APRENDE_MINIMO = 0.1          # nunca aprende menos que esta fracción (el mundo cambia)
+UMBRAL_RECUERDO = 1e9         # alivio para recordar un lugar (1e9 = apagado: probado con 2.0, empeora)
+RECUERDO_DECAE = 0.9995       # por tick: los recuerdos se desvanecen
 TEMPERATURA_BASE = 0.3        # exploración de fondo
 TEMPERATURA_SORPRESA = 0.5    # la noradrenalina sube la exploración
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"

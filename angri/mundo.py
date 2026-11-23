@@ -13,11 +13,16 @@ VACIO, COMIDA, DESCANSO, NOVEDAD, PELIGRO = "·", "*", "~", "?", "X"
 class Mundo:
     def __init__(self, semilla=None):
         self.rng = random.Random(semilla)
+        self.fuentes = []
         self.grilla = [[VACIO] * C.ANCHO for _ in range(C.ALTO)]
         # una zona fija de descanso, como una "cama"
         for y in range(1, 4):
             for x in range(1, 5):
                 self.grilla[y][x] = DESCANSO
+        # fuentes de comida: lugares fijos donde crece (como árboles frutales),
+        # así recordar dónde comió sirve de algo
+        self.fuentes = [(self.rng.randrange(C.ANCHO), self.rng.randrange(5, C.ALTO))
+                        for _ in range(C.FUENTES_COMIDA)]
         for _ in range(C.COMIDA_INICIAL):
             self._poner(COMIDA)
         for _ in range(C.NOVEDADES_INICIALES):
@@ -27,7 +32,14 @@ class Mundo:
 
     def _poner(self, cosa):
         for _ in range(100):
-            x, y = self.rng.randrange(C.ANCHO), self.rng.randrange(C.ALTO)
+            if cosa == COMIDA and self.fuentes:
+                fx, fy = self.rng.choice(self.fuentes)
+                x = fx + self.rng.randint(-C.RADIO_FUENTE, C.RADIO_FUENTE)
+                y = fy + self.rng.randint(-C.RADIO_FUENTE, C.RADIO_FUENTE)
+                if not (0 <= x < C.ANCHO and 0 <= y < C.ALTO):
+                    continue
+            else:
+                x, y = self.rng.randrange(C.ANCHO), self.rng.randrange(C.ALTO)
             if self.grilla[y][x] == VACIO:
                 self.grilla[y][x] = cosa
                 return

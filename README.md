@@ -41,23 +41,34 @@ En una prueba de 20.000 ticks durmió 21 veces y terminó con un malestar de 0,1
 Con `azar` o `reflejos` al final se mide la mente vieja. El mundo está calibrado para que sin cerebro **sufra**:
 poca comida (tope de 10) y 5 peligros que deambulan.
 
-| Mente (8 vidas × 50.000 ticks) | Malestar | Malestar final (último 20 %) | % tiempo con hambre |
+| Mente (5–8 vidas × 50.000 ticks) | Malestar | Malestar final (último 20 %) | % tiempo con hambre |
 |---|---|---|---|
-| Azar puro — el piso | 0,58 | 0,59 | 47 % |
-| **Aprende (etapa 2)** | **0,30** | **0,25** | 65 % |
-| Reflejos innatos — la meta | 0,15 | 0,15 | 27 % |
+| Azar puro — el piso | 0,56 | 0,58 | ~47 % |
+| **Aprende (etapa 2)** | **0,28** | **0,28** | 55 % |
+| Reflejos innatos — la meta | 0,18 | 0,19 | ~27 % |
+
+La comida ahora crece alrededor de 3 **fuentes fijas** (como árboles frutales), así que el mundo tiene
+estructura que vale la pena aprender.
 
 ## Etapa 2 — estado
 
-Funciona: sin que nadie le diga nada, aprende a esquivar peligros y baja el malestar a la mitad del piso.
-Lo que todavía falla (lo próximo a atacar):
+Funciona: sin saber qué es la comida ni el peligro, aprende solo a esquivar peligros y sufre la mitad que el azar.
+Lo que todavía falla:
 
-- **Hambre:** moverse cuesta energía al instante y la comida es rara y está lejos, así que a veces aprende
-  que "quedarse quieto" es mejor y se queda en la cama pasando hambre.
-- **Inestabilidad:** algunas vidas colapsan (miles de heridas) y en vidas largas (150.000 ticks) empeora
-  con el tiempo (malestar final 0,37). Hace falta que el aprendizaje se calme cuando ya sabe.
-- Probado y descartado: que la inanición dañe la integridad (empeora todo), sacar la noradrenalina
-  (empeora: la exploración por sorpresa ayuda).
+- **Hambre:** moverse cuesta energía al instante y la comida es rara, así que a veces aprende que
+  "quedarse quieto" es mejor. Con hambre extrema (energía en 0) haga lo que haga se siente igual: no hay señal.
+- **Inestabilidad:** algunas vidas colapsan y en vidas largas (150.000 ticks) empeora (malestar final 0,39).
+
+Probado y **apagado** porque empeoraba (regla: si no mejora, se saca):
+
+| Idea | Resultado |
+|---|---|
+| Inanición daña la integridad | Mucho peor |
+| Sin noradrenalina (exploración por sorpresa) | Peor: la sorpresa ayuda |
+| Calma: aprender más despacio con la experiencia (`CALMA`) | Peor: congela errores de la infancia |
+| Memoria de lugares donde se sintió bien (`UMBRAL_RECUERDO`) | Peor: sin consolidación, recuerda ruido |
+
+La memoria de lugares queda en el código para la etapa 4 (hipocampo + sueño), donde tiene más sentido.
 
 ## Hoja de ruta
 

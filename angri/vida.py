@@ -49,7 +49,7 @@ class Angri:
             vista = self.mundo.vecindad(self.x, self.y)
             necesidad = self.cuerpo.necesidad_urgente()
             if isinstance(self.mente, Ganglios):
-                dx, dy = self.mente.elegir(vista, self.cuerpo.v, necesidad,
+                dx, dy = self.mente.elegir(vista, self.cuerpo.v, necesidad, (self.x, self.y),
                                            self.quimica.noradrenalina)
             else:
                 dx, dy = self.mente.elegir(vista, necesidad)
@@ -68,7 +68,8 @@ class Angri:
             recompensa = (C.RECOMPENSA_ALIVIO * (malestar_antes - malestar)
                           - C.RECOMPENSA_ESTADO * malestar)
             vista = self.mundo.vecindad(self.x, self.y)
-            self.mente.aprender(recompensa, vista, self.cuerpo.v, self.cuerpo.necesidad_urgente())
+            self.mente.aprender(recompensa, vista, self.cuerpo.v,
+                                self.cuerpo.necesidad_urgente(), (self.x, self.y))
         self.quimica.actualizar(self.despierto, malestar, self.cuerpo.v["estres"], sorpresa)
         self._regular_sueno()
         self.edad += 1
