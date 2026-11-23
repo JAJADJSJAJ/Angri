@@ -1,0 +1,57 @@
+"""El mundo de Angri: una grilla 2D simple.
+
+  ·  vacío       *  comida      ~  zona de descanso
+  ?  algo nuevo  X  peligro     A  Angri
+"""
+import random
+
+from . import config as C
+
+VACIO, COMIDA, DESCANSO, NOVEDAD, PELIGRO = "·", "*", "~", "?", "X"
+
+
+class Mundo:
+    def __init__(self, semilla=None):
+        self.rng = random.Random(semilla)
+        self.grilla = [[VACIO] * C.ANCHO for _ in range(C.ALTO)]
+        # una zona fija de descanso, como una "cama"
+        for y in range(1, 4):
+            for x in range(1, 5):
+                self.grilla[y][x] = DESCANSO
+        for _ in range(C.COMIDA_INICIAL):
+            self._poner(COMIDA)
+        for _ in range(C.NOVEDADES_INICIALES):
+            self._poner(NOVEDAD)
+        for _ in range(C.PELIGROS):
+            self._poner(PELIGRO)
+
+    def _poner(self, cosa):
+        for _ in range(100):
+            x, y = self.rng.randrange(C.ANCHO), self.rng.randrange(C.ALTO)
+            if self.grilla[y][x] == VACIO:
+                self.grilla[y][x] = cosa
+                return
+
+    def en(self, x, y):
+        return self.grilla[y][x]
+
+    def consumir(self, x, y):
+        if self.grilla[y][x] in (COMIDA, NOVEDAD):
+            self.grilla[y][x] = VACIO
+
+    def avanzar(self):
+        """El mundo también cambia solo."""
+        if self.rng.random() < C.PROB_NUEVA_COMIDA:
+            self._poner(COMIDA)
+        if self.rng.random() < C.PROB_NUEVA_NOVEDAD:
+            self._poner(NOVEDAD)
+
+    def vecindad(self, x, y, radio=2):
+        """Lo que Angri 've' a su alrededor."""
+        vista = {}
+        for dy in range(-radio, radio + 1):
+            for dx in range(-radio, radio + 1):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < C.ANCHO and 0 <= ny < C.ALTO:
+                    vista[(dx, dy)] = self.grilla[ny][nx]
+        return vista
