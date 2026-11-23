@@ -44,7 +44,7 @@ poca comida (tope de 10) y 5 peligros que deambulan.
 | Mente (5–8 vidas × 50.000 ticks) | Malestar | Malestar final (último 20 %) | % tiempo con hambre |
 |---|---|---|---|
 | Azar puro — el piso | 0,56 | 0,58 | ~47 % |
-| **Aprende (etapa 2)** | **0,28** | **0,28** | 55 % |
+| **Aprende (etapa 2)** | **0,22** | **0,23** | 45 % |
 | Reflejos innatos — la meta | 0,18 | 0,19 | ~27 % |
 
 La comida ahora crece alrededor de 3 **fuentes fijas** (como árboles frutales), así que el mundo tiene
@@ -57,7 +57,15 @@ Lo que todavía falla:
 
 - **Hambre:** moverse cuesta energía al instante y la comida es rara, así que a veces aprende que
   "quedarse quieto" es mejor. Con hambre extrema (energía en 0) haga lo que haga se siente igual: no hay señal.
-- **Inestabilidad:** algunas vidas colapsan y en vidas largas (150.000 ticks) empeora (malestar final 0,39).
+- **Olvido en vidas largas:** en 150.000 ticks algunas vidas que comían bien dejan de comer
+  (malestar final 0,33 con mucha variación entre vidas). Todavía no se sabe por qué.
+
+Arreglado:
+
+- **Se quedaba parado arriba de un peligro:** había aprendido "la X duele" solo cuando tenía hambre; con
+  otra necesidad urgente no lo sabía. Ahora hay rasgos que valen para cualquier necesidad. Heridas: de cientos a ~10.
+- **Indefensión aprendida:** si de chico casi no comía, nunca aprendía que comer es bueno y se quedaba
+  en un círculo vicioso. Ahora **cuanto peor la pasa, más varía lo que hace** (`TEMPERATURA_MALESTAR`).
 
 Probado y **apagado** porque empeoraba (regla: si no mejora, se saca):
 

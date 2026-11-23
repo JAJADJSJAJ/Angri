@@ -65,10 +65,13 @@ def _rasgos(vista, necesidad, dir_comida, dir_objetivo, dir_recuerdo, a):
         r.append(40 + n)                        # 40..44: me quedo quieto
     if a == dir_recuerdo:
         r.append(45 + n)                        # 45..49: voy a donde una vez me sentí bien
+    r.append(50 + destino)                      # 50..55: qué hay adonde voy, sea cual sea
+    if a == 4:                                  #         la necesidad ("la X duele siempre")
+        r.append(56)                            # 56: me quedo quieto, sea cual sea
     return r
 
 
-N_RASGOS = 50
+N_RASGOS = 57
 
 
 def _direccion(dx, dy):
@@ -129,13 +132,16 @@ class Ganglios:
         return mejor
 
     # --- decidir ---
-    def elegir(self, vista, cuerpo, necesidad, pos, noradrenalina=0.0):
+    def elegir(self, vista, cuerpo, necesidad, pos, noradrenalina=0.0, malestar=0.0):
         dc = _hacia(vista, COMIDA)
         do = _hacia(vista, ALIVIA.get(necesidad))
         dr = self._recuerdo(necesidad, pos)
         rasgos = [_rasgos(vista, necesidad, dc, do, dr, a) for a in range(len(MOVIMIENTOS))]
         h = [sum(self.w[i] for i in r) for r in rasgos]
-        temp = C.TEMPERATURA_BASE + C.TEMPERATURA_SORPRESA * noradrenalina
+        # cuanto peor la pasa, más varía lo que hace: si lo de siempre no funciona,
+        # probar otra cosa (antídoto contra la indefensión aprendida)
+        temp = (C.TEMPERATURA_BASE + C.TEMPERATURA_SORPRESA * noradrenalina
+                + C.TEMPERATURA_MALESTAR * malestar)
         m = max(h)
         e = [math.exp((x - m) / temp) for x in h]
         z = sum(e)

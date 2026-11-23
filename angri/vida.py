@@ -50,7 +50,7 @@ class Angri:
             necesidad = self.cuerpo.necesidad_urgente()
             if isinstance(self.mente, Ganglios):
                 dx, dy = self.mente.elegir(vista, self.cuerpo.v, necesidad, (self.x, self.y),
-                                           self.quimica.noradrenalina)
+                                           self.quimica.noradrenalina, self._malestar)
             else:
                 dx, dy = self.mente.elegir(vista, necesidad)
             nx = max(0, min(C.ANCHO - 1, self.x + dx))

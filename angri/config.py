@@ -27,7 +27,7 @@ REFLEJOS = False              # solo para MENTE="azar": False = azar puro (el pi
 # --- Ganglios basales (etapa 2) ---
 SEROTONINA = 0.95             # γ: cuánto mira al futuro
 APRENDE_CRITICO = 0.1
-APRENDE_ACTOR = 0.03
+APRENDE_ACTOR = 0.06
 HUELLA = 0.8                  # λ: cuánto tiempo atrás llega el crédito de la dopamina
 CALMA = 1e12                  # experiencia a partir de la cual aprende más despacio (1e12 = apagado: probado con 2000, empeora)
 APRENDE_MINIMO = 0.1          # nunca aprende menos que esta fracción (el mundo cambia)
@@ -35,6 +35,7 @@ UMBRAL_RECUERDO = 1e9         # alivio para recordar un lugar (1e9 = apagado: pr
 RECUERDO_DECAE = 0.9995       # por tick: los recuerdos se desvanecen
 TEMPERATURA_BASE = 0.3        # exploración de fondo
 TEMPERATURA_SORPRESA = 0.5    # la noradrenalina sube la exploración
+TEMPERATURA_MALESTAR = 2.0    # cuanto peor la pasa, más explora
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
 RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)
 
