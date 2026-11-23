@@ -32,7 +32,7 @@ class Hipocampo:
                     del lugares[k]
         # lugares del día: dónde se sintió mucho mejor
         nuevos = 0
-        for s, _, _, r, _, pos, necesidad in self.dia:
+        for s, _, _, r, _, pos, necesidad, *_ in self.dia:
             if r > C.UMBRAL_LUGAR:
                 l = ganglios.lugares[necesidad]
                 l[pos] = min(C.TOPE_LUGAR, l.get(pos, 0.0) + 1.0)

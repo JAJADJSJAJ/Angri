@@ -117,15 +117,31 @@ Medido con 16 vidas de 50.000 ticks (con estaciones):
 Ninguna mejora. El replay del actor es lo peor: repasa acciones elegidas con otra temperatura y con lo que
 sabía antes (aprendizaje *off-policy* sin corrección), y la primera noche lo deja trabado (pesos congelados,
 hambre 93 % con el repaso al 0,5). Los lugares recordados lo arrastran a fuentes que ya se secaron.
-Pendiente si se retoma: corrección por importancia (ρ = π_hoy/π_entonces) en el replay del actor, y que un
-lugar visitado sin alivio se borre al instante.
+### Segunda vuelta: replay corregido
+
+Dos arreglos: **corrección por importancia** (cada recuerdo pesa ρ = π_hoy/π_entonces, con tope 1, usando la
+temperatura con la que eligió) y **borrar un lugar** al llegar y no ver lo que necesitaba
+(`BORRAR_LUGAR_VACIO`). Con 32 vidas de 50.000 ticks:
+
+| Variante | Malestar | Mal. final | % hambre | Heridas |
+|---|---|---|---|---|
+| Sin hipocampo | 0,206 | 0,165 ± 0,082 | 41,5 | 14 ± 14 |
+| Replay corregido (`APRENDE_REPASO=0.5`) | **0,181** | **0,128 ± 0,027** | **25,5** | 175 ± 546 |
+| Replay corregido (`APRENDE_REPASO=0.1`) | 0,184 | 0,141 | 28,0 | 70 ± 324 |
+| Replay sin corrección | 0,396 | 0,396 | 94,8 | 104 |
+
+La corrección es lo que lo hace funcionar: el sueño ahora **mejora** el final de la vida y el hambre, y las
+vidas se parecen más entre sí. Pero 6 de 32 vidas caen temprano en una **trampa de piso**: integridad en 0,
+quieto sobre una X, cientos de heridas (semilla 25: 3031). Con la integridad ya en 0 lastimarse no cambia
+nada, no hay señal que lo saque, y el repaso refuerza el quedarse. Después lo aprende y sale (malestar final
+bajo), pero hasta que se resuelva esa trampa queda **apagado**.
 
 ## Hoja de ruta
 
 1. ✅ Mundo y cuerpo
 2. ✅ Dopamina: actor-crítico que aprende a mantenerse en equilibrio (supera a los reflejos en vidas largas)
 3. 🔶 Predicción del mundo y curiosidad por progreso de aprendizaje (hecha y medida; apagada porque no mejora en este mundo)
-4. 🔶 Hipocampo y sueño real: mundo con estaciones (prendido); replay del día y poda (hechos y medidos; apagados porque empeoran)
+4. 🔶 Hipocampo y sueño real: estaciones (prendidas); replay corregido mejora el hambre y el final, pero apagado por la trampa de piso de la integridad
 5. Tálamo y espacio global: módulos que compiten por la atención
 6. Lenguaje, con un modelo chico como maestro
 7. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua

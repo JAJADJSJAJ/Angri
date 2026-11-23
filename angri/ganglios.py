@@ -149,7 +149,7 @@ class Ganglios:
         probs = [x / z for x in e]
         a = self.rng.choices(range(len(MOVIMIENTOS)), probs)[0]
         self._s = self._resumen(vista, cuerpo, necesidad)
-        self._a, self._rasgos, self._probs = a, rasgos, probs
+        self._a, self._rasgos, self._probs, self._temp = a, rasgos, probs, temp
         self._necesidad = necesidad
         return MOVIMIENTOS[a]
 
@@ -170,7 +170,15 @@ class Ganglios:
         s = self._s
         s2 = self._resumen(vista, cuerpo, necesidad)
         # lo vivido, para que el hipocampo lo guarde y lo repase de noche
-        self.ultimo = (s, self._rasgos, self._a, recompensa, s2, tuple(pos), self._necesidad)
+        self.ultimo = (s, self._rasgos, self._a, recompensa, s2, tuple(pos), self._necesidad,
+                       self._probs[self._a], self._temp)
+        # un lugar recordado al que llega y no hay nada de lo que necesitaba: se borra ya
+        if C.BORRAR_LUGAR_VACIO:
+            objetivo = ALIVIA.get(necesidad)
+            lugares = self.lugares[necesidad]
+            if (tuple(pos) in lugares and objetivo
+                    and vista.get((0, 0)) != objetivo and _hacia(vista, objetivo) == 4):
+                del lugares[tuple(pos)]
         v = self.V.get(s, 0.0)
         delta = recompensa + C.SEROTONINA * self.V.get(s2, 0.0) - v
         self.dopamina = delta
@@ -205,16 +213,18 @@ class Ganglios:
         aprendió algo nuevo, el recuerdo se reinterpreta con lo que sabe ahora.
         """
         s, rasgos, a, r, s2 = momento[:5]
-        delta = r + C.SEROTONINA * self.V.get(s2, 0.0) - self.V.get(s, 0.0)
-        self.V[s] = self.V.get(s, 0.0) + fraccion * self._ritmo(
-            C.APRENDE_CRITICO, self.exp_V.get(s, 0)) * delta
-        if not C.REPASO_ACTOR:
-            return delta
+        p_entonces, temp = momento[7], momento[8]
         h = [sum(self.w[i] for i in rs) for rs in rasgos]
-        temp = C.TEMPERATURA_BASE
         m = max(h)
         e = [math.exp((x - m) / temp) for x in h]
         z = sum(e)
+        # corrección por importancia: si hoy ya no haría eso, el recuerdo pesa menos
+        rho = min(C.TOPE_IMPORTANCIA, (e[a] / z) / p_entonces) if C.IMPORTANCIA else 1.0
+        delta = r + C.SEROTONINA * self.V.get(s2, 0.0) - self.V.get(s, 0.0)
+        self.V[s] = self.V.get(s, 0.0) + fraccion * rho * self._ritmo(
+            C.APRENDE_CRITICO, self.exp_V.get(s, 0)) * delta
+        if not C.REPASO_ACTOR:
+            return delta
         grad = [0.0] * N_RASGOS
         for i in rasgos[a]:
             grad[i] += 1.0
@@ -223,7 +233,7 @@ class Ganglios:
                 grad[i] -= x / z
         for i, g in enumerate(grad):
             if g:
-                self.w[i] += fraccion * self._ritmo(C.APRENDE_ACTOR, self.exp_w[i]) * delta * g
+                self.w[i] += fraccion * rho * self._ritmo(C.APRENDE_ACTOR, self.exp_w[i]) * delta * g
         return delta
 
     def olvidar_paso(self):

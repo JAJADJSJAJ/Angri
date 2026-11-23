@@ -57,6 +57,9 @@ REPASO_ACTOR = False          # el repaso también entrena al actor (no solo al 
 APRENDE_REPASO = 0.5          # fracción del ritmo de aprendizaje despierto
 UMBRAL_LUGAR = 2.0            # alivio para que un momento marque un lugar
 PODA_LUGARES = 0.6            # al dormir, los lugares que no se reconfirmaron se debilitan así
+IMPORTANCIA = True            # el repaso pesa cada recuerdo por π_hoy/π_entonces
+TOPE_IMPORTANCIA = 1.0        # tope de ese peso (evita que un recuerdo raro explote)
+BORRAR_LUGAR_VACIO = True     # llegar a un lugar recordado y no ver nada lo borra
 PRIORIDAD_BASE = 0.1          # cuánto pesa en el repaso un momento sin alivio ni dolor
 TOPE_LUGAR = 3.0              # fuerza máxima de un lugar recordado
 
