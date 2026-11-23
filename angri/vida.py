@@ -77,6 +77,10 @@ class Angri:
         if self.despierto and isinstance(self.mente, Ganglios):
             recompensa = (C.RECOMPENSA_ALIVIO * (malestar_antes - malestar)
                           - C.RECOMPENSA_ESTADO * malestar)
+            # nocicepción: el dolor llega a la dopamina directo, aunque el cuerpo ya
+            # esté en el piso (integridad 0) o el malestar en su tope y no cambie nada
+            if encontrado == PELIGRO:
+                recompensa -= C.DOLOR
             if self.corteza:
                 sorpresa = self.corteza.comparar(encontrado, malestar - malestar_antes)
                 recompensa += C.PESO_CURIOSIDAD * self.corteza.progreso

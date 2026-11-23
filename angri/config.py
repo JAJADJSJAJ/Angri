@@ -39,6 +39,7 @@ TEMPERATURA_BASE = 0.3        # exploración de fondo
 TEMPERATURA_SORPRESA = 0.5    # la noradrenalina sube la exploración
 TEMPERATURA_MALESTAR = 2.0    # cuanto peor la pasa, más explora
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
+DOLOR = 3.0                   # castigo directo por lastimarse (no pasa por el malestar: no se satura)
 RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)
 
 # --- Corteza (etapa 3): modelo predictivo y curiosidad ---
@@ -50,10 +51,10 @@ CURIOSIDAD_LENTO = 0.01       # promedio del error de antes
 PESO_CURIOSIDAD = 1.0         # (con CORTEZA) recompensa por progreso de aprendizaje (0 = sin curiosidad)
 
 # --- Hipocampo (etapa 4): memoria del día y sueño ---
-HIPOCAMPO = False             # (apagado: medido, empeora) guarda el día y lo repasa al dormir
+HIPOCAMPO = True              # guarda el día y lo repasa al dormir
 CAPACIDAD_DIA = 3000          # cuántos momentos del día entran (los más viejos se van)
 REPASOS = 2                   # cuántas veces repasa el día por noche
-REPASO_ACTOR = False          # el repaso también entrena al actor (no solo al crítico)
+REPASO_ACTOR = True           # el repaso también entrena al actor (no solo al crítico)
 APRENDE_REPASO = 0.5          # fracción del ritmo de aprendizaje despierto
 UMBRAL_LUGAR = 2.0            # alivio para que un momento marque un lugar
 PODA_LUGARES = 0.6            # al dormir, los lugares que no se reconfirmaron se debilitan así
