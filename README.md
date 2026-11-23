@@ -25,7 +25,7 @@ Para que "renazca" desde cero, borrá la carpeta `datos/`.
 | `angri/mundo.py` | El entorno | Grilla 2D con comida `*`, descanso `~`, novedades `?` y peligros `X` |
 | `angri/ganglios.py` | Ganglios basales | Etapa 2: actor-crítico que aprende con dopamina (error TD) |
 | `angri/corteza.py` | Corteza | Etapa 3: predice qué va a encontrar y cómo cambia su malestar; curiosidad por progreso de aprendizaje (apagada) |
-| `angri/maestro.py` | Lenguaje | Etapa 6: un maestro le dice con palabras inventadas dónde está lo que necesita; el significado se aprende con dopamina |
+| `angri/maestro.py` | Lenguaje | Etapas 6–7: un maestro le dice con palabras (en español, sin significado de nacimiento) dónde está lo que necesita; el significado se aprende con dopamina |
 | `angri/mente.py` | — | Mente vieja (azar / reflejos), queda como vara de comparación |
 | `medir.py` | — | Vara de medir: vidas reproducibles sin panel |
 | `angri/vida.py` | El bucle | Latido continuo; se duerme y se despierta solo por adenosina |
@@ -280,8 +280,9 @@ habla el maestro no cambiaron nada fuera del ruido.
 3. 🔶 Predicción del mundo y curiosidad por progreso de aprendizaje (hecha y medida; apagada porque no mejora en este mundo)
 4. ✅ Hipocampo y sueño real: estaciones, replay corregido, poda de lugares y dolor (mejora modesta; el sueño consolida pero no acelera el reaprendizaje)
 5. 🔶 Tálamo y espacio global: necesidades compiten por el foco (hecho y medido; apagado porque no mejora)
-6. 🔶 Lenguaje: entiende frases (mejora) y compone palabras aprendidas por sorpresa (ajustado: mejor versión, hambre 29 → 13 %); falta usarlo mejor, hablar en español y un modelo de verdad como maestro
-7. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
+6. 🔶 Lenguaje: entiende frases (mejora) y compone palabras aprendidas por sorpresa (ajustado: mejor versión, hambre 29 → 13 %); ya en español (etapa 7)
+7. 🔶 Hablar: Angri pide con una palabra (hecho y medido; apagado: con dopamina sola no aprende qué pedir)
+8. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
 
 ## Etapa 6d: cierre del lenguaje (composición, cambio de significado, barrido, memoria)
 
@@ -335,6 +336,54 @@ seguir al maestro mientras no le entiende) pero sin cambio empeora: **0,165 / 23
 **Memoria**: `guardar`/`_cargar` ahora conservan el léxico, la confianza y las frases oídas del `Oido`,
 y el significado secreto del maestro (antes, sin semilla, el maestro cambiaba de idioma en cada arranque).
 El panel muestra la confianza en el maestro.
+
+## Etapa 7: palabras en español y Angri pide (probada; pedir queda apagado)
+
+**Palabras en español.** El maestro ahora dice "comida", "cama", "novedad", "norte", "sur", "este", "oeste"
+(y "che", que nunca usa). Es solo la etiqueta: el índice de cada palabra sigue mezclado por semilla y Angri
+nace sin saber qué significa ninguna. Mismo sorteo que antes, así que da idéntico (32 vidas):
+
+| 32 vidas | malestar | hambre % | entiende % | examen de composición |
+|---|---|---|---|---|
+| sílabas (etapa 6d) | 0,137 | 12,6 | – | 97,7 % |
+| **español** | **0,137** | **12,6** | 97,5 | **97,7 %** (`COMPOSICION=25000`, malestar 0,169 como antes) |
+
+**Angri pide** (`PIDE=True`, en `angri/maestro.py` clase `Habla`). Cuando lo que necesita no está a la vista,
+con la misma probabilidad con que habla el maestro (0,1) elige entre decir "comida", "cama", "novedad" o
+callarse. Nace eligiendo al azar; un actor con un peso por (necesidad × palabra) aprende con la dopamina de
+los ganglios sumada en los `VENTANA_HABLA` ticks siguientes. El maestro contesta por lo que le piden, aunque
+no sea lo que Angri más necesita. `MAESTRO_SOLO_SI_PIDE=True`: el maestro solo habla si le piden.
+`PIDE_AZAR=True`: control, pide al azar y no aprende. "Pide bien" = energía→comida, cansancio→cama,
+curiosidad→novedad (último 20 % de la vida; azar = 33 %).
+
+| 32 vidas | malestar | hambre % | pide bien % |
+|---|---|---|---|
+| actual (no pide, maestro habla solo) | **0,137** | **12,6** | – |
+| pide + maestro habla solo | 0,181 | 27,9 | 33,9 |
+| pide al azar + maestro habla solo | 0,187 | 30,4 | 33,3 |
+| pide, maestro solo si pide | 0,179 | 28,3 | 39,1 |
+| pide al azar, maestro solo si pide | 0,187 | 33,5 | 32,8 |
+
+Ajustes (16 vidas, maestro solo si pide):
+
+| variante | malestar | hambre % | pide bien % |
+|---|---|---|---|
+| `APRENDE_HABLA=0.2` | 0,167 | 25,0 | 48,3 (desvío 25) |
+| `APRENDE_HABLA=0.2, VENTANA_HABLA=100` | 0,224 | 44,6 | 28,8 |
+| `APRENDE_HABLA=1, VENTANA_HABLA=100, TEMPERATURA_HABLA=0.5` | 0,200 | 37,2 | 25,7 |
+
+- **No funcionó**: aprender qué pedir solo con dopamina casi no supera al azar (34–39 % vs 33 %; el mejor
+  ajuste llega a 48 % con mucha variación). La dopamina de los ticks siguientes mezcla la respuesta del
+  maestro con todo lo demás que le pasa: el crédito es demasiado ruidoso.
+- Pedir **empeora** frente a la versión actual (0,137 → 0,18): cuando pide mal, el maestro lo manda a buscar
+  lo que no necesita, y gasta el turno en que el maestro igual le habría dicho lo correcto.
+- Que pida y aprenda (39 %) le gana un poco al control al azar (33 %) y vive apenas mejor (0,179 vs 0,187),
+  así que algo aprende, pero no alcanza. Todo queda apagado (`PIDE=False`).
+
+El panel muestra lo que dice Angri (`dice:`) y lo que oye (`oye:`). `guardar`/`cargar` conservan los pesos del habla.
+
+Config final (sin cambios de comportamiento): `MAESTRO=True, LEXICO=True, PROB_HABLA=0.1, PIDE=False,
+MAESTRO_SOLO_SI_PIDE=False` → malestar 0,137, hambre 12,6 %.
 
 ## Reglas del proyecto
 

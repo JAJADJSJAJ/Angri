@@ -92,6 +92,13 @@ COMPOSICION = 0               # prueba: hasta este tick el maestro solo habla de
 HOLISTICO = False             # control: aprende cada frase entera como un todo (no puede componer)
 RITMO_MAXIMO = 0.9            # tope del ritmo de aprendizaje de una palabra
 SORPRESA_RITMO = 0.0          # aprende más rápido cuando viene sorprendido (x(1 + k·sorpresa reciente))
+# --- Etapa 7: Angri pide ---
+PIDE = False                  # Angri puede decir una palabra cuando no ve lo que necesita
+PIDE_AZAR = False             # control: elige la palabra al azar y no aprende
+MAESTRO_SOLO_SI_PIDE = False  # el maestro solo habla cuando Angri le pide
+TEMPERATURA_HABLA = 1.0
+APRENDE_HABLA = 0.02
+VENTANA_HABLA = 30            # ticks de dopamina que se le acreditan a lo que dijo
 FRASE = False                 # rasgo por (par de palabras oídas juntas, movimiento)
 
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---

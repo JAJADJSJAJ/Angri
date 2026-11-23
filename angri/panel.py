@@ -41,6 +41,7 @@ def dibujar(angri):
         f" · necesidad urgente: {angri.cuerpo.necesidad_urgente()}"
         + (f" · foco: {angri.talamo.foco}" if getattr(angri, "talamo", None) else ""),
         *([f"confianza en el maestro: {angri.oido.confianza:.2f}"] if getattr(angri, "oido", None) and getattr(angri, "maestro", None) else []),
+        *([f"dice: {angri.habla.dicho}"] if getattr(angri, "habla", None) and angri.habla.dicho else []),
         *([f"oye: {angri.maestro.dicho}"] if getattr(angri, "maestro", None) and angri.maestro.dicho else []),
         "",
         "Ctrl+C para pausar (guarda su estado y sigue desde ahí la próxima vez)",

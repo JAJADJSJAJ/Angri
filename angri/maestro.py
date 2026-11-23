@@ -2,8 +2,9 @@
 
 El maestro es un "modelo chico" con reglas: ve TODO el mundo (Angri solo ve 5x5)
 y, cuando lo que Angri necesita no está a la vista, a veces le dice dos palabras:
-qué es y para dónde queda ("ñam ku" = comida al norte). Las palabras son sílabas
-inventadas y mezcladas con la semilla: Angri no nace sabiendo ninguna.
+qué es y para dónde queda ("comida norte"). Desde la etapa 7 las palabras son
+en español, pero el índice de cada una está mezclado con la semilla y Angri no
+nace sabiendo ninguna: el significado lo aprende.
 
 Angri no tiene diccionario. Lo que escucha queda unos ticks en la memoria de
 trabajo, y el actor de los ganglios tiene un rasgo por (palabra, movimiento):
@@ -13,16 +14,19 @@ lo refuerza. El significado se aprende igual que todo lo demás.
 Con MAESTRO_MIENTE=True el maestro dice palabras al azar: es el control para
 saber si lo que ayuda es el contenido o solo oír algo.
 """
+import math
 import random
 
 from . import config as C
 from .ganglios import ALIVIA, NECESIDADES
 from .mundo import COMIDA, DESCANSO, NOVEDAD
 
-SILABAS = ["ku", "ba", "ti", "mo", "ñam", "ze", "lu", "pi"]
 COSAS = [COMIDA, DESCANSO, NOVEDAD]
 DIRECCIONES = ["norte", "sur", "oeste", "este"]  # mismo orden que MOVIMIENTOS[0..3]
-N_PALABRAS = len(SILABAS)
+# Etapa 7: palabras reales en español. Son solo la etiqueta que se muestra: el
+# índice de cada palabra sigue mezclado por semilla y Angri no sabe qué significa.
+NOMBRE_COSA = {COMIDA: "comida", DESCANSO: "cama", NOVEDAD: "novedad"}
+N_PALABRAS = 8  # 4 direcciones + 3 cosas + 1 que nunca se usa ("che")
 
 
 class Maestro:
@@ -33,6 +37,12 @@ class Maestro:
         # significado secreto (solo el maestro lo sabe): palabra -> índice
         self.palabra_dir = {d: orden[i] for i, d in enumerate(DIRECCIONES)}
         self.palabra_cosa = {c: orden[4 + i] for i, c in enumerate(COSAS)}
+        self.palabras = ["che"] * N_PALABRAS  # índice -> cómo suena
+        for d, p in self.palabra_dir.items():
+            self.palabras[p] = d
+        for c, p in self.palabra_cosa.items():
+            self.palabras[p] = NOMBRE_COSA[c]
+        self.objetivo = None
         self.dicho = None  # última frase, para el panel
         self.dichas = 0
 
@@ -41,21 +51,33 @@ class Maestro:
         ps = [self.palabra_dir[d] for d in DIRECCIONES]
         ps = ps[1:] + ps[:1]
         self.palabra_dir = dict(zip(DIRECCIONES, ps))
+        for d, p in self.palabra_dir.items():
+            self.palabras[p] = d
 
     def estado(self):
-        return {"dir": self.palabra_dir, "cosa": self.palabra_cosa}
+        return {"dir": self.palabra_dir, "cosa": self.palabra_cosa, "palabras": self.palabras}
 
     def restaurar(self, d):
         if d:
             self.palabra_dir = dict(d["dir"])
             self.palabra_cosa = dict(d["cosa"])
+            self.palabras = list(d.get("palabras", self.palabras))
 
-    def hablar(self, mundo, x, y, necesidad, vista, edad=0):
+    def hablar(self, mundo, x, y, necesidad, vista, edad=0, pedido=None):
+        """Devuelve una lista de palabras (índices) o [] si se calla.
+        pedido: la palabra que dijo Angri (índice); si es una cosa, contesta
+        por esa cosa aunque no sea lo que Angri más necesita."""
         self.edad = edad
-        """Devuelve una lista de palabras (índices) o [] si se calla."""
-        objetivo = ALIVIA.get(necesidad)
-        if objetivo is None or self.rng.random() >= C.PROB_HABLA:
+        self.objetivo = None
+        cosa = {p: c for c, p in self.palabra_cosa.items()}.get(pedido)
+        if cosa is not None:
+            objetivo = cosa
+        elif C.MAESTRO_SOLO_SI_PIDE:
             return []
+        else:
+            objetivo = ALIVIA.get(necesidad)
+            if objetivo is None or self.rng.random() >= C.PROB_HABLA:
+                return []
         if C.COMPOSICION and objetivo != (COMIDA if self.edad < C.COMPOSICION else DESCANSO):
             return []  # prueba de composición: primero solo comida, después solo cama
         if any(c == objetivo for c in vista.values()):
@@ -69,10 +91,11 @@ class Maestro:
         else:
             d = "oeste" if dx < 0 else "este"
         frase = [self.palabra_cosa[objetivo], self.palabra_dir[d]]
+        self.objetivo = objetivo
         self.dichas += 1
         if C.MAESTRO_MIENTE:
             frase = [self.rng.randrange(N_PALABRAS) for _ in frase]
-        self.dicho = " ".join(SILABAS[p] for p in frase)
+        self.dicho = " ".join(self.palabras[p] for p in frase)
         return frase
 
     @staticmethod
@@ -85,6 +108,61 @@ class Maestro:
                     if d < dist:
                         mejor, dist = (xx, yy), d
         return mejor
+
+
+class Habla:
+    """Etapa 7: Angri pide. Cuando lo que necesita no está a la vista, a veces
+    (PROB_HABLA, el mismo ritmo con que habla el maestro) elige entre decir una
+    de las 3 palabras de cosas o callarse. Nace eligiendo al azar: un actor con
+    un rasgo por (necesidad, palabra) que aprende con la misma dopamina de los
+    ganglios, sumada en los ticks que siguen a lo que dijo.
+    Con PIDE_AZAR=True elige al azar siempre (control)."""
+
+    def __init__(self, rng, maestro):
+        self.rng = rng
+        self.opciones = [maestro.palabra_cosa[c] for c in COSAS] + [None]  # None = callarse
+        self.w = {n: [0.0] * len(self.opciones) for n in NECESIDADES}
+        self.huella = None  # [necesidad, opción, ticks que quedan]
+        self.dicho = None
+        self.pedidos = []  # (pidió lo correcto para su necesidad, edad)
+
+    def estado(self):
+        return {"w": self.w}
+
+    def restaurar(self, d):
+        if d:
+            self.w = {k: list(v) for k, v in d["w"].items()}
+
+    def decidir(self, necesidad, vista, edad):
+        """Devuelve el índice de la palabra que dice, o None."""
+        objetivo = ALIVIA.get(necesidad)
+        if (objetivo is None or self.huella is not None
+                or any(c == objetivo for c in vista.values())
+                or self.rng.random() >= C.PROB_HABLA):
+            return None
+        w = self.w[necesidad]
+        if C.PIDE_AZAR:
+            i = self.rng.randrange(len(self.opciones))
+        else:
+            m = max(w)
+            ps = [math.exp((x - m) / C.TEMPERATURA_HABLA) for x in w]
+            r, i = self.rng.random() * sum(ps), 0
+            while i < len(ps) - 1 and r > ps[i]:
+                r -= ps[i]
+                i += 1
+        self.huella = [necesidad, i, C.VENTANA_HABLA]
+        p = self.opciones[i]
+        if p is not None:
+            self.pedidos.append((i == COSAS.index(objetivo), edad))
+        return p
+
+    def aprender(self, dopamina):
+        if self.huella is None:
+            return
+        n, i, quedan = self.huella
+        if not C.PIDE_AZAR:
+            self.w[n][i] += C.APRENDE_HABLA * dopamina
+        self.huella = None if quedan <= 1 else [n, i, quedan - 1]
 
 
 class Oido:

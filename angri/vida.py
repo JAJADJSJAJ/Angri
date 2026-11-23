@@ -14,7 +14,7 @@ from .corteza import Corteza
 from .cuerpo import Cuerpo
 from .ganglios import ALIVIA, Ganglios
 from .hipocampo import Hipocampo
-from .maestro import Maestro, Oido
+from .maestro import Habla, Maestro, Oido
 from .talamo import Talamo
 from .mente import Mente
 from .mundo import COMIDA, DESCANSO, NOVEDAD, PELIGRO, Mundo
@@ -54,6 +54,9 @@ class Angri:
         self.oido.restaurar(guardado.get("oido"))
         if self.maestro:
             self.maestro.restaurar(guardado.get("maestro"))
+        self.habla = Habla(self.mente.rng, self.maestro) if self.maestro and C.PIDE else None
+        if self.habla:
+            self.habla.restaurar(guardado.get("habla"))
 
     # --- un instante de vida ---
     def tick(self):
@@ -73,8 +76,12 @@ class Angri:
                 if C.COMPOSICION and self.edad == C.COMPOSICION:
                     self.oido.indice_composicion = len(self.oido.aciertos)
                     self.oido.probar_composicion(self.maestro)
-                self.oido.oir(self.maestro.hablar(self.mundo, self.x, self.y, necesidad, vista, self.edad),
-                              (self.x, self.y), ALIVIA.get(necesidad))
+                pedido = self.habla.decidir(necesidad, vista, self.edad) if self.habla else None
+                if self.habla and pedido is not None:
+                    self.habla.dicho = self.maestro.palabras[pedido]
+                frase = self.maestro.hablar(self.mundo, self.x, self.y, necesidad, vista,
+                                            self.edad, pedido)
+                self.oido.oir(frase, (self.x, self.y), self.maestro.objetivo)
             dicha = self.oido.direccion_dicha() if C.LEXICO else 4
             if isinstance(self.mente, Ganglios):
                 dx, dy = self.mente.elegir(vista, self.cuerpo.v, necesidad, (self.x, self.y),
@@ -116,6 +123,8 @@ class Angri:
             self.mente.aprender(recompensa, vista, self.cuerpo.v, foco, (self.x, self.y))
             if self.talamo:
                 self.talamo.aprender(self.mente.dopamina)
+            if self.habla:
+                self.habla.aprender(self.mente.dopamina)
             if self.hipocampo and self.mente.ultimo:
                 self.hipocampo.anotar(self.mente.ultimo)
         self.quimica.actualizar(self.despierto, malestar, self.cuerpo.v["estres"], sorpresa)
@@ -180,6 +189,8 @@ class Angri:
         datos["oido"] = self.oido.estado()
         if self.maestro:
             datos["maestro"] = self.maestro.estado()
+        if self.habla:
+            datos["habla"] = self.habla.estado()
         if self.corteza:
             datos["corteza"] = self.corteza.estado()
         with open(ARCHIVO_ESTADO, "w", encoding="utf-8") as f:

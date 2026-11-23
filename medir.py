@@ -84,7 +84,13 @@ def _lenguaje(a, ticks):
         return {}
     tramo = ac[int(len(ac) * 0.8):]
     nuevas = [x for x, n in ac[len(ac) // 5:] if n]
-    out = {"entiende %": 100 * st.mean(x for x, _ in tramo),
+    out = {}
+    if getattr(a, "habla", None) and a.habla.pedidos:
+        ped = a.habla.pedidos
+        tramo_p = [ok for ok, e in ped if e >= ticks * 0.8] or [ok for ok, _ in ped]
+        out["pide bien %"] = 100 * st.mean(tramo_p)
+        out["pedidos"] = len(ped)
+    out |= {"entiende %": 100 * st.mean(x for x, _ in tramo),
            "confianza": a.oido.confianza}
     if nuevas:
         out["frase nueva %"] = 100 * st.mean(nuevas)
