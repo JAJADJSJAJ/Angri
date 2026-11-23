@@ -4,6 +4,7 @@
     python medir.py 20000 10         -> 20.000 ticks, 10 semillas
     python medir.py 50000 5 azar     -> mente vieja al azar puro (el piso)
     python medir.py 50000 5 reflejos -> mente vieja con reflejos innatos
+    python medir.py 50000 8 PESO_CURIOSIDAD=0 -> cambia un número de config (ablación)
 
 Cada Angri nace de cero (no toca datos/). Misma semilla = misma vida exacta,
 así dos versiones de la mente se pueden comparar en igualdad de condiciones.
@@ -47,6 +48,11 @@ def una_vida(semilla, ticks):
 
 
 def main():
+    # ajustes sueltos para ablaciones: python medir.py 50000 8 PESO_CURIOSIDAD=0
+    for arg in [a for a in sys.argv[1:] if "=" in a]:
+        k, v = arg.split("=")
+        setattr(C, k, type(getattr(C, k))(eval(v)))
+        sys.argv.remove(arg)
     ticks = int(sys.argv[1]) if len(sys.argv) > 1 else 50_000
     n = int(sys.argv[2]) if len(sys.argv) > 2 else 5
     if "azar" in sys.argv or "reflejos" in sys.argv:

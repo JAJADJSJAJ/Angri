@@ -24,6 +24,7 @@ Para que "renazca" desde cero, borrá la carpeta `datos/`.
 | `angri/quimica.py` | Neuromoduladores | Adenosina (sueño), cortisol, dopamina (¿mejoró el equilibrio?), noradrenalina (sorpresa) |
 | `angri/mundo.py` | El entorno | Grilla 2D con comida `*`, descanso `~`, novedades `?` y peligros `X` |
 | `angri/ganglios.py` | Ganglios basales | Etapa 2: actor-crítico que aprende con dopamina (error TD) |
+| `angri/corteza.py` | Corteza | Etapa 3: predice qué va a encontrar y cómo cambia su malestar; curiosidad por progreso de aprendizaje (apagada) |
 | `angri/mente.py` | — | Mente vieja (azar / reflejos), queda como vara de comparación |
 | `medir.py` | — | Vara de medir: vidas reproducibles sin panel |
 | `angri/vida.py` | El bucle | Latido continuo; se duerme y se despierta solo por adenosina |
@@ -38,7 +39,7 @@ En una prueba de 20.000 ticks durmió 21 veces y terminó con un malestar de 0,1
 ## Vara de medir
 
 `python medir.py` corre 5 vidas de 50.000 ticks reproducibles (semillas 0–4) sin tocar `datos/`.
-Con `azar` o `reflejos` al final se mide la mente vieja. El mundo está calibrado para que sin cerebro **sufra**:
+Con `azar` o `reflejos` al final se mide la mente vieja. Para ablaciones: `python medir.py 50000 16 PESO_CURIOSIDAD=0`. El mundo está calibrado para que sin cerebro **sufra**:
 poca comida (tope de 10) y 5 peligros que deambulan.
 
 | Mente (5–8 vidas × 50.000 ticks) | Malestar | Malestar final (último 20 %) | % tiempo con hambre |
@@ -77,14 +78,28 @@ Probado y **apagado** porque empeoraba (regla: si no mejora, se saca):
 | Sin noradrenalina (exploración por sorpresa) | Peor: la sorpresa ayuda |
 | Calma: aprender más despacio con la experiencia (`CALMA`) | Peor: congela errores de la infancia |
 | Memoria de lugares donde se sintió bien (`UMBRAL_RECUERDO`) | Peor: sin consolidación, recuerda ruido |
+| Corteza predictiva como fuente de sorpresa (`CORTEZA`, curiosidad en 0) | Igual: 16 vidas 0,190 vs 0,190; 150k 0,149 vs 0,143 |
+| Curiosidad por progreso de aprendizaje (`PESO_CURIOSIDAD` 0,1 / 0,3 / 0,5 / 1 / 2 / 5) | No robusta: con 8 vidas peso 1 parecía ganar (0,170 vs 0,190), con 16 vidas pierde (0,221); peso alto lo distrae y pasa hambre |
 
 La memoria de lugares queda en el código para la etapa 4 (hipocampo + sueño), donde tiene más sentido.
+
+## Etapa 3 — estado (probada, apagada)
+
+`angri/corteza.py` antes de cada paso adivina **qué va a encontrar** y **cuánto le va a cambiar el malestar**,
+con lo que ve, la necesidad urgente y la zona del mundo. El error de esa adivinanza es la sorpresa real
+(noradrenalina), y la **curiosidad** premia que el error *esté bajando* en un tipo de situación (no el error
+en sí, para no engancharse con el ruido de los peligros que se mueven al azar). Se guarda en `estado.json`.
+
+Medido honestamente no mejora: el mundo es tan chico que lo que hay en la casilla de al lado ya lo ve, y lo
+poco que queda por predecir es casi ruido; la diferencia entre vidas (desvío ~0,07) tapa cualquier efecto.
+Lección: medir con 16 vidas, no 8 (con 8 apareció una mejora falsa). Queda en el código para cuando el mundo
+tenga cosas que valga la pena predecir (lugares fuera de la vista, ciclos de comida) o para la etapa 4.
 
 ## Hoja de ruta
 
 1. ✅ Mundo y cuerpo
 2. ✅ Dopamina: actor-crítico que aprende a mantenerse en equilibrio (supera a los reflejos en vidas largas)
-3. Predicción del mundo y curiosidad por progreso de aprendizaje
+3. 🔶 Predicción del mundo y curiosidad por progreso de aprendizaje (hecha y medida; apagada porque no mejora en este mundo)
 4. Hipocampo y sueño real: replay del día, poda y medir olvido con y sin dormir
 5. Tálamo y espacio global: módulos que compiten por la atención
 6. Lenguaje, con un modelo chico como maestro

@@ -40,6 +40,14 @@ TEMPERATURA_MALESTAR = 2.0    # cuanto peor la pasa, más explora
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
 RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)
 
+# --- Corteza (etapa 3): modelo predictivo y curiosidad ---
+CORTEZA = False               # (apagada: medida, no mejora de forma robusta) predice qué encuentra y cómo cambia su malestar
+APRENDE_CORTEZA = 0.2
+ESCALA_ERROR_MALESTAR = 10.0  # Δmalestar es chico: se agranda para compararlo con el de celdas
+CURIOSIDAD_RAPIDO = 0.1       # promedio del error reciente
+CURIOSIDAD_LENTO = 0.01       # promedio del error de antes
+PESO_CURIOSIDAD = 1.0         # (con CORTEZA) recompensa por progreso de aprendizaje (0 = sin curiosidad)
+
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---
 EQUILIBRIO = {
     "energia": 0.8,

@@ -10,6 +10,7 @@ import os
 import time
 
 from . import config as C
+from .corteza import Corteza
 from .cuerpo import Cuerpo
 from .ganglios import Ganglios
 from .mente import Mente
@@ -29,8 +30,10 @@ class Angri:
         self.quimica = Quimica(guardado.get("quimica"))
         if C.MENTE == "aprende":
             self.mente = Ganglios(semilla, guardado.get("ganglios"))
+            self.corteza = Corteza(guardado.get("corteza")) if C.CORTEZA else None
         else:
             self.mente = Mente(semilla)
+            self.corteza = None
         self.mundo = Mundo(None if semilla is None else semilla + 1)
         self.x, self.y = guardado.get("pos", (8, 7))
         self.despierto = guardado.get("despierto", True)
@@ -55,10 +58,14 @@ class Angri:
                 dx, dy = self.mente.elegir(vista, necesidad)
             nx = max(0, min(C.ANCHO - 1, self.x + dx))
             ny = max(0, min(C.ALTO - 1, self.y + dy))
+            if self.corteza:
+                self.corteza.predecir(vista.get((dx, dy), "#"), necesidad,
+                                      (dx, dy) == (0, 0), (self.x, self.y))
             se_movio = (nx, ny) != (self.x, self.y)
             self.x, self.y = nx, ny
             aqui = self.mundo.en(self.x, self.y)
             sorpresa = self.mente.sorpresa(aqui)
+            encontrado = aqui
             self._interactuar(aqui)
 
         self.cuerpo.vivir(self.despierto, se_movio)
@@ -67,6 +74,9 @@ class Angri:
         if self.despierto and isinstance(self.mente, Ganglios):
             recompensa = (C.RECOMPENSA_ALIVIO * (malestar_antes - malestar)
                           - C.RECOMPENSA_ESTADO * malestar)
+            if self.corteza:
+                sorpresa = self.corteza.comparar(encontrado, malestar - malestar_antes)
+                recompensa += C.PESO_CURIOSIDAD * self.corteza.progreso
             vista = self.mundo.vecindad(self.x, self.y)
             self.mente.aprender(recompensa, vista, self.cuerpo.v,
                                 self.cuerpo.necesidad_urgente(), (self.x, self.y))
@@ -123,6 +133,8 @@ class Angri:
         }
         if isinstance(self.mente, Ganglios):
             datos["ganglios"] = self.mente.estado()
+        if self.corteza:
+            datos["corteza"] = self.corteza.estado()
         with open(ARCHIVO_ESTADO, "w", encoding="utf-8") as f:
             json.dump(datos, f, indent=2)
 
