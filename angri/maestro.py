@@ -34,6 +34,13 @@ class Maestro:
         self.palabra_dir = {d: orden[i] for i, d in enumerate(DIRECCIONES)}
         self.palabra_cosa = {c: orden[4 + i] for i, c in enumerate(COSAS)}
         self.dicho = None  # última frase, para el panel
+        self.dichas = 0
+
+    def cambiar_significados(self):
+        """Prueba del ego: las palabras de dirección pasan a significar otra cosa."""
+        ps = [self.palabra_dir[d] for d in DIRECCIONES]
+        ps = ps[1:] + ps[:1]
+        self.palabra_dir = dict(zip(DIRECCIONES, ps))
 
     def hablar(self, mundo, x, y, necesidad, vista):
         """Devuelve una lista de palabras (índices) o [] si se calla."""
@@ -51,6 +58,7 @@ class Maestro:
         else:
             d = "oeste" if dx < 0 else "este"
         frase = [self.palabra_cosa[objetivo], self.palabra_dir[d]]
+        self.dichas += 1
         if C.MAESTRO_MIENTE:
             frase = [self.rng.randrange(N_PALABRAS) for _ in frase]
         self.dicho = " ".join(SILABAS[p] for p in frase)
@@ -69,14 +77,93 @@ class Maestro:
 
 
 class Oido:
-    """Memoria de trabajo de lo escuchado: cada palabra se apaga a los pocos ticks."""
+    """Memoria de trabajo de lo escuchado, y el léxico: qué significa cada palabra.
+
+    El significado se aprende por SORPRESA (Rescorla-Wagner): al oír una frase
+    apuesta para dónde va a aparecer lo que busca; cuando lo ve, la diferencia
+    entre lo que apostaba y lo que pasó corrige cada palabra. Una palabra que
+    aparece con todas las direcciones ("comida") termina sin dirección; "norte"
+    se queda con la suya. Así compone: entiende una frase que nunca oyó.
+
+    Nunca deja de aprender del todo (piso): si un significado cambia, la
+    sorpresa vuelve y reaprende. Con EGO=True aprende cada vez menos con la
+    experiencia ("ya lo sé todo"), para medir qué pasa.
+
+    Confianza en el maestro: arranca alta (como un chico) y sigue cuánto le
+    sirvió lo que le dijeron. Si le mienten, baja y deja de hacerle caso.
+    """
 
     def __init__(self):
         self.eco = {}  # palabra -> ticks que le quedan
+        self.sentido = [[0.25] * 4 for _ in range(N_PALABRAS)]  # palabra -> P(dirección)
+        self.veces = [0] * N_PALABRAS
+        self.confianza = C.CONFIANZA_INICIAL
+        self.pendiente = None  # (pos donde oyó, objetivo, frase, ticks, apuesta, era nueva)
+        self.frases = set()
+        self.aciertos = []  # (acertó, frase nueva)
+        self.sorpresa = 0.0
+        self.indice_cambio = None  # para medir: dónde empezó el cambio de significado
 
-    def oir(self, frase):
+    def apuesta(self, frase):
+        """Para dónde cree que está, combinando lo que significa cada palabra."""
+        prob = [1.0] * 4
+        for p in frase:
+            prob = [a * b for a, b in zip(prob, self.sentido[p])]
+        z = sum(prob) or 1.0
+        return [x / z for x in prob]
+
+    def direccion_dicha(self):
+        """La dirección que le dijeron (0..3), o 4 si no cree saberla."""
+        if not self.pendiente or self.confianza < C.CONFIANZA_MINIMA:
+            return 4
+        ap = self.pendiente[4]
+        d = max(range(4), key=ap.__getitem__)
+        return d if ap[d] >= C.CERTEZA_DICHA else 4
+
+    def oir(self, frase, pos=None, objetivo=None):
         for p in frase:
             self.eco[p] = C.MEMORIA_PALABRA
+        if frase and pos is not None:
+            f = tuple(frase)
+            self.pendiente = (pos, objetivo, f, C.ESPERA_VERIFICAR, self.apuesta(f),
+                              f not in self.frases)
+            self.frases.add(f)
+
+    def ver(self, vista, pos):
+        """Si aparece lo que le dijeron, compara con lo que apostaba y aprende."""
+        if not self.pendiente:
+            return
+        (ox, oy), objetivo, frase, quedan, ap, nueva = self.pendiente
+        visto = [(abs(pos[0] + dx - ox) + abs(pos[1] + dy - oy), pos[0] + dx, pos[1] + dy)
+                 for (dx, dy), c in vista.items() if c == objetivo]
+        if not visto:
+            self.pendiente = None if quedan <= 1 else (*self.pendiente[:3], quedan - 1, ap, nueva)
+            return
+        _, x, y = min(visto)
+        dx, dy = x - ox, y - oy
+        if dx == 0 and dy == 0:
+            self.pendiente = None
+            return
+        d = (0 if dy < 0 else 1) if abs(dy) >= abs(dx) else (2 if dx < 0 else 3)
+        self.sorpresa = 1.0 - ap[d]
+        self.aciertos.append((max(range(4), key=ap.__getitem__) == d, nueva))
+        # confianza: ¿lo que me dijo me sirvió más que adivinar?
+        util = (ap[d] - 0.25) / 0.75
+        self.confianza += C.APRENDE_CONFIANZA * (max(0.0, util) - self.confianza)
+        # Rescorla-Wagner: cada palabra se corrige según el error de la frase entera
+        for p in frase:
+            self.veces[p] += 1
+            ritmo = C.APRENDE_PALABRA
+            if C.EGO:
+                ritmo = ritmo / (1 + self.veces[p] / 20)
+            ritmo = max(ritmo, C.APRENDE_PALABRA * C.PISO_PALABRA)
+            s = self.sentido[p]
+            for i in range(4):
+                s[i] += ritmo * ((1.0 if i == d else 0.0) - ap[i])
+                s[i] = max(s[i], 0.02)
+            z = sum(s)
+            self.sentido[p] = [v / z for v in s]
+        self.pendiente = None
 
     def pasar(self):
         for p in list(self.eco):

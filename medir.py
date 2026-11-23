@@ -73,7 +73,27 @@ def una_vida(semilla, ticks):
         "% hambre": 100 * hambre / ticks,
         "encuentra": st.mean(tardanzas) if tardanzas else 0.0,
         "ronda vieja": st.mean(rondas) if rondas else 0.0,
+        **_lenguaje(a, ticks),
     }
+
+
+def _lenguaje(a, ticks):
+    """Cuánto entiende: % de veces que apostó bien para dónde estaba lo que le dijeron."""
+    ac = a.oido.aciertos
+    if not ac:
+        return {}
+    tramo = ac[int(len(ac) * 0.8):]
+    nuevas = [x for x, n in ac[len(ac) // 5:] if n]
+    out = {"entiende %": 100 * st.mean(x for x, _ in tramo),
+           "confianza": a.oido.confianza}
+    if nuevas:
+        out["frase nueva %"] = 100 * st.mean(nuevas)
+    if C.CAMBIO_SIGNIFICADO:
+        # tras el cambio: % de aciertos en las 100 apuestas siguientes
+        i = a.oido.indice_cambio
+        if i is not None:
+            out["reaprende %"] = 100 * st.mean(x for x, _ in ac[i:i + 100] or [(0, 0)])
+    return out
 
 
 def main():
@@ -90,8 +110,8 @@ def main():
     vidas = [una_vida(s, ticks) for s in range(n)]
     print(f"{n} vidas de {ticks} ticks, mente: {C.MENTE if C.MENTE == 'aprende' else ('reflejos' if C.REFLEJOS else 'azar puro')}\n")
     print(f"{'métrica':<10} {'promedio':>10} {'desvío':>9}")
-    for k in vidas[0]:
-        xs = [v[k] for v in vidas]
+    for k in max(vidas, key=len):
+        xs = [v[k] for v in vidas if k in v]
         print(f"{k:<10} {st.mean(xs):>10.3f} {st.pstdev(xs):>9.3f}")
 
 

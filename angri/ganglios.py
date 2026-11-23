@@ -47,7 +47,7 @@ def _hacia(vista, objetivo):
 CELDAS = ["·", COMIDA, DESCANSO, NOVEDAD, PELIGRO, "#"]  # "#" = borde
 
 
-def _rasgos(vista, necesidad, dir_comida, dir_objetivo, dir_recuerdo, a, palabras=()):
+def _rasgos(vista, necesidad, dir_comida, dir_objetivo, dir_recuerdo, a, palabras=(), dir_dicha=4):
     """Qué 'significa' el movimiento a en esta situación (índices de rasgos activos).
 
     El actor no memoriza situaciones exactas: aprende el valor de rasgos simples
@@ -75,11 +75,13 @@ def _rasgos(vista, necesidad, dir_comida, dir_objetivo, dir_recuerdo, a, palabra
         for i, p in enumerate(palabras):        # 97..: oí p y q juntas y hago a
             for q in palabras[i + 1:]:          #       (la frase entera significa)
                 r.append(97 + (p * N_PALABRAS + q) * 5 + a)
+    if a == dir_dicha:
+        r.append(417 + n)                       # 417..421: voy adonde me dijeron
     return r
 
 
 N_PALABRAS = 8
-N_RASGOS = 97 + N_PALABRAS * N_PALABRAS * 5
+N_RASGOS = 97 + N_PALABRAS * N_PALABRAS * 5 + 5
 
 
 def _direccion(dx, dy):
@@ -142,11 +144,11 @@ class Ganglios:
         return mejor
 
     # --- decidir ---
-    def elegir(self, vista, cuerpo, necesidad, pos, noradrenalina=0.0, malestar=0.0, palabras=()):
+    def elegir(self, vista, cuerpo, necesidad, pos, noradrenalina=0.0, malestar=0.0, palabras=(), dir_dicha=4):
         dc = _hacia(vista, COMIDA)
         do = _hacia(vista, ALIVIA.get(necesidad))
         dr = self._recuerdo(necesidad, pos)
-        rasgos = [_rasgos(vista, necesidad, dc, do, dr, a, palabras) for a in range(len(MOVIMIENTOS))]
+        rasgos = [_rasgos(vista, necesidad, dc, do, dr, a, palabras, dir_dicha) for a in range(len(MOVIMIENTOS))]
         h = [sum(self.w[i] for i in r) for r in rasgos]
         # cuanto peor la pasa, más varía lo que hace: si lo de siempre no funciona,
         # probar otra cosa (antídoto contra la indefensión aprendida)

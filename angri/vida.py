@@ -12,7 +12,7 @@ import time
 from . import config as C
 from .corteza import Corteza
 from .cuerpo import Cuerpo
-from .ganglios import Ganglios
+from .ganglios import ALIVIA, Ganglios
 from .hipocampo import Hipocampo
 from .maestro import Maestro, Oido
 from .talamo import Talamo
@@ -64,11 +64,16 @@ class Angri:
                          else self.cuerpo.necesidad_urgente())
             self.oido.pasar()
             if self.maestro:
-                self.oido.oir(self.maestro.hablar(self.mundo, self.x, self.y, necesidad, vista))
+                if C.CAMBIO_SIGNIFICADO and self.edad == C.CAMBIO_SIGNIFICADO:
+                    self.maestro.cambiar_significados()
+                    self.oido.indice_cambio = len(self.oido.aciertos)
+                self.oido.oir(self.maestro.hablar(self.mundo, self.x, self.y, necesidad, vista),
+                              (self.x, self.y), ALIVIA.get(necesidad))
+            dicha = self.oido.direccion_dicha() if C.LEXICO else 4
             if isinstance(self.mente, Ganglios):
                 dx, dy = self.mente.elegir(vista, self.cuerpo.v, necesidad, (self.x, self.y),
                                            self.quimica.noradrenalina, self._malestar,
-                                           self.oido.palabras())
+                                           self.oido.palabras() if C.FRASE else (), dicha)
             else:
                 dx, dy = self.mente.elegir(vista, necesidad)
             nx = max(0, min(C.ANCHO - 1, self.x + dx))
@@ -79,6 +84,8 @@ class Angri:
             se_movio = (nx, ny) != (self.x, self.y)
             self.x, self.y = nx, ny
             aqui = self.mundo.en(self.x, self.y)
+            if C.LEXICO:
+                self.oido.ver(self.mundo.vecindad(self.x, self.y), (self.x, self.y))
             sorpresa = self.mente.sorpresa(aqui)
             encontrado = aqui
             self._interactuar(aqui)

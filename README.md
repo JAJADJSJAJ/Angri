@@ -220,6 +220,38 @@ memoria de trabajo y el actor tiene rasgos (palabras oídas, movimiento) que apr
 - Todavía no compone (no sabe que "norte" significa lo mismo en "comida norte" y "cama norte") ni habla él.
   Eso es lo siguiente: separar significado de palabra sin la manía, y producción.
 
+### Etapa 6b — palabras con significado propio, aprendido por sorpresa
+
+`Oido` (en `angri/maestro.py`): al oír una frase, Angri **apuesta** para dónde va a aparecer lo que busca,
+combinando lo que cree que significa cada palabra. Cuando lo ve, la diferencia entre la apuesta y lo que pasó
+(la **sorpresa**) corrige cada palabra (Rescorla-Wagner). "Comida" aparece con todas las direcciones y queda sin
+dirección; "norte" se queda con la suya. Tiene un **piso** de aprendizaje (nunca deja de corregirse) y
+**confianza en el maestro**: arranca creyéndole todo, como un chico, y baja si lo que le dice no le sirve.
+Los ganglios tienen un rasgo nuevo: "voy adonde me dijeron".
+
+32 vidas de 50.000 ticks:
+
+| Variante | Malestar | % hambre | Entiende | Frase nunca oída | Confianza | Reaprende tras cambio |
+|---|---|---|---|---|---|---|
+| Sin maestro | 0,179 | 28,9 | — | — | — | — |
+| Frase entera (6a) | 0,156 | 18,1 | — | — | — | — |
+| Solo léxico | 0,197 | 33,4 | 88 % | **93 %** | 0,85 | — |
+| **Léxico + frase entera** | **0,154** | **16,3** | **95 %** | 50 % | 0,86 | — |
+| Léxico, maestro que miente | 0,204 | 38,3 | 33 % | — | **0,33** | — |
+| Léxico, cambia el sentido a mitad | 0,223 | 42,7 | 80 % | — | 0,78 | **68 %** |
+| Ídem con "ego" (aprende cada vez menos) | 0,227 | 46,1 | 80 % | — | 0,69 | 51 % |
+| Frase entera, cambia el sentido | 0,182 | 26,6 | — | — | — | — |
+
+- **Entiende y compone:** con el léxico acierta 88–95 % de las veces para dónde está lo que le dijeron, y
+  93 % en frases que **nunca había oído** (aprendió "norte" con la comida y lo usa con la cama).
+- **El maestro que miente se detecta solo:** la confianza baja de 0,86 a 0,33.
+- **El "ego" se paga:** si aprende cada vez menos con la experiencia, tras un cambio de significado reaprende
+  51 % contra 68 % con el piso. Se queda con lo viejo.
+- **Pero entender no se traduce todavía en vivir mejor:** el léxico solo empeora el malestar, y junto con la
+  frase entera queda igual que la frase sola (0,154 vs 0,156, dentro del ruido). Sospecha: sigue una dirección
+  dicha desde donde la oyó y, al caminar, se pasa de largo. Queda prendido porque no empeora y es lo que le da
+  palabras con significado propio (la base para hablar en español).
+
 ## Hoja de ruta
 
 1. ✅ Mundo y cuerpo
@@ -227,7 +259,7 @@ memoria de trabajo y el actor tiene rasgos (palabras oídas, movimiento) que apr
 3. 🔶 Predicción del mundo y curiosidad por progreso de aprendizaje (hecha y medida; apagada porque no mejora en este mundo)
 4. ✅ Hipocampo y sueño real: estaciones, replay corregido, poda de lugares y dolor (mejora modesta; el sueño consolida pero no acelera el reaprendizaje)
 5. 🔶 Tálamo y espacio global: necesidades compiten por el foco (hecho y medido; apagado porque no mejora)
-6. 🔶 Lenguaje: entiende frases de un maestro con reglas (mejora); falta componer, hablar y un modelo de verdad como maestro
+6. 🔶 Lenguaje: entiende frases (mejora) y compone palabras aprendidas por sorpresa (entiende, todavía no mejora la vida); falta usarlo mejor, hablar en español y un modelo de verdad como maestro
 7. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
 
 ## Reglas del proyecto
