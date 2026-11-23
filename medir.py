@@ -43,7 +43,7 @@ def main():
     if "reflejos" in sys.argv:
         C.REFLEJOS = M.REFLEJOS = True
     vidas = [una_vida(s, ticks) for s in range(n)]
-    print(f"{n} vidas de {ticks} ticks\n")
+    print(f"{n} vidas de {ticks} ticks, reflejos: {C.REFLEJOS}\n")
     print(f"{'métrica':<10} {'promedio':>10} {'desvío':>9}")
     for k in vidas[0]:
         xs = [v[k] for v in vidas]
