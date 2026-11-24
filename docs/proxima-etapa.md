@@ -4,7 +4,7 @@ Hoy Angri resuelve su mundo a los ~200.000 ticks (malestar ~0,073, hambre 0 %, h
 
 ## Estado (actualizado el 2026-11-24)
 - 13a (bosque, sentidos, visor) hecha. Angri pasó entera a Rust (misma vida bit a bit, ~60× más rápido) y Python se borró.
-- En el i5 quedó instalada la versión en Rust (renació) y **apagada a propósito**: no vive ni evoluciona hasta que Angri esté completa. `instalar.sh` no la vuelve a prender sola.
+- En el i5 quedó **apagada a propósito** (`systemctl disable --now angri`): no vive ni evoluciona hasta que Angri esté completa. Todavía es la versión en Python (81.862.072 ticks, guardada); la de Rust no se instaló. Cuando se instale, `instalar.sh` mueve lo de Python a `python-viejo/` y no la prende sola.
 
 ## Orden
 1. **13b. Objetos con física, sin recetas.** Propiedades (largo, peso, dureza, flota, arde, flexible) y acciones (agarrar, soltar, apilar, atar, golpear, frotar). El mundo no sabe qué es una casa: techo tapa lluvia, paredes cortan viento, hueco chico frena al predador. Refugio y puerta emergen si se le ocurren. (La guía: una actividad propia que la devuelva al equilibrio, crear, es una válvula de regulación sana.) Va antes que la 14 porque le da a la mente algo que los rasgos hechos a mano no pueden ver: así la 14 se mide contra un problema real.
