@@ -27,7 +27,7 @@ def main():
     archivo = os.path.join(tempfile.mkdtemp(), "mente.json")
     memoria.guardar(b, archivo)
     del b
-    c, _ = memoria.cargar(archivo)
+    c, _ = memoria.cargar(archivo, memoria.molde_angri)
     for _ in range(ticks - ticks // 2):
         c.tick()
     ja = json.dumps(memoria.volcar(a), sort_keys=True)

@@ -133,27 +133,120 @@ def rearmar(datos):
     return _de_json(datos, {})
 
 
+def _objetos(raiz):
+    """Todos los objetos "de clase" (no contenedores ni random) alcanzables."""
+    vistos, pila, out = set(), [raiz], []
+    while pila:
+        o = pila.pop()
+        if isinstance(o, _ATOMOS) or isinstance(o, random.Random) or id(o) in vistos:
+            continue
+        vistos.add(id(o))
+        if isinstance(o, dict):
+            pila.extend(o.keys())
+            pila.extend(o.values())
+        elif isinstance(o, (list, tuple, set, frozenset)):
+            pila.extend(o)
+        elif hasattr(o, "__dict__"):
+            out.append(o)
+            pila.extend(o.__dict__.values())
+    return out
+
+
+def completar(obj, molde):
+    """Compatibilidad frente a cambios de código: compara cada objeto cargado
+    con uno de la misma clase en `molde` (una mente recién nacida, construida
+    aparte: no toca el random ni nada de la cargada). Atributos que la clase
+    tiene ahora y el guardado no trae se copian del molde (valor por defecto);
+    los que sobran se dejan. Devuelve los avisos. Si no falta nada, la mente
+    queda intacta (retomar sigue siendo bit-idéntico)."""
+    import copy
+    por_clase = {}
+    for m in _objetos(molde):
+        por_clase.setdefault(type(m), m)
+    avisos, avisado = [], set()
+    for o in _objetos(obj):
+        m = por_clase.get(type(o))
+        if m is None:
+            continue
+        nombre = type(o).__qualname__
+        for k in m.__dict__.keys() - o.__dict__.keys():
+            o.__dict__[k] = copy.deepcopy(m.__dict__[k])
+            if (nombre, k, "falta") not in avisado:
+                avisado.add((nombre, k, "falta"))
+                avisos.append(f"{nombre}.{k}: no estaba en el guardado, toma el valor por defecto")
+        for k in o.__dict__.keys() - m.__dict__.keys():
+            if (nombre, k, "sobra") not in avisado:
+                avisado.add((nombre, k, "sobra"))
+                avisos.append(f"{nombre}.{k}: está en el guardado pero el código nuevo no lo crea (se deja)")
+    return avisos
+
+
+def molde_angri(ticks=200):
+    """Mente de referencia para `completar`: nace aparte y vive un poco, así ya
+    tiene los atributos que se crean en el primer tick (no los da por sobrantes)."""
+    from angri.vida import Angri
+    m = Angri(semilla=12345, cargar=False)
+    for _ in range(ticks):
+        m.tick()
+    return m
+
+
+def config_actual():
+    """Valores en mayúscula de angri/config.py (lo que se puede afinar)."""
+    from angri import config as C
+    return {k: getattr(C, k) for k in sorted(dir(C))
+            if k.isupper() and isinstance(getattr(C, k), (_ATOMOS, list, tuple, dict))}
+
+
+def comparar_config(guardada):
+    """Avisos de valores de config que cambiaron desde que se guardó."""
+    if guardada is None:
+        return []
+    ahora = rearmar(volcar(config_actual()))
+    guardada = rearmar(guardada)
+    avisos = []
+    for k in sorted(set(ahora) | set(guardada)):
+        if k not in guardada:
+            avisos.append(f"config {k} nuevo: {ahora[k]!r}")
+        elif k not in ahora:
+            avisos.append(f"config {k} ya no existe (era {guardada[k]!r})")
+        elif ahora[k] != guardada[k]:
+            avisos.append(f"config {k} cambió: {guardada[k]!r} -> {ahora[k]!r}")
+    return avisos
+
+
 def guardar(obj, archivo, extra=None):
     """Guardado atómico: escribe a un temporal y lo renombra (un corte de luz
-    deja el archivo viejo o el nuevo, nunca uno a medias)."""
+    deja el archivo viejo o el nuevo, nunca uno a medias). Guarda también la
+    config con que vivía."""
     carpeta = os.path.dirname(os.path.abspath(archivo))
     os.makedirs(carpeta, exist_ok=True)
     tmp = archivo + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump({"version": 12, "extra": extra or {}, "mente": volcar(obj)}, f,
-                  separators=(",", ":"))
+        json.dump({"version": 12, "extra": extra or {}, "config": volcar(config_actual()),
+                   "mente": volcar(obj)}, f, separators=(",", ":"))
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp, archivo)
 
 
-def cargar(archivo):
-    """Devuelve (objeto, extra) o None si no hay guardado completo."""
+def cargar(archivo, molde=None, avisar=print):
+    """Devuelve (objeto, extra) o None si no hay guardado completo o válido.
+    `molde`: función que crea una mente nueva, para completar atributos que
+    falten si cambió el código. Los avisos (atributos, config) van a `avisar`."""
     try:
         with open(archivo, encoding="utf-8") as f:
             datos = json.load(f)
-    except (OSError, ValueError):
+        if datos.get("version") != 12:
+            return None
+        obj = rearmar(datos["mente"])
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, ImportError) as e:
+        if os.path.exists(archivo):
+            avisar(f"AVISO: {archivo} no carga ({type(e).__name__}: {e})")
         return None
-    if datos.get("version") != 12:
-        return None
-    return rearmar(datos["mente"]), datos.get("extra", {})
+    avisos = comparar_config(datos.get("config"))
+    if molde is not None:
+        avisos += completar(obj, molde())
+    for a in avisos:
+        avisar("AVISO: " + a)
+    return obj, datos.get("extra", {})

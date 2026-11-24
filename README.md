@@ -626,6 +626,34 @@ Angri ya no vive vidas de 50.000 ticks que se pierden: vive sin fin en la PC.
 - **Fuga encontrada y arreglada**: la caché `_RITMOS` de los ganglios guardaba un renglón por cada valor de experiencia (≈1 por tick): la RAM subía de 27 a 177 MB en 1M ticks. Ahora solo cachea experiencias < 20.000 y calcula directo las otras: **mismo número exacto** (malestar y pesos idénticos a 200k ticks), RAM plana en ~27 MB. No es un tope a la mente: es una caché.
 - **Lo único que crece sin tope**: `oido.aciertos`, el registro de apuestas del léxico que usa `medir.py` para el % de acierto: ~13.400 tuplas por millón de ticks (≈1 MB de RAM por millón). Decidido: se deja crecer, sin tope.
 
+### Etapa 12b: vivir en Linux
+
+Para que viva sola en un i5 con Linux sin entorno gráfico, manejada por SSH. Solo hace falta `python3` (nada de Windows; probado en Linux: `probar_retomar.py` IDÉNTICO y `kill -TERM` guarda y retoma).
+
+**Instalar** (como usuario normal, no root):
+
+    git clone <repo> ~/Angri          # o copiar la carpeta (con datos/ si ya tiene mente)
+    mkdir -p ~/.config/systemd/user
+    cp ~/Angri/deploy/angri.service ~/.config/systemd/user/
+    systemctl --user daemon-reload
+    systemctl --user enable --now angri
+    sudo loginctl enable-linger $USER  # que siga viviendo sin sesión abierta y arranque al prender
+
+Si el repo no está en `~/Angri`, cambiar `WorkingDirectory` en el `.service`. Como servicio de sistema: copiarlo a `/etc/systemd/system/`, poner la ruta absoluta en `WorkingDirectory`, descomentar `User=` con el usuario normal, `WantedBy=multi-user.target`, y `sudo systemctl enable --now angri` (sin `--user` ni linger).
+
+**Mirarla por SSH:**
+
+    cd ~/Angri && python3 vivir.py --estado   # edad, últimas 10 ventanas, ticks/seg, RAM, último guardado, respaldos
+    systemctl --user status angri
+    journalctl --user -u angri -f             # el log en vivo (avisos incluidos)
+    systemctl --user restart angri            # tras un git pull
+
+- **Parar es seguro**: systemd manda SIGTERM; `vivir.py` termina el tick en curso (no corta a mitad: la mente quedaría a medias), guarda y sale. Un segundo SIGTERM durante el guardado se ignora. `Restart=always` la levanta si se cae.
+- **Respaldos** en `datos/respaldos/`: cada guardado (cada 50.000 ticks y al salir) copia `mente.json` como `mente-<edad>.json` (quedan las últimas 5) y `dia-<fecha>.json` (una por día, 30 días). Si `mente.json` no carga, retoma de la copia válida más reciente y lo avisa; si ninguna carga, no hace nacer otra encima: sale con error.
+- **Cambios de código**: al cargar, cada objeto se compara con una mente de referencia nueva; los atributos que la clase tiene ahora y el guardado no trae se crean con su valor por defecto, y los que sobran se dejan; todo con `AVISO:` en el log. Si no falta nada la mente no se toca (sigue bit-idéntica).
+- **Config**: `mente.json` guarda los valores en mayúscula de `angri/config.py`; al retomar avisa cuáles cambiaron (`AVISO: config X cambió: a -> b`).
+- **RAM** en el log: en Linux `VmRSS` de `/proc/self/status` (la actual, no el pico).
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
