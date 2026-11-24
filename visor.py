@@ -1,0 +1,131 @@
+"""Visor web de Angri (etapa 13a): mirarla vivir desde el navegador.
+
+    python visor.py                          -> http://localhost:8080 (lee datos/foto.json)
+    python visor.py --carpeta DIR --puerto P --host 0.0.0.0
+
+Python puro (http.server de la biblioteca estándar). No toca la mente: solo
+lee DIR/foto.json, que vivir.py escribe cada tanto. Si vivir.py está parado,
+muestra la última foto. El dibujo (pixel art) lo genera el navegador con
+código: no se baja nada de afuera.
+"""
+import argparse
+import os
+import sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+PAGINA = r"""<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Angri</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+ body{margin:0;background:#16181d;color:#e6e6e6;font:14px system-ui,sans-serif;display:flex;flex-wrap:wrap;gap:16px;padding:16px}
+ canvas{image-rendering:pixelated;border:1px solid #333;max-width:100%;height:auto}
+ #lado{min-width:260px;max-width:340px}
+ h1{font-size:18px;margin:0 0 6px} h2{font-size:13px;margin:14px 0 4px;color:#9aa}
+ .b{display:flex;align-items:center;gap:6px;margin:2px 0}
+ .b span:first-child{width:100px;color:#bbb}
+ .barra{flex:1;height:10px;background:#2a2d35;border-radius:2px;position:relative}
+ .barra i{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
+ .barra b{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff8}
+ #ev{color:#fc6;min-height:1.2em} .gris{color:#888}
+</style></head><body>
+<canvas id="c" width="640" height="640"></canvas>
+<div id="lado"><h1>Angri</h1><div id="reloj" class="gris"></div><div id="ev"></div>
+<h2>Cuerpo <span class="gris">(línea = equilibrio)</span></h2><div id="cuerpo"></div>
+<h2>Química</h2><div id="quimica"></div>
+<h2>Foco</h2><div id="foco"></div>
+<p class="gris" id="nota"></p></div>
+<script>
+const EQ={energia:.8,cansancio:.2,curiosidad:.4,estres:.1,integridad:1,agua:.8,calor:.6};
+const cv=document.getElementById('c'),g=cv.getContext('2d');let T=10;
+function h(x,y,k){let n=(x*374761393+y*668265263+k*2147483647)|0;n=(n^(n>>>13))*1274126177|0;return((n^(n>>>16))>>>0)/4294967296}
+function px(x,y,c){g.fillStyle=c;g.fillRect(x,y,1,1)}
+function celda(z,x,y){const X=x*T,Y=y*T;const base={b:'#24502c',c:'#5f9a3c',r:'#2c62a8',k:'#6b6b70',q:'#191a1f',l:'#a7a44f'}[z]||'#000';
+ g.fillStyle=base;g.fillRect(X,Y,T,T);
+ for(let i=0;i<6;i++){const a=Math.floor(h(x,y,i)*T),b=Math.floor(h(y,x,i+7)*T);
+  px(X+a,Y+b,{b:'#1b3f22',c:'#77b04a',r:'#4a86cc',k:'#85858a',q:'#24252b',l:'#c2bd62'}[z]||base)}
+ if(z==='b'&&h(x,y,99)<.35){g.fillStyle='#1a3a1f';g.fillRect(X+2,Y+1,6,5);g.fillStyle='#5a3b22';g.fillRect(X+4,Y+6,2,3)}
+ if(z==='k'){g.fillStyle='#55555a';g.fillRect(X,Y+T-2,T,2)}}
+function obj(c,x,y,tipo,m){const X=x*T,Y=y*T;
+ if(c==='*'){const col={fruta:'#e0402a',baya:'#8a3fbf',nuez:'#8b5a2b',raiz:'#e08a2a'}[tipo]||'#e0402a';
+  g.fillStyle='#2e6b2e';g.fillRect(X+4,Y+1,2,2);g.fillStyle=col;g.fillRect(X+2,Y+3,6,5);g.fillStyle='#fff6';g.fillRect(X+3,Y+4,1,1)}
+ else if(c==='≈'){g.fillStyle=m.crecida?'#2c62a8':'#3d7fd0';g.fillRect(X,Y,T,T);g.fillStyle='#9cc6f0';g.fillRect(X+((m.tiempo/40+x)%T|0),Y+3,3,1);g.fillRect(X+((m.tiempo/40+x+5)%T|0),Y+7,3,1)}
+ else if(c==='X'){g.fillStyle=m.crecida&&g._z==='r'?'#1b4a8c':'#3a2a1a';
+  for(let i=0;i<T;i+=3){g.fillRect(X+i,Y+i,2,2);g.fillRect(X+T-i-2,Y+i,2,2)}}
+ else if(c==='?'){g.fillStyle='#ffe85a';g.fillRect(X+4,Y+1,2,8);g.fillRect(X+1,Y+4,8,2);g.fillStyle='#fff';g.fillRect(X+4,Y+4,2,2)}
+ else if(c==='~'){g.fillStyle='#0d0e12';g.fillRect(X+1,Y+2,8,8);g.fillStyle='#3a3b44';g.fillRect(X+1,Y+1,8,1)}}
+function bicho(x,y,col,ojo,dormido){const X=x*T,Y=y*T;g.fillStyle=col;g.fillRect(X+1,Y+2,8,7);g.fillRect(X+2,Y+1,6,1);
+ g.fillStyle=ojo;if(dormido){g.fillRect(X+2,Y+4,2,1);g.fillRect(X+6,Y+4,2,1)}else{g.fillRect(X+2,Y+3,2,2);g.fillRect(X+6,Y+3,2,2)}}
+function barra(k,v,eq,col){return `<div class="b"><span>${k}</span><div class="barra"><i style="width:${v*100}%;background:${col}"></i>${eq==null?'':`<b style="left:${eq*100}%"></b>`}</div><span>${v.toFixed(2)}</span></div>`}
+let comidaTipo={};
+function dibujar(f){const m=f.mundo;T=Math.max(4,Math.floor(640/Math.max(m.ancho,m.alto)));cv.width=m.ancho*T;cv.height=m.alto*T;
+ comidaTipo={};for(const [x,y,t] of m.comida)comidaTipo[x+','+y]=t;
+ for(let y=0;y<m.alto;y++)for(let x=0;x<m.ancho;x++){const z=f.terreno[y][x];g._z=z;celda(z,x,y);const c=m.grilla[y][x];if(c!=='·'&&c!=='#')obj(c,x,y,comidaTipo[x+','+y],m)}
+ if(m.predador&&!m.harto)bicho(m.predador[0],m.predador[1],'#4a3a30','#ff3020',false);
+ else if(m.predador)bicho(m.predador[0],m.predador[1],'#3a302a','#663',true);
+ const [ax,ay]=f.pos;bicho(ax,ay,'#f0c8e0','#202020',!f.despierto);
+ if(!f.despierto){g.fillStyle='#fff';g.font=`${T}px monospace`;g.fillText('z',ax*T+T,ay*T)}
+ // luz del día: oscurece de noche; la lluvia, líneas
+ const hora=m.hora;let osc=0;if(m.noche)osc=.55;else if(hora<.05)osc=.55*(1-hora/.05);else if(hora>.55)osc=.55*(hora-.55)/.05;
+ if(osc>0){g.fillStyle=`rgba(10,15,45,${Math.min(.55,osc)})`;g.fillRect(0,0,cv.width,cv.height)}
+ if(m.noche){const r=(f.despierto?1:1)*T*2.5;const gr=g.createRadialGradient(ax*T+T/2,ay*T+T/2,T,ax*T+T/2,ay*T+T/2,r);gr.addColorStop(0,'rgba(255,240,200,.25)');gr.addColorStop(1,'rgba(255,240,200,0)');g.fillStyle=gr;g.fillRect(0,0,cv.width,cv.height)}
+ if(m.lluvia){g.fillStyle='rgba(170,200,255,.5)';for(let i=0;i<500;i++){const x=h(i,m.tiempo%97,3)*cv.width,y=h(i,m.tiempo%89,5)*cv.height;g.fillRect(x,y,1,4)}}
+ const dia=Math.floor(m.tiempo/1000),hh=Math.floor(hora*24);
+ document.getElementById('reloj').textContent=`edad ${f.edad.toLocaleString('es')} ticks · día ${dia} · ${m.noche?'noche':'día'} (${hh}h) · ${m.estacion}${m.lluvia?' · llueve':''}${m.crecida?' · río crecido':''} · sueños ${f.suenos}`;
+ document.getElementById('ev').textContent=(f.despierto?'':'duerme · ')+(f.evento||'');
+ document.getElementById('cuerpo').innerHTML=barra('malestar',f.malestar,null,'#e05050')+Object.entries(f.cuerpo).map(([k,v])=>barra(k,v,EQ[k],'#5aa0e0')).join('');
+ document.getElementById('quimica').innerHTML=Object.entries(f.quimica).map(([k,v])=>barra(k,Math.abs(v),null,k==='dopamina'&&v<0?'#c06060':'#c0a040')).join('')+barra('error TD',Math.min(1,Math.abs(f.dopamina_td)/5),null,f.dopamina_td<0?'#c06060':'#60c080');
+ document.getElementById('foco').innerHTML=`<b>${f.foco}</b> <span class="gris">· lugares recordados: ${Object.entries(f.lugares).filter(e=>e[1]).map(e=>e[0]+' '+e[1]).join(', ')||'ninguno'}</span>`}
+async function bucle(){try{const r=await fetch('foto.json',{cache:'no-store'});if(r.ok){dibujar(await r.json());document.getElementById('nota').textContent=''}else document.getElementById('nota').textContent='Todavía no hay foto (¿vivir.py está corriendo?)'}catch(e){document.getElementById('nota').textContent='Sin conexión con el visor'}setTimeout(bucle,1000)}
+bucle();
+</script></body></html>
+"""
+
+
+def manejador(carpeta):
+    foto = os.path.join(carpeta, "foto.json")
+
+    class Visor(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path in ("/", "/index.html"):
+                cuerpo, tipo = PAGINA.encode("utf-8"), "text/html; charset=utf-8"
+            elif self.path.split("?")[0] == "/foto.json":
+                try:
+                    with open(foto, "rb") as f:
+                        cuerpo = f.read()
+                except OSError:
+                    self.send_error(404, "todavía no hay foto")
+                    return
+                tipo = "application/json; charset=utf-8"
+            else:
+                self.send_error(404)
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", tipo)
+            self.send_header("Content-Length", str(len(cuerpo)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(cuerpo)
+
+        def log_message(self, *args):  # sin un renglón por pedido en el journal
+            pass
+
+    return Visor
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser()
+    p.add_argument("--carpeta", default=os.environ.get("ANGRI_DATOS") or
+                   os.path.join(os.path.dirname(os.path.abspath(__file__)), "datos"))
+    p.add_argument("--puerto", type=int, default=8080)
+    p.add_argument("--host", default="127.0.0.1")
+    o = p.parse_args(argv)
+    servidor = ThreadingHTTPServer((o.host, o.puerto), manejador(o.carpeta))
+    print(f"Visor en http://{o.host}:{o.puerto} leyendo {o.carpeta}/foto.json", flush=True)
+    try:
+        servidor.serve_forever()
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    sys.exit(main())

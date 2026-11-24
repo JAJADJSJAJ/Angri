@@ -18,7 +18,7 @@ import math
 import random
 
 from . import config as C
-from .ganglios import ALIVIA, NECESIDADES
+from .ganglios import ALIVIA, NECESIDADES_BASE as NECESIDADES
 from .mundo import COMIDA, DESCANSO, NOVEDAD
 
 COSAS = [COMIDA, DESCANSO, NOVEDAD]
@@ -80,7 +80,7 @@ class Maestro:
         else:
             # maestro ciego: no sabe qué necesita Angri, habla de cualquier cosa
             objetivo = COSAS[u_cosa] if C.MAESTRO_CIEGO else ALIVIA.get(necesidad)
-            if objetivo is None or u_habla >= C.PROB_HABLA:
+            if objetivo is None or objetivo not in self.palabra_cosa or u_habla >= C.PROB_HABLA:
                 return []
         if C.COMPOSICION and objetivo != (COMIDA if self.edad < C.COMPOSICION else DESCANSO):
             return []  # prueba de composición: primero solo comida, después solo cama

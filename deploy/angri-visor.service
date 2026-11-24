@@ -1,0 +1,34 @@
+# Visor web de Angri (etapa 13a): http://angri.local:8080, solo red local.
+# Lee /var/lib/angri/foto.json (la escribe vivir.py cada segundo); no toca la mente.
+# Lo instala deploy/instalar.sh.
+[Unit]
+Description=Angri - visor web
+After=network-online.target angri.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=angri
+Group=angri
+WorkingDirectory=/opt/angri/codigo
+Environment=ANGRI_DATOS=/var/lib/angri
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -u visor.py --host 0.0.0.0 --puerto 8080
+Restart=always
+RestartSec=10
+# Liviano: que nunca le quite CPU a la vida
+Nice=10
+CPUQuota=25%
+MemoryMax=200M
+# Solo la red local (privada, link-local y la propia máquina)
+IPAddressDeny=any
+IPAddressAllow=localhost 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 fc00::/7 fe80::/10
+# Solo lee: no escribe en ningún lado
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadOnlyPaths=/var/lib/angri
+
+[Install]
+WantedBy=multi-user.target

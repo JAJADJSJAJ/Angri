@@ -1,6 +1,7 @@
 """Prueba de la etapa 12: retomar da la misma vida, bit a bit.
 
-    python probar_retomar.py [TICKS] [SEMILLA]
+    python probar_retomar.py [TICKS] [SEMILLA] [CLAVE=VALOR ...]
+    python probar_retomar.py 20000 0 MUNDO='"bosque"'   -> con el bosque (etapa 13a)
 
 Corre TICKS de un tirón; aparte corre TICKS/2, guarda a disco, carga en un
 objeto nuevo y corre la otra mitad. Compara la mente entera serializada
@@ -16,6 +17,11 @@ from angri.vida import Angri
 
 
 def main():
+    from angri import config as C
+    for arg in [x for x in sys.argv[1:] if "=" in x]:
+        k, v = arg.split("=", 1)
+        setattr(C, k, type(getattr(C, k))(eval(v)))
+        sys.argv.remove(arg)
     ticks = int(sys.argv[1]) if len(sys.argv) > 1 else 20000
     semilla = int(sys.argv[2]) if len(sys.argv) > 2 else 0
     a = Angri(semilla=semilla, cargar=False)

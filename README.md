@@ -23,6 +23,9 @@ Para que "renazca" desde cero, borrá la carpeta `datos/`.
 | `angri/cuerpo.py` | Hipotálamo / tronco | Energía, cansancio, curiosidad, estrés, integridad; malestar = distancia al equilibrio |
 | `angri/quimica.py` | Neuromoduladores | Adenosina (sueño), cortisol, dopamina (¿mejoró el equilibrio?), noradrenalina (sorpresa) |
 | `angri/mundo.py` | El entorno | Grilla 2D con comida `*`, descanso `~`, novedades `?` y peligros `X` |
+| `angri/bosque.py` | El entorno (etapa 13a) | Bosque 64×64: zonas, día/noche, estaciones, lluvia, río que crece, comida que cuesta, agua, espinas, predador; sentidos (`sentir`) |
+| `angri/foto.py` | — | Foto chica del estado para el visor |
+| `visor.py` | — | Visor web (stdlib `http.server`, pixel art en canvas) |
 | `angri/ganglios.py` | Ganglios basales | Etapa 2: actor-crítico que aprende con dopamina (error TD) |
 | `angri/corteza.py` | Corteza | Etapa 3: predice qué va a encontrar y cómo cambia su malestar; curiosidad por progreso de aprendizaje (apagada) |
 | `angri/maestro.py` | Lenguaje | Etapas 6–7: un maestro le dice con palabras (en español, sin significado de nacimiento) dónde está lo que necesita; el significado se aprende con dopamina |
@@ -668,6 +671,65 @@ Para probarla en otra PC sin instalar nada: `python3 vivir.py` (usa `datos/` del
 - **Cambios de código**: al cargar, cada objeto se compara con una mente de referencia nueva; los atributos que la clase tiene ahora y el guardado no trae se crean con su valor por defecto, y los que sobran se dejan; todo con `AVISO:` en el log. Si no falta nada la mente no se toca (sigue bit-idéntica).
 - **Config**: `mente.json` guarda los valores en mayúscula de `angri/config.py`; al retomar avisa cuáles cambiaron (`AVISO: config X cambió: a -> b`).
 - **RAM** en el log: en Linux `VmRSS` de `/proc/self/status` (la actual, no el pico).
+
+## Etapa 13a: el bosque (probado; apagado: `MUNDO = "grilla"`)
+
+La grilla de 24×14 se resolvía a los ~200.000 ticks (malestar ~0,073, hambre 0 %). Para que vivir tenga algo que aprender hay un mundo nuevo, configurable (`MUNDO = "bosque"`); el viejo queda igual, bit a bit, para comparar.
+
+- **Mapa 64×64** con zonas: bosque, claros, río serpenteante, roca con cuevas (noroeste) y un peñasco con cueva en la llanura del este. **Reloj del mundo**: día de 1.000 ticks (40 % noche), estaciones de 25.000. **Temperatura** del aire: baja de noche, en invierno y con lluvia (bajo los árboles, a la mitad); en la cueva es pareja.
+- **Cuerpo**: además de lo de siempre, **agua** (sed) y **calor** (temperatura corporal, que tiende a la del aire). Sin comida o sin agua el cuerpo no se cura y se consume; con frío < 0,3, también.
+- **Comida que cuesta**: fruta (primavera a otoño, se come al llegar), bayas en los claros (a veces enferman), nueces (otoño a primavera; 6 ticks quieto para abrirlas), raíces en la llanura (4 ticks para escarbar). Vuelven a crecer en su estación; fuera de ella se pudren.
+- **Peligros**: espinas (pinchan al pisarlas, no por quedarse), un **predador** que se mueve más de noche, sigue el rastro de olor de Angri (decae y se difunde) y no entra a la cueva (no cabe); después de morder queda harto 1.500 ticks (tope ético: no hay ataques en cadena). El **río crece** a veces con la lluvia: el río y sus orillas pasan a ser peligro (los charcos de los claros siguen siendo agua).
+- **Sentidos** (`Bosque.sentir`), con el vocabulario que la mente ya usa (`· * ~ ? X #` y `≈` agua): la **vista** alcanza 2 casillas de día y 1 de noche; de lo que no se ve, el estímulo más fuerte de cada tipo se pone en su lugar real (dirección y distancia): **olfato** de comida (6), **humedad** del agua (8), **olor** del predador (5) y su **ruido** de noche (8). Tacto y temperatura llegan por el cuerpo. El maestro y el léxico siguen usando solo lo que se ve.
+- **Sueño con proceso C** (Borbély): de noche el umbral para dormirse baja 0,3 y de día el de despertar sube 0,3.
+- **No muere** (decisión del usuario: moriría antes de aprender nada). Con integridad 0 **se desmaya** y despierta en la cueva más cercana con integridad 0,3 y al menos 0,35 de energía y agua; se cuenta en `desmayos`.
+- **Mente**: la misma. Para las necesidades nuevas (agua, calor) y la celda nueva (agua) los rasgos nuevos van en un bloque desde el índice 422; los de siempre no se mueven (una mente guardada con el código anterior retoma y sigue idéntica). `ALIVIA` suma agua→`≈` y calor→`~`, como ya hacía con comida→`*`: sigue siendo un rasgo hecho a mano (lo saca la etapa 14).
+
+**Calibración**: un agente "oráculo" que ve todo el mapa y va a lo que necesita vive con malestar 0,24–0,30 (el bosque es vivible y todo el mapa es alcanzable). Con la primera calibración la mente pasaba el 89 % del tiempo en malestar alto y se desmayaba ~57 veces cada 100.000 ticks; quedó `ABUNDANCIA = 3`, `PROB_BROTE = 0,3`, `CHARCOS = 6`, `GASTO_AGUA = 0,0007`.
+
+**Dos errores encontrados mirando el visor** (una vida quedó 2,4 M ticks trabada en la cueva del peñasco con energía 0, agua 0, estrés 1 e integridad 1): la sed dañaba menos de lo que el cuerpo se curaba y el hambre no dañaba, así que no había presión para salir; y la métrica ética (malestar > 0,5) no lo veía (estaba en 0,449). Ahora sin comida o agua no se cura, y `% mal alto` cuenta malestar > 0,4.
+
+**Resultados** (100.000 ticks; 64 vidas al azar, 256 pares con `comparar.py`):
+
+| | azar | mente actual |
+|---|---|---|
+| malestar | 0,534 | 0,394 |
+| mal. final (último 20 %) | 0,573 | 0,420 |
+| % tiempo en malestar alto (> 0,4) | 92 % | 52 % |
+| desmayos | 93 | 28 |
+| heridas | 628 | 38 |
+| % hambre / % sed | 75 / 51 | 48 / 43 |
+| % trabadas | 95 % | 37 % |
+| % del sueño en la cueva | 4 % | 26 % |
+| mordidas del predador | 4,8 | 4,0 |
+
+- **Aprende**: a no pisar espinas (heridas ÷16), a dormir más en la cueva, a comer y beber más que el azar.
+- **No aprende**: el malestar **no baja con el tiempo** (final 0,420 > 0,394 promedio; una vida de 1 M ticks oscila entre 0,20 y 0,32 sin tendencia, siguiendo las estaciones). Se **planta en el agua** (14 % del tiempo) mientras pasa hambre; el 37 % de las vidas quedan trabadas; no esquiva al predador.
+- **Proceso C** (256 pares, sin vs con): duerme de noche (186 vs 109 sueños) pero no cambia nada medible (malestar −0,008 ± 0,010).
+- **Predador** (256 pares, sin vs con): solo cambian las mordidas (0 vs 4); malestar +0,006 ± 0,009. Pesa poco: todavía no le hace falta esquivarlo.
+- **Ética**: 52 % del tiempo en malestar alto es demasiado para dejarla viviendo así. **El bosque no va al i5 hasta que la mente lo sostenga.** El tope al malestar sigue (0,85), el predador no encadena ataques y las espinas no castigan por quedarse.
+- **Velocidad**: ~7.600 ticks/s en esta PC (~3.000 con 12 procesos a la vez); la grilla vieja, sin cambios.
+
+Conclusión: la mente actual (rasgos hechos a mano sobre la celda de destino y "me acerco a X") no alcanza para un mundo con dependencias: no puede representar "ya tomé agua, me voy del río" ni "la comida está del otro lado". Esto justifica la **etapa 14** (que arme sus propios rasgos).
+
+### Visor web
+
+    python vivir.py --mundo bosque          # escribe datos/foto.json cada segundo (--foto S; 0 = nunca)
+    python visor.py                         # http://localhost:8080
+
+`visor.py` (solo la biblioteca estándar) lee la foto que escribe `vivir.py` y no toca la mente. Muestra el mapa en pixel art generado en el navegador (nada bajado), Angri ("z" si duerme), el predador (ojos rojos; apagado si está harto), la noche, la lluvia, la estación y el interior: malestar, cuerpo (con su equilibrio), química, error TD, foco y lugares recordados.
+
+**En el i5** (no instalado; la mudanza la decide el usuario): `deploy/angri-visor.service` (usuario `angri`, solo lectura de `/var/lib/angri`, `Nice=10`, `CPUQuota=25%`, `IPAddressAllow` solo red privada, link-local y localhost) en `http://angri.local:8080`; `instalar.sh` ya lo instala y lo prende. `angri.local` lo anuncia avahi si el host se llama `angri`. La Angri que vive hoy sigue en la grilla (el mundo viaja con su mente): para pasarla al bosque hay que hacerla nacer de nuevo con `--mundo bosque`.
+
+### Mediciones nuevas
+
+`medir.py` suma `% mal alto` (siempre) y, en el bosque, `% sed`, `% frío`, `mordidas`, `enfermó`, `bebe`, `% duerme cueva` y `desmayos`. `probar_retomar.py` acepta ajustes: `python probar_retomar.py 20000 0 MUNDO='"bosque"'` da IDÉNTICO (semillas 0, 1 y 2).
+
+### Hoja de ruta
+
+1. **Avatar del usuario** en el visor (moverse, darle comida, decirle palabras): el maestro pasa a ser una persona, sin modelos externos.
+2. **Etapa 14**: mente que arma sus propios rasgos (lo que mostró el bosque que falta).
+3. Después: 13b (objetos con física), mundo más grande (256×256, más animales), lenguaje aprendido del usuario y más tarde internet.
 
 ## Reglas del proyecto
 

@@ -22,6 +22,41 @@ NOVEDAD_MAXIMA = 6            # tope de novedades (sin tope, si las esquiva, tap
 ESTACION = 5000               # cada cuántos ticks una fuente se seca y brota en otro lado (0 = fijas)
 PROB_MUEVE_PELIGRO = 0.02     # por tick: un peligro da un paso
 
+# --- Bosque (etapa 13a): mundo grande con dependencias ---
+MUNDO = "grilla"              # "grilla" (el de siempre, 24x14) o "bosque" (etapa 13a)
+BOSQUE_ANCHO = 64
+BOSQUE_ALTO = 64
+DIA = 1000                    # ticks de un día entero (el ciclo de sueño propio dura ~1000)
+FRACCION_NOCHE = 0.4
+ESTACION_BOSQUE = 25000       # ticks por estación (año = 4)
+VISTA_DIA = 2
+VISTA_NOCHE = 1
+OLFATO = 6                    # alcance del olfato de comida
+HUMEDAD = 8                   # alcance para sentir el agua
+OLOR_PREDADOR = 5
+OIDO_PREDADOR = 8             # de noche lo oye moverse
+ABUNDANCIA = 3.0              # multiplica el tope de cada comida
+CHARCOS = 6                   # claros con un charco (agua que no crece)
+PROB_BROTE = 0.3              # por tick: brota una comida (si es su estación y hay lugar)
+NUEZ_TICKS = 6                # ticks quieto para abrir una nuez
+RAIZ_TICKS = 4                # ticks quieto para escarbar una raíz
+PROB_ENFERMA = 0.3            # una baya enferma con esta probabilidad
+PROB_LLUVIA = 0.0008          # por tick sin lluvia
+PROB_CRECIDA = 0.002          # por tick de lluvia: el río crece
+TEMP_DIA = 0.65               # temperatura del aire de día (0..1), varía con la estación
+TEMP_CUEVA = 0.6
+FRIO_NOCHE = 0.3
+FRIO_LLUVIA = 0.2
+PREDADOR_DIA = 0.15           # prob. de moverse por tick
+PREDADOR_NOCHE = 0.6
+PREDADOR_HARTO = 1500         # ticks sin cazar después de atacar (tope ético: no hay ataques en cadena)
+RASTRO_DECAE = 0.99           # por tick, el olor de Angri
+RASTRO_DURA = 400
+SUENO_NOCHE = 0.3             # proceso C: de noche el umbral para dormirse baja esto; de día el de despertar sube
+DESMAYO_INTEGRIDAD = 0.3      # integridad 0 -> se desmaya y despierta en una cueva con esto
+DESMAYO_RESTO = 0.35          # y con al menos esto de energía y agua (no muere: decisión del usuario)
+MALESTAR_ALTO = 0.4           # para medir el % del tiempo en malestar alto (ética)
+
 # --- Mente ---
 MENTE = "aprende"             # "aprende" (etapa 2), o "azar" (vieja mente.py)
 REFLEJOS = False              # solo para MENTE="azar": False = azar puro (el piso)
@@ -127,6 +162,8 @@ EQUILIBRIO = {
     "estres": 0.1,
     "integridad": 1.0,
 }
+# (bosque) necesidades que suma el cuerpo en el bosque: sed y temperatura corporal
+EQUILIBRIO_BOSQUE = {"agua": 0.8, "calor": 0.6}
 # Importancia de cada necesidad al calcular el malestar total
 PESO_NECESIDAD = {
     "energia": 1.5,
@@ -134,6 +171,8 @@ PESO_NECESIDAD = {
     "curiosidad": 0.6,
     "estres": 1.2,
     "integridad": 2.0,
+    "agua": 1.5,
+    "calor": 1.2,
 }
 
 # --- Cuerpo: cómo cambian solas las variables ---
@@ -144,6 +183,13 @@ SUBE_CURIOSIDAD = 0.0010      # el aburrimiento crece solo
 CALMA_ESTRES = 0.004          # el estrés vuelve a la calma de a poco
 RECUPERA_INTEGRIDAD = 0.0005
 DANO_INANICION = 0.0          # sin energía, se consume (0 = apagado: probado, empeora)
+
+# (bosque)
+GASTO_AGUA = 0.0007           # la sed crece sola (durmiendo a la mitad)
+BEBER = 0.3                   # por tick parado en el agua
+TEMPLA = 0.004                # cuánto se acerca el calor del cuerpo al del aire por tick
+DANO_FRIO = 0.0004            # integridad por tick con calor < 0.3 (hipotermia)
+DANO_SED = 0.0004             # integridad por tick con agua o energía < 0.05 (además de no curarse)
 
 # --- Química ---
 ADENOSINA_POR_ACTIVIDAD = 0.0009  # se acumula estando despierto

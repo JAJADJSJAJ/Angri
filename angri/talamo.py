@@ -14,7 +14,7 @@ mejor de lo esperado, la próxima vez X se vuelve más saliente en ese contexto.
 import math
 
 from . import config as C
-from .ganglios import ALIVIA, NECESIDADES, _hacia
+from .ganglios import ALIVIA, NECESIDADES_BASE as NECESIDADES, _hacia
 from .mundo import PELIGRO
 
 

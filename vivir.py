@@ -8,6 +8,9 @@
     python vivir.py --ventana W      -> ticks por renglón del log (por defecto 10.000)
     python vivir.py --guardar G      -> cada cuántos ticks guarda (por defecto 50.000)
 
+    python vivir.py --mundo bosque   -> si nace, nace en el bosque (etapa 13a)
+    python vivir.py --foto 1         -> cada cuántos segundos escribe DIR/foto.json para el visor (0 = nunca)
+
     python vivir.py --estado         -> cómo anda (edad, últimas ventanas, RAM, último guardado)
 
 Si existe DIR/mente.json retoma exactamente donde estaba (mismo random, mismas
@@ -190,6 +193,8 @@ def main(argv=None):
     p.add_argument("--ventana", type=int, default=10_000)
     p.add_argument("--guardar", type=int, default=50_000)
     p.add_argument("--panel", action="store_true")
+    p.add_argument("--mundo", choices=["grilla", "bosque"], default=None)
+    p.add_argument("--foto", type=float, default=1.0)
     p.add_argument("--estado", action="store_true")
     o = p.parse_args(argv)
     if o.estado:
@@ -197,6 +202,12 @@ def main(argv=None):
     _PARAR.clear()
     signal.signal(signal.SIGTERM, _sigterm)
 
+    if o.mundo:
+        from angri import config as C
+        C.MUNDO = o.mundo
+    from angri import foto as F
+    archivo_foto = os.path.join(o.carpeta, "foto.json")
+    proxima_foto = 0.0
     archivo = os.path.join(o.carpeta, "mente.json")
     retomado = retomar(archivo, memoria.molde_angri)
     if retomado:
@@ -237,6 +248,12 @@ def main(argv=None):
                 hambre += angri.cuerpo.v["energia"] < 0.3
                 heridas += angri.evento == "se lastima"
                 comidas += angri.evento == "come"
+                if o.foto and angri.edad % 50 == 0 and time.time() >= proxima_foto:
+                    proxima_foto = time.time() + o.foto
+                    try:
+                        F.escribir(angri, archivo_foto)
+                    except OSError as e:
+                        print(f"AVISO: no pude escribir la foto ({e})", flush=True)
                 if o.panel:
                     dibujar(angri)
                     time.sleep(1 / C.TICKS_POR_SEGUNDO)

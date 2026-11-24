@@ -26,6 +26,9 @@ def una_vida(semilla, ticks):
     corte = int(ticks * 0.8)
     malestar = heridas = comidas = novedades = 0
     hambre = 0  # ticks con energía < 0.3
+    alto = 0    # ticks con malestar alto (ética: que no haya bucles de sufrimiento)
+    bosque = C.MUNDO == "bosque"
+    sed = frio = mordidas = enfermo = bebidas = dormido = refugio = 0
     # olvido: tras cada estación, cuánto tarda en comer en la fuente nueva y
     # cuántos ticks sigue rondando la vieja (perseveración) en la ventana siguiente
     tardanzas, rondas = [], []
@@ -64,6 +67,23 @@ def una_vida(semilla, ticks):
         comidas += a.evento == "come"
         novedades += a.evento == "descubre algo nuevo"
         hambre += a.cuerpo.v["energia"] < 0.3
+        alto += m > C.MALESTAR_ALTO
+        if bosque:
+            v = a.cuerpo.v
+            sed += v["agua"] < 0.3
+            frio += v["calor"] < 0.4
+            mordidas += a.evento == "lo muerde el predador"
+            enfermo += a.evento == "se enferma"
+            bebidas += a.evento == "bebe"
+            if not a.despierto:
+                dormido += 1
+                refugio += a.mundo.zona[a.y][a.x] == "q"
+    extra = {}
+    if bosque:
+        extra = {"% sed": 100 * sed / ticks, "% frío": 100 * frio / ticks,
+                 "mordidas": mordidas, "enfermó": enfermo, "bebe": bebidas,
+                 "% duerme cueva": 100 * refugio / max(1, dormido),
+                 "desmayos": a.desmayos}
     return {
         "malestar": malestar / ticks,
         "mal. final": final / (ticks - corte),
@@ -74,6 +94,8 @@ def una_vida(semilla, ticks):
         "% hambre": 100 * hambre / ticks,
         # vida trabada: pasa más del 60 % con hambre (queda encerrada lejos de la comida)
         "% trabadas": 100.0 * (hambre / ticks > 0.6),
+        "% mal alto": 100 * alto / ticks,
+        **extra,
         "encuentra": st.mean(tardanzas) if tardanzas else 0.0,
         "ronda vieja": st.mean(rondas) if rondas else 0.0,
         **_lenguaje(a, ticks),

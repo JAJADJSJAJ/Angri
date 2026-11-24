@@ -22,9 +22,14 @@ import random
 from . import config as C
 from .mundo import COMIDA, DESCANSO, NOVEDAD, PELIGRO
 
+AGUA = "≈"
 MOVIMIENTOS = [(0, -1), (0, 1), (-1, 0), (1, 0), (0, 0)]
-NECESIDADES = ["energia", "cansancio", "curiosidad", "estres", "integridad"]
-ALIVIA = {"energia": COMIDA, "cansancio": DESCANSO, "curiosidad": NOVEDAD}
+NECESIDADES_BASE = ["energia", "cansancio", "curiosidad", "estres", "integridad"]
+# (etapa 13a) sed y temperatura corporal: solo existen en el bosque. Sus rasgos
+# van en un bloque aparte, así los índices de siempre no se mueven.
+NECESIDADES = NECESIDADES_BASE + ["agua", "calor"]
+ALIVIA = {"energia": COMIDA, "cansancio": DESCANSO, "curiosidad": NOVEDAD,
+          "agua": AGUA, "calor": DESCANSO}
 
 
 def _hacia(vista, objetivo):
@@ -44,7 +49,7 @@ def _hacia(vista, objetivo):
     return mejor
 
 
-CELDAS = ["·", COMIDA, DESCANSO, NOVEDAD, PELIGRO, "#"]  # "#" = borde
+CELDAS = ["·", COMIDA, DESCANSO, NOVEDAD, PELIGRO, "#", AGUA]  # "#" = borde o roca
 
 
 def _rasgos(vista, necesidad, dir_comida, dir_objetivo, dir_recuerdo, a, palabras=(), dir_dicha=4):
@@ -56,6 +61,8 @@ def _rasgos(vista, necesidad, dir_comida, dir_objetivo, dir_recuerdo, a, palabra
     """
     n = NECESIDADES.index(necesidad)
     destino = CELDAS.index(vista.get(MOVIMIENTOS[a], "#"))
+    if n >= 5 or destino >= 6:
+        return _rasgos_bosque(n, destino, a, dir_comida, dir_objetivo, dir_recuerdo, dir_dicha)
     r = [destino * 5 + n]                       # 0..29: qué hay adonde voy
     if a == dir_comida:
         r.append(30 + n)                        # 30..34: me acerco a comida
@@ -80,9 +87,31 @@ def _rasgos(vista, necesidad, dir_comida, dir_objetivo, dir_recuerdo, a, palabra
     return r
 
 
+def _rasgos_bosque(n, destino, a, dc, do, dr, dd):
+    """(etapa 13a) los mismos rasgos cuando hay una necesidad nueva (agua, calor)
+    o una celda nueva (agua). Lo que no depende de lo nuevo usa el índice de
+    siempre (así "acercarse a comida con hambre" es el mismo rasgo aunque el
+    paso caiga en el agua); lo nuevo va en un bloque desde 422."""
+    r = [destino * 5 + n if destino < 6 and n < 5 else 422 + destino * 7 + n]  # 422..470
+    if a == dc:
+        r.append(30 + n if n < 5 else 471 + n)  # 476..477
+    if a == do:
+        r.append(35 + n if n < 5 else 478 + n)  # 483..484
+    if a == 4:
+        r.append(40 + n if n < 5 else 485 + n)  # 490..491
+    if a == dr:
+        r.append(45 + n if n < 5 else 492 + n)  # 497..498
+    r.append(50 + destino if destino < 6 else 506)
+    if a == 4:
+        r.append(56)
+    if a == dd:
+        r.append(417 + n if n < 5 else 499 + n)  # 504..505
+    return r
+
+
 N_PALABRAS = 8
 _RITMOS = {}  # caché de _ritmo
-N_RASGOS = 97 + N_PALABRAS * N_PALABRAS * 5 + 5
+N_RASGOS = 507  # (hasta 422 los de siempre; 422..506 los del bosque)
 
 
 def _direccion(dx, dy):

@@ -19,6 +19,7 @@ from .maestro import Habla, Maestro, Oido
 from .talamo import Talamo
 from .mente import Mente
 from .mundo import COMIDA, DESCANSO, NOVEDAD, PELIGRO, Mundo
+from .bosque import AGUA, Bosque, trabajar
 from .quimica import Quimica
 from .panel import dibujar
 
@@ -30,7 +31,8 @@ ARCHIVO_DIARIO = os.path.join(CARPETA_DATOS, "diario.csv")
 class Angri:
     def __init__(self, semilla=None, cargar=True):
         guardado = self._cargar() if cargar else {}
-        self.cuerpo = Cuerpo(guardado.get("cuerpo"))
+        bosque = C.MUNDO == "bosque"
+        self.cuerpo = Cuerpo(guardado.get("cuerpo"), bosque)
         self.quimica = Quimica(guardado.get("quimica"))
         if C.MENTE == "aprende":
             self.mente = Ganglios(semilla, guardado.get("ganglios"))
@@ -44,11 +46,13 @@ class Angri:
             self.talamo = None
             self.mente = Mente(semilla)
             self.corteza = None
-        self.mundo = Mundo(None if semilla is None else semilla + 1)
-        self.x, self.y = guardado.get("pos", (8, 7))
+        semilla_mundo = None if semilla is None else semilla + 1
+        self.mundo = Bosque(semilla_mundo) if bosque else Mundo(semilla_mundo)
+        self.x, self.y = guardado.get("pos", self.mundo.inicio if bosque else (8, 7))
         self.despierto = guardado.get("despierto", True)
         self.edad = guardado.get("edad", 0)  # ticks vividos
         self.suenos = guardado.get("suenos", 0)
+        self.desmayos = 0  # (bosque) veces que llegó a integridad 0
         self._malestar = self.cuerpo.malestar()
         self.evento = "nace" if self.edad == 0 else "despierta del apagado"
         self.oido = Oido()
@@ -61,12 +65,21 @@ class Angri:
 
     # --- un instante de vida ---
     def tick(self):
-        self.mundo.avanzar()
+        bosque = isinstance(self.mundo, Bosque)
+        mordido = False
+        if bosque:
+            self.mundo.avanzar((self.x, self.y), self.mundo.zona[self.y][self.x] == "q")
+            if self.mundo.atacando:
+                self._mordida()
+                mordido = True
+        else:
+            self.mundo.avanzar()
         se_movio = False
         sorpresa = 0.0
 
         if self.despierto:
             vista = self.mundo.vecindad(self.x, self.y)
+            sentida = self.mundo.sentir(self.x, self.y, vista) if bosque else vista
             necesidad = (self.talamo.elegir(vista, self.cuerpo.v) if self.talamo
                          else self.cuerpo.necesidad_urgente())
             self.oido.pasar()
@@ -87,13 +100,18 @@ class Angri:
                     self.habla.escuchar(frase, self.cuerpo.v, necesidad, pedido)
             dicha = self.oido.direccion_dicha() if C.LEXICO else 4
             if isinstance(self.mente, Ganglios):
-                dx, dy = self.mente.elegir(vista, self.cuerpo.v, necesidad, (self.x, self.y),
+                dx, dy = self.mente.elegir(sentida, self.cuerpo.v, necesidad, (self.x, self.y),
                                            self.quimica.noradrenalina, self._malestar,
                                            self.oido.palabras() if C.FRASE else (), dicha)
             else:
                 dx, dy = self.mente.elegir(vista, necesidad)
-            nx = max(0, min(C.ANCHO - 1, self.x + dx))
-            ny = max(0, min(C.ALTO - 1, self.y + dy))
+            if bosque:
+                nx, ny = self.x + dx, self.y + dy
+                if not self.mundo.transitable(nx, ny):  # roca o borde: no se mueve
+                    nx, ny = self.x, self.y
+            else:
+                nx = max(0, min(C.ANCHO - 1, self.x + dx))
+                ny = max(0, min(C.ALTO - 1, self.y + dy))
             if self.corteza:
                 self.corteza.predecir(vista.get((dx, dy), "#"), necesidad,
                                       (dx, dy) == (0, 0), (self.x, self.y))
@@ -108,7 +126,10 @@ class Angri:
             encontrado = aqui
             if self.habla:
                 antes = {k: abs(self.cuerpo.v[k] - C.EQUILIBRIO[k]) for k in self.cuerpo.v}
-            self._interactuar(aqui)
+            if bosque:
+                self._interactuar_bosque(aqui, se_movio)
+            else:
+                self._interactuar(aqui)
             if self.habla:
                 baja = {k: antes[k] - abs(self.cuerpo.v[k] - C.EQUILIBRIO[k]) for k in antes}
                 n = max(baja, key=baja.get)
@@ -116,6 +137,10 @@ class Angri:
                     self.habla.aliviado(n, self.edad)
 
         self.cuerpo.vivir(self.despierto, se_movio)
+        if bosque:
+            self.cuerpo.clima(self.despierto, se_movio, self.mundo.temperatura(self.x, self.y))
+            if self.cuerpo.v["integridad"] <= 0.0:
+                self._desmayo()
         malestar_antes = self._malestar
         malestar = self._malestar = self.cuerpo.malestar()
         if self.despierto and isinstance(self.mente, Ganglios):
@@ -123,12 +148,14 @@ class Angri:
                           - C.RECOMPENSA_ESTADO * malestar)
             # nocicepción: el dolor llega a la dopamina directo, aunque el cuerpo ya
             # esté en el piso (integridad 0) o el malestar en su tope y no cambie nada
-            if encontrado == PELIGRO:
+            if (encontrado == PELIGRO and (se_movio or not bosque)) or mordido:
                 recompensa -= C.DOLOR
             if self.corteza:
                 sorpresa = self.corteza.comparar(encontrado, malestar - malestar_antes)
                 recompensa += C.PESO_CURIOSIDAD * self.corteza.progreso
             vista = self.mundo.vecindad(self.x, self.y)
+            if bosque:
+                vista = self.mundo.sentir(self.x, self.y, vista)
             foco = self.talamo.foco if self.talamo else self.cuerpo.necesidad_urgente()
             self.mente.aprender(recompensa, vista, self.cuerpo.v, foco, (self.x, self.y))
             if self.talamo:
@@ -156,10 +183,67 @@ class Angri:
         elif aqui == DESCANSO:
             self.cuerpo.descansar()
 
+    def _interactuar_bosque(self, aqui, entra=True):
+        """(etapa 13a) Lo mismo que _interactuar, pero la comida cuesta: la nuez
+        y la raíz piden quedarse varios ticks; la baya a veces enferma."""
+        if aqui == COMIDA:
+            tipo = trabajar(self.mundo, self.x, self.y)
+            if tipo is None:
+                self.evento = "trabaja la comida"
+            elif tipo == "baya" and self.mundo.rng.random() < C.PROB_ENFERMA:
+                self.cuerpo.comer(0.1)
+                self.cuerpo.enfermar()
+                self.evento = "se enferma"
+            else:
+                self.cuerpo.comer({"fruta": 0.25, "baya": 0.15, "nuez": 0.35, "raiz": 0.3}[tipo])
+                self.evento = "come"
+        elif aqui == AGUA:
+            self.cuerpo.beber()
+            self.evento = "bebe"
+        elif aqui == NOVEDAD:
+            self.cuerpo.descubrir()
+            self.mundo.consumir(self.x, self.y)
+            self.evento = "descubre algo nuevo"
+        elif aqui == PELIGRO and entra:  # pincha al pisar, no por quedarse
+            self.cuerpo.rasparse()
+            self.evento = "se lastima"
+        elif aqui == DESCANSO:
+            self.cuerpo.descansar()
+
+    def _desmayo(self):
+        """(bosque) Integridad en 0: no muere (perdería todo lo aprendido). Se
+        desmaya y despierta en la cueva más cercana, con lo justo para moverse.
+        Corta los bucles de sufrimiento; se cuenta para medirlo."""
+        m = self.mundo
+        self.x, self.y = min(m.cuevas, key=lambda c: abs(c[0] - self.x) + abs(c[1] - self.y))
+        v = self.cuerpo.v
+        v["integridad"] = max(v["integridad"], C.DESMAYO_INTEGRIDAD)
+        v["energia"] = max(v["energia"], C.DESMAYO_RESTO)
+        v["agua"] = max(v["agua"], C.DESMAYO_RESTO)
+        self.desmayos += 1
+        self.evento = "se desmaya"
+        if isinstance(self.mente, Ganglios):
+            self.mente.olvidar_paso()  # lo de antes no se encadena con el despertar
+        self._malestar = self.cuerpo.malestar()
+
+    def _mordida(self):
+        self.cuerpo.lastimarse_mucho()
+        self.evento = "lo muerde el predador"
+        if not self.despierto:  # lo despierta el susto
+            self.despierto = True
+
     def _regular_sueno(self):
-        """Proceso S: duerme por presión interna, no por horario."""
+        """Proceso S: duerme por presión interna, no por horario. En el bosque
+        también pesa el proceso C (Borbély): de noche se duerme antes y de día se
+        despierta antes."""
         q = self.quimica
-        if self.despierto and q.adenosina >= C.UMBRAL_DORMIR:
+        dormir, despertar = C.UMBRAL_DORMIR, C.UMBRAL_DESPERTAR
+        if isinstance(self.mundo, Bosque):
+            if self.mundo.noche():
+                dormir -= C.SUENO_NOCHE
+            else:
+                despertar += C.SUENO_NOCHE
+        if self.despierto and q.adenosina >= dormir:
             self.despierto = False
             self.suenos += 1
             if isinstance(self.mente, Ganglios):
@@ -170,7 +254,7 @@ class Angri:
                 # consolidación: repasa el día y poda lugares
                 self.hipocampo.dormir(self.mente)
             self.evento = "se duerme"
-        elif not self.despierto and q.adenosina <= C.UMBRAL_DESPERTAR:
+        elif not self.despierto and q.adenosina <= despertar:
             self.despierto = True
             self.evento = "se despierta"
 
