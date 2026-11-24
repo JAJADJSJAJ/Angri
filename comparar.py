@@ -1,6 +1,7 @@
 """Comparación en pares: la misma semilla con la config A y con la B.
 
     python comparar.py 50000 128 "" "PIDE=True MAESTRO_SOLO_SI_PIDE=True" -j 12
+    python comparar.py 300000 256 "" "MUNDO='bosque'" -j 12 --rust   -> con el núcleo en Rust
 
 Cada vida tiene su suerte (algunas quedan trabadas con hambre). Restando vida
 contra vida con la misma semilla, esa suerte se cancela en buena parte: la
@@ -23,12 +24,15 @@ def _ajustes(texto):
 def main():
     args = sys.argv[1:]
     procesos = 1
+    en_rust = "--rust" in args
+    if en_rust:
+        args.remove("--rust")
     if "-j" in args:
         i = args.index("-j")
         procesos = int(args[i + 1])
         del args[i:i + 2]
     ticks, n, a, b = int(args[0]), int(args[1]), _ajustes(args[2]), _ajustes(args[3])
-    tareas = [(s, ticks, aj, None) for aj in (a, b) for s in range(n)]
+    tareas = [(s, ticks, aj, None, en_rust) for aj in (a, b) for s in range(n)]
     with Pool(procesos) as pool:
         vidas = pool.map(_vida, tareas, chunksize=1)
     va, vb = vidas[:n], vidas[n:]

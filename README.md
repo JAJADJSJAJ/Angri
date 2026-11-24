@@ -761,6 +761,45 @@ Línea base nueva (`medir.py 50000 12 -j 12`):
 | entiende % | 96,4 | 91,0 |
 | desmayos | — | 8,3 |
 
+## Núcleo en Rust (misma vida, ~70× más rápido)
+
+`rust/` tiene el núcleo de una vida medida portado a Rust (sin dependencias):
+grilla y bosque, cuerpo, química, ganglios, hipocampo, Maestro y Oído, y el
+`tick` de `vida.py`, con el mismo azar (PCG32 de `angri/azar.py`) y las mismas
+cuentas en `f64` en el mismo orden. Detalles que importan para que dé igual:
+`sum()` de Python 3.12 suma floats con Neumaier (Rust usa la misma suma), los
+dicts recorren en orden de inserción y `round()` redondea al par.
+`math.exp`, `sin`, `cos` y `pow` usan la misma biblioteca de C en Windows y
+dieron iguales bit a bit, así que no hizo falta una `exp` propia (en Linux no se probó).
+
+    cd rust && cargo build --release          (una vez, y cada vez que cambie el núcleo)
+    python medir.py 50000 12 -j 12 --rust
+    python comparar.py 300000 256 "" "MUNDO='bosque'" -j 12 --rust
+    python probar_rust.py 20000 3 MUNDO='"bosque"'   -> Rust = Python, tick a tick
+
+Python manda la config entera (con los ajustes) al binario, así que no hay
+números repetidos. Lo que no está portado (corteza, tálamo, Habla/PIDE, FRASE,
+PALABRA_SUELTA, MAESTRO_MIENTE, HOLISTICO, CAMBIO_SIGNIFICADO, COMPOSICION,
+MENTE azar) tiene que estar apagado: si no, el binario avisa y corta. **Si se
+cambia algo del núcleo en Python, hay que cambiarlo igual en Rust** y volver
+a correr `probar_rust.py`.
+
+Comprobado con `probar_rust.py` (posición, despierto, malestar, cada variable
+del cuerpo, adenosina y dopamina, bit a bit, cada tick; y las métricas de
+`medir.una_vida`): grilla 100.000 ticks × 4 semillas, bosque 150.000 × 4,
+bosque con `DESMAYO_DONDE="cueva_agua"` y `MAESTRO_SOLO_SI_PIDE`, grilla sin
+hipocampo, con `PELIGRO_SIN_MALESTAR=False` y `MAESTRO_CIEGO`: todo IDÉNTICO.
+
+Velocidad (un proceso, esta PC):
+
+| mundo | Python | Rust | veces |
+|---|---|---|---|
+| grilla | 8.700 ticks/s | 608.000 ticks/s | 70× |
+| bosque | 5.900 ticks/s | 415.000 ticks/s | 70× |
+
+`comparar.py 300000 24 "" "MUNDO='bosque'" -j 12 --rust` tarda 5 s; los
+256 pares de 300.000 ticks que tardaban más de una hora pasan a ser ~1 minuto.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

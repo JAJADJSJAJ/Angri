@@ -6,11 +6,15 @@
     python medir.py 50000 5 reflejos -> mente vieja con reflejos innatos
     python medir.py 50000 8 PESO_CURIOSIDAD=0 -> cambia un número de config (ablación)
     python medir.py 50000 32 -j 12   -> reparte las vidas en 12 procesos (mismo resultado)
+    python medir.py 50000 32 -j 12 --rust -> las corre el núcleo en Rust (misma vida, mucho más rápido)
 
 Cada Angri nace de cero (no toca datos/). Misma semilla = misma vida exacta,
 así dos versiones de la mente se pueden comparar en igualdad de condiciones.
 """
+import json
+import os
 import statistics as st
+import subprocess
 import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -176,10 +180,45 @@ def _ajustar(ajustes, modo):
         C.REFLEJOS = M.REFLEJOS = modo == "reflejos"
 
 
+RUST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rust", "target", "release",
+                    "angri.exe" if os.name == "nt" else "angri")
+
+
+def config_texto():
+    """La config actual (con ajustes) como líneas CLAVE=repr para el núcleo en Rust."""
+    lineas = []
+    for k, v in vars(C).items():
+        if not k.isupper():
+            continue
+        if isinstance(v, dict):
+            lineas += [f"{k}.{s}={x!r}" for s, x in v.items()]
+        else:
+            lineas.append(f"{k}={v!r}")
+    return "\n".join(lineas) + "\n"
+
+
+def rust(modo, semilla, ticks):
+    """Corre el binario de Rust (cargo build --release en rust/) con la config actual."""
+    if not os.path.exists(RUST):
+        sys.exit(f"no está {RUST}: compilalo con  cargo build --release  en rust/")
+    r = subprocess.run([RUST, modo, str(semilla), str(ticks)], input=config_texto(),
+                       capture_output=True, text=True, encoding="utf-8")
+    if r.returncode:
+        sys.exit(r.stderr.strip() or f"angri (rust) falló con código {r.returncode}")
+    return r.stdout
+
+
+def una_vida_rust(semilla, ticks):
+    """Lo mismo que una_vida, pero corrida por el núcleo en Rust (misma vida, bit a bit)."""
+    return json.loads(rust("vida", semilla, ticks))
+
+
 def _vida(tarea):
     """Una vida en otro proceso: hay que repetir los ajustes (Windows arranca de cero)."""
-    semilla, ticks, ajustes, modo = tarea
+    semilla, ticks, ajustes, modo, *en_rust = tarea
     _ajustar(ajustes, modo)
+    if en_rust and en_rust[0]:
+        return una_vida_rust(semilla, ticks)
     return una_vida(semilla, ticks)
 
 
@@ -194,6 +233,9 @@ def main():
         i = sys.argv.index("-j")
         procesos = int(sys.argv[i + 1])
         del sys.argv[i:i + 2]
+    en_rust = "--rust" in sys.argv
+    if en_rust:
+        sys.argv.remove("--rust")
     modo = next((m for m in ("azar", "reflejos") if m in sys.argv), None)
     _ajustar(ajustes, modo)
     ticks = int(sys.argv[1]) if len(sys.argv) > 1 else 50_000
@@ -201,9 +243,9 @@ def main():
     if procesos > 1:
         from multiprocessing import Pool
         with Pool(procesos) as pool:
-            vidas = pool.map(_vida, [(s, ticks, ajustes, modo) for s in range(n)], chunksize=1)
+            vidas = pool.map(_vida, [(s, ticks, ajustes, modo, en_rust) for s in range(n)], chunksize=1)
     else:
-        vidas = [una_vida(s, ticks) for s in range(n)]
+        vidas = [(una_vida_rust if en_rust else una_vida)(s, ticks) for s in range(n)]
     print(f"{n} vidas de {ticks} ticks, mente: {C.MENTE if C.MENTE == 'aprende' else ('reflejos' if C.REFLEJOS else 'azar puro')}\n")
     # e.e. = error estándar del promedio (desvío/√n): diferencias menores a ~2 e.e. son ruido
     print(f"{'métrica':<10} {'promedio':>10} {'desvío':>9} {'e.e.':>8} {'mediana':>9}")
