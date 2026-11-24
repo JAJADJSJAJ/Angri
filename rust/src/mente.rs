@@ -765,8 +765,9 @@ impl Hipocampo {
             let k = c.repasos as usize * dia.len();
             let elegidos = g.rng.choices_pesos(&pesos, k);
             let parejo = self.sentires.len() == dia.len();
-            for i in elegidos {
-                let s = if parejo { self.sentires.get(i) } else { None };
+            let cada = c.repaso_propio_cada.max(1) as usize;
+            for (j, i) in elegidos.into_iter().enumerate() {
+                let s = if parejo && j % cada == 0 { self.sentires.get(i) } else { None };
                 g.repasar(&dia[i], s, c.aprende_repaso, c);
             }
         }

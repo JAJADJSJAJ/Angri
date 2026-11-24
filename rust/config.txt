@@ -92,6 +92,8 @@ APRENDE_PROPIO_ACTOR = 0.2    # (se divide por cuántas unidades están activas;
 APRENDE_PROPIO_CRITICO = 0.5
 TOPE_ACTIVA = 0.2             # una unidad activa más que esto no distingue nada: se reinicia primero
 REPASO_PROPIO = True          # el sueño también repasa las unidades propias (medido: ayuda)
+REPASO_PROPIO_CADA = 1        # el sueño repasa las unidades en uno de cada N recuerdos (es lo más caro)
+NACER_SORPRESA = False        # las unidades nuevas nacen del momento más sorpresivo (mayor error TD) desde el último reinicio
 RITMO_RARO = 1                # ritmo por unidad: una rara aprende hasta esto veces más rápido (3 y 10 probados: no cambia el malestar)
 
 # --- Mente ---

@@ -978,7 +978,13 @@ Las mediciones largas ahora corren en el i5 por SSH (`~/medir/Angri`, aparte de 
 - **Bosque con objetos** (96 pares de 200.000 ticks, mano contra propios con repaso): malestar 0,395 contra 0,497 (antes del repaso 0,516); duerme en refugio propio **13 % contra 3 %**.
 - **Vidas de 1 M de ticks** (24 pares): la mano no mejora con los años (~0,45) y la propia sí, de 0,519 en el año 3 a 0,487 en el año 10. **La diferencia baja de 0,089 a ~0,04 y deja de ser clara** (z ≈ 1,2 desde el año 6). Duerme en refugio propio el **29 % contra 2,6 %** (z 6,3). Come la mitad y se desmaya más (508 contra 377).
 
-**Sigue**: la propia todavía come menos. Probar bancos más grandes (16.384+, ahora que el i5 mide), vidas de varios millones de ticks y que las unidades aprendan también de lo que predicen (no solo del error TD).
+### Tercera vuelta: velocidad y barrido de ajustes (i5)
+
+- **Más rápida, misma vida**: cada unidad se archiva bajo su átomo más raro (`clave`) y solo se revisa cuando ese átomo está: +25–35 % de ticks/s, la vida es idéntica.
+- `REPASO_PROPIO_CADA` (el sueño repasa las unidades en uno de cada N recuerdos) y `NACER_SORPRESA` (las nuevas nacen del momento más sorpresivo): opciones nuevas, quedan como estaban (1 y apagada).
+- **Barrido** (48 pares de 200.000 ticks, bosque con objetos, base 0,493 de malestar): banco de 16.384 con repaso cada 4 → 0,516 (peor, come menos); repaso cada 4 → 0,509; nacer de la sorpresa → 0,492 (igual); crítico 0,1 → 0,533 (claramente peor); crítico 1 → 0,497; actor 0,1 → 0,509; `TEMPERATURA_MALESTAR` 4 → 0,512. Antes: banco de 1.024 y `TOPE_ACTIVA` 0,05 o 0,5 también peores. **Ningún ajuste le gana a los valores actuales**; quedan así.
+
+**Sigue**: la propia todavía come menos. Lo que falta ya no es ajuste sino forma: que las unidades aprendan también de lo que predicen (no solo del error TD) y vidas de varios millones de ticks.
 
 Para probar: `angri comparar 200000 96 "MUNDO=bosque OBJETOS=True" "MUNDO=bosque OBJETOS=True RASGOS=propios" -j 12`.
 

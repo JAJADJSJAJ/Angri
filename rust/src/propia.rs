@@ -37,6 +37,7 @@ const DEL_ESTADO: u8 = 0x80;
 pub struct Unidad {
     pub atomos: [u16; 3],
     pub k: u8,      // cuántos átomos (0 = vacía, todavía no nació)
+    pub clave: u16, // su átomo más raro al nacer: la unidad se busca solo cuando está ese
     pub mover: bool, // tiene algún átomo de movimiento: un solo peso (w[0]) para los 5
     pub v: f64,
     pub w: [f64; NACC],
@@ -47,7 +48,7 @@ pub struct Unidad {
 
 impl Unidad {
     fn vacia() -> Unidad {
-        Unidad { atomos: [SIN_ATOMO; 3], k: 0, mover: false, v: 0.0, w: [0.0; NACC], util: 0.0, veces: 0, nace: 0 }
+        Unidad { atomos: [SIN_ATOMO; 3], k: 0, clave: SIN_ATOMO, mover: false, v: 0.0, w: [0.0; NACC], util: 0.0, veces: 0, nace: 0 }
     }
 }
 
@@ -75,6 +76,10 @@ pub struct Propia {
     pub t: i64,
     pub nacidas: i64,
     pub reiniciadas: i64,
+    // (NACER_SORPRESA) el momento más sorpresivo desde el último reinicio: de ahí nacen las nuevas
+    molde: Sentir,
+    molde_a: usize,
+    molde_d: f64,
 }
 
 #[inline]
@@ -153,7 +158,7 @@ impl Propia {
     pub fn new(semilla: u64, c: &Config) -> Propia {
         let mut unidades = Vec::with_capacity(N_ATOMOS + c.propios as usize);
         for a in 0..N_ATOMOS {
-            unidades.push(Unidad { atomos: [a as u16, SIN_ATOMO, SIN_ATOMO], k: 1, mover: a >= N_ESTADO,
+            unidades.push(Unidad { atomos: [a as u16, SIN_ATOMO, SIN_ATOMO], k: 1, clave: a as u16, mover: a >= N_ESTADO,
                                    ..Unidad::vacia() });
         }
         for _ in 0..c.propios {
@@ -164,7 +169,7 @@ impl Propia {
             rng: Azar::new(semilla ^ 0x14_0b5e55), unidades, indice: vec![vec![]; N_ATOMOS],
             ev: vec![0.0; n], ew: vec![[0.0; NACC]; n], marca: vec![false; n], huella: vec![],
             cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0,
-            t: 0, nacidas: 0, reiniciadas: 0,
+            t: 0, nacidas: 0, reiniciadas: 0, molde: Sentir::default(), molde_a: 4, molde_d: 0.0,
         }
     }
 
@@ -309,6 +314,11 @@ impl Propia {
                 self.cuenta[x as usize] += 1;
             }
         }
+        if c.nacer_sorpresa && delta.abs() > self.molde_d {
+            self.molde = self.ahora.clone();
+            self.molde_a = a;
+            self.molde_d = delta.abs();
+        }
         let decae = c.serotonina * c.huella;
         let n = self.activas.len() as f64;
         // las huellas se desvanecen; las que quedan en casi cero se sueltan
@@ -429,9 +439,19 @@ impl Propia {
         maduras.select_nth_unstable_by(k, |a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
         let mut peores: Vec<usize> = maduras[..k].iter().map(|x| x.1).collect();
         peores.sort_unstable();
+        let sorpresa = c.nacer_sorpresa && self.molde_d > 0.0;
+        if sorpresa {
+            std::mem::swap(&mut self.ahora, &mut self.molde);
+            std::mem::swap(&mut self.elegida, &mut self.molde_a);
+        }
         for u in peores {
             self.nacer(u, c);
             self.reiniciadas += 1;
+        }
+        if sorpresa {
+            std::mem::swap(&mut self.ahora, &mut self.molde);
+            std::mem::swap(&mut self.elegida, &mut self.molde_a);
+            self.molde_d = 0.0;
         }
     }
 
@@ -440,7 +460,7 @@ impl Propia {
     fn nacer(&mut self, u: usize, c: &Config) {
         let viejo = self.unidades[u];
         if viejo.k > 0 {
-            let l = &mut self.indice[viejo.atomos[0] as usize];
+            let l = &mut self.indice[viejo.clave as usize];
             if let Some(i) = l.iter().position(|&x| x as usize == u) {
                 l.swap_remove(i);
             }
@@ -484,6 +504,8 @@ impl Propia {
             }
         }
         let mut elegidos = mejor.1;
+        let frec_de = |a: u16| pool.iter().find(|x| x.0 == a).map_or(1.0, |x| x.1);
+        let clave = *elegidos.iter().min_by(|&&a, &&b| frec_de(a).total_cmp(&frec_de(b)).then(a.cmp(&b))).unwrap_or(&SIN_ATOMO);
         if elegidos.len() < 2 {
             return;
         }
@@ -492,8 +514,8 @@ impl Propia {
         let mut atomos = [SIN_ATOMO; 3];
         atomos[..k].copy_from_slice(&elegidos);
         let mover = elegidos.iter().any(|&a| a as usize >= N_ESTADO);
-        self.unidades[u] = Unidad { atomos, k: k as u8, mover, nace: self.t, ..Unidad::vacia() };
-        self.indice[atomos[0] as usize].push(u as u32);
+        self.unidades[u] = Unidad { atomos, k: k as u8, clave, mover, nace: self.t, ..Unidad::vacia() };
+        self.indice[clave as usize].push(u as u32);
     }
 
     pub fn olvidar_paso(&mut self) {
@@ -518,7 +540,7 @@ impl Propia {
     }
 }
 
-crate::pieza!(Unidad { atomos, k, mover, v, w, util, veces, nace });
+crate::pieza!(Unidad { atomos, k, clave, mover, v, w, util, veces, nace });
 crate::pieza!(Sentir { estado, mover });
 crate::pieza!(Propia { rng, unidades, indice, ev, ew, marca, huella, cuenta, ahora, activas, elegida, vs, t,
-                      nacidas, reiniciadas });
+                      nacidas, reiniciadas, molde, molde_a, molde_d });
