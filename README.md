@@ -624,7 +624,7 @@ Angri ya no vive vidas de 50.000 ticks que se pierden: vive sin fin en la PC.
 - **El aprendizaje no se degrada**: el malestar baja de 0,091 a ~0,073 y queda; los repuntes (500k) son estaciones duras y se recupera solo.
 - **Velocidad estable**: ~8.900 ticks/seg desde los 200k (el primer tramo es 10 % más rápido).
 - **Fuga encontrada y arreglada**: la caché `_RITMOS` de los ganglios guardaba un renglón por cada valor de experiencia (≈1 por tick): la RAM subía de 27 a 177 MB en 1M ticks. Ahora solo cachea experiencias < 20.000 y calcula directo las otras: **mismo número exacto** (malestar y pesos idénticos a 200k ticks), RAM plana en ~27 MB. No es un tope a la mente: es una caché.
-- **Lo único que crece sin tope**: `oido.aciertos`, el registro de apuestas del léxico que usa `medir.py` para el % de acierto: ~13.400 tuplas por millón de ticks (≈1 MB de RAM por millón). No se toca sin preguntar.
+- **Lo único que crece sin tope**: `oido.aciertos`, el registro de apuestas del léxico que usa `medir.py` para el % de acierto: ~13.400 tuplas por millón de ticks (≈1 MB de RAM por millón). Decidido: se deja crecer, sin tope.
 
 ## Reglas del proyecto
 
