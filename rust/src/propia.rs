@@ -169,7 +169,7 @@ impl Propia {
     }
 
     /// las unidades activas: (unidad, DEL_ESTADO o los movimientos para los que está activa)
-    fn activas_de(&self, s: &Sentir) -> Vec<(u32, u8)> {
+    pub fn activas_de(&self, s: &Sentir) -> Vec<(u32, u8)> {
         let mut presente = [false; N_ESTADO];
         for &a in &s.estado {
             presente[a as usize] = true;
@@ -222,14 +222,27 @@ impl Propia {
         act
     }
 
-    fn valor(&self, act: &[(u32, u8)]) -> f64 {
+    pub fn valor(&self, act: &[(u32, u8)]) -> f64 {
         act.iter().filter(|x| x.1 == DEL_ESTADO).map(|&(u, _)| self.unidades[u as usize].v).sum()
     }
 
     /// al elegir: guarda s y suma a cada acción lo que dicen sus unidades
     pub fn preferencias(&mut self, s: Sentir, h: &mut [f64; NACC], na: usize) {
         let act = self.activas_de(&s);
-        for &(u, m) in &act {
+        self.sumar(&act, h, na);
+        self.vs = self.valor(&act);
+        self.ahora = s;
+        self.activas = act;
+    }
+
+    /// el sentir de s (para que el hipocampo lo guarde)
+    pub fn ahora(&self) -> &Sentir {
+        &self.ahora
+    }
+
+    /// suma a cada acción lo que dicen estas unidades activas
+    pub fn sumar(&self, act: &[(u32, u8)], h: &mut [f64; NACC], na: usize) {
+        for &(u, m) in act {
             let un = &self.unidades[u as usize];
             if m == DEL_ESTADO {
                 if u != 0 {
@@ -245,9 +258,35 @@ impl Propia {
                 }
             }
         }
-        self.vs = self.valor(&act);
-        self.ahora = s;
-        self.activas = act;
+    }
+
+    /// repaso al dormir: un paso sin huellas (`d` ya trae el error TD, la fracción y el peso)
+    pub fn repasar(&mut self, act: &[(u32, u8)], d: f64, probs: &[f64; NACC], a: usize, na: usize, c: &Config) {
+        if act.is_empty() {
+            return;
+        }
+        let n = act.len() as f64;
+        let ac = c.aprende_propio_critico / n * d;
+        let aa = c.aprende_propio_actor / n * d;
+        for &(u, m) in act {
+            let un = &mut self.unidades[u as usize];
+            if m == DEL_ESTADO {
+                un.v += ac;
+                if u != 0 {
+                    for b in 0..na {
+                        un.w[b] += aa * ((b == a) as u8 as f64 - probs[b]);
+                    }
+                }
+            } else {
+                let mut g = if a < 5 && m >> a & 1 == 1 { 1.0 } else { 0.0 };
+                for b in 0..5 {
+                    if m >> b & 1 == 1 {
+                        g -= probs[b];
+                    }
+                }
+                un.w[0] += aa * g;
+            }
+        }
     }
 
     /// V propio de s2 (para el error TD)
@@ -317,17 +356,25 @@ impl Propia {
         }
         let ac = c.aprende_propio_critico / n * delta;
         let aa = c.aprende_propio_actor / n * delta;
+        let t = self.t;
         for &u in &self.huella {
             let u = u as usize;
             let un = &mut self.unidades[u];
             let e = &self.ew[u];
-            if un.mover {
-                un.w[0] += aa * e[0];
+            // ritmo por unidad: las selectivas (raras) aprenden más rápido por vez, hasta RITMO_RARO veces
+            let r = if c.ritmo_raro > 1.0 {
+                let frec = (un.veces as f64 / (t - un.nace).max(1) as f64).max(1e-9);
+                (c.tope_activa / frec).sqrt().clamp(1.0, c.ritmo_raro)
             } else {
-                un.v += ac * self.ev[u];
+                1.0
+            };
+            if un.mover {
+                un.w[0] += r * aa * e[0];
+            } else {
+                un.v += r * ac * self.ev[u];
                 if u != 0 {
                     for b in 0..na {
-                        un.w[b] += aa * e[b];
+                        un.w[b] += r * aa * e[b];
                     }
                 }
             }

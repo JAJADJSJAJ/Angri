@@ -91,6 +91,8 @@ MADUREZ_PROPIO = 3000         # pasos antes de poder reiniciar una unidad
 APRENDE_PROPIO_ACTOR = 0.2    # (se divide por cuántas unidades están activas; 0,1-0,2 andan, 0,5 o más empeora)
 APRENDE_PROPIO_CRITICO = 0.5
 TOPE_ACTIVA = 0.2             # una unidad activa más que esto no distingue nada: se reinicia primero
+REPASO_PROPIO = True          # el sueño también repasa las unidades propias (medido: ayuda)
+RITMO_RARO = 1                # ritmo por unidad: una rara aprende hasta esto veces más rápido (3 y 10 probados: no cambia el malestar)
 
 # --- Mente ---
 MENTE = 'aprende'             # "aprende" (etapa 2), o "azar" (vieja mente.py)

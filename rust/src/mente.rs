@@ -422,6 +422,8 @@ pub struct Ganglios {
     pub dopamina: f64,
     pub ultimo: Option<Momento>,
     pub propia: Option<crate::propia::Propia>, // etapa 14
+    /// (con REPASO_PROPIO) lo que sintió en s y en s2 del último paso, para el hipocampo
+    pub ultimo_sentir: Option<(crate::propia::Sentir, crate::propia::Sentir)>,
 }
 
 impl Ganglios {
@@ -431,7 +433,7 @@ impl Ganglios {
             w: vec![0.0; N_RASGOS], exp_w: vec![0; N_RASGOS], lugares: Default::default(),
             huella_v: vec![], huella_w: vec![0.0; N_RASGOS], activo: vec![false; N_RASGOS],
             activos: vec![], prediccion: None, s: None, a: 0, rasgos: Rasgos::default(),
-            probs: [0.0; NACC], temp: [0.0; NACC], necesidad: 0, dopamina: 0.0, ultimo: None, propia: None,
+            probs: [0.0; NACC], temp: [0.0; NACC], necesidad: 0, dopamina: 0.0, ultimo: None, propia: None, ultimo_sentir: None,
         }
     }
 
@@ -566,7 +568,11 @@ impl Ganglios {
                 let dr = self.recuerdo(n, pos);
                 let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, 4, tacto, clima);
                 let v2 = *self.v.get(&s2).unwrap_or(&0.0) + p.valor_de(&at);
-                recompensa + c.serotonina * v2 - (v + p.vs)
+                let d = recompensa + c.serotonina * v2 - (v + p.vs);
+                if c.repaso_propio {
+                    self.ultimo_sentir = Some((p.ahora().clone(), at));
+                }
+                d
             }
         };
         self.dopamina = delta;
@@ -613,12 +619,23 @@ impl Ganglios {
         }
     }
 
-    pub fn repasar(&mut self, m: &Momento, fraccion: f64, c: &Config) -> f64 {
+    pub fn repasar(&mut self, m: &Momento, sentir: Option<&(crate::propia::Sentir, crate::propia::Sentir)>,
+                   fraccion: f64, c: &Config) -> f64 {
         let na = m.rasgos.na as usize;
         let mut h = [0.0f64; NACC];
         for b in 0..na {
             h[b] = psum(m.rasgos.de(b).iter().map(|&i| self.w[i as usize]));
         }
+        // (etapa 14) las unidades propias de ese momento
+        let propio = match (&self.propia, sentir) {
+            (Some(p), Some((s, s2))) => {
+                let act = p.activas_de(s);
+                p.sumar(&act, &mut h, na);
+                let (vp, vp2) = (p.valor(&act), p.valor_de(s2));
+                Some((act, vp, vp2))
+            }
+            _ => None,
+        };
         let mut mx = h[0];
         for b in 1..na {
             if m.rasgos.puede(b) && h[b] > mx {
@@ -634,9 +651,19 @@ impl Ganglios {
         let z = psum(e[..na].iter().copied());
         let rho = if c.importancia { c.tope_importancia.min((e[m.a] / z) / m.p) } else { 1.0 };
         let vs = *self.v.get(&m.s).unwrap_or(&0.0);
-        let delta = m.r + c.serotonina * *self.v.get(&m.s2).unwrap_or(&0.0) - vs;
+        let delta = match &propio {
+            None => m.r + c.serotonina * *self.v.get(&m.s2).unwrap_or(&0.0) - vs,
+            Some((_, vp, vp2)) => m.r + c.serotonina * (*self.v.get(&m.s2).unwrap_or(&0.0) + vp2) - (vs + vp),
+        };
         let ritmo = Self::ritmo(c.aprende_critico, *self.exp_v.get(&m.s).unwrap_or(&0), c);
         self.v.insert(m.s, vs + fraccion * rho * ritmo * delta);
+        if let (Some((act, _, _)), Some(p)) = (&propio, &mut self.propia) {
+            let mut probs = [0.0f64; NACC];
+            for b in 0..na {
+                probs[b] = e[b] / z;
+            }
+            p.repasar(act, fraccion * rho * delta, &probs, m.a, na, c);
+        }
         if !c.repaso_actor {
             return delta;
         }
@@ -699,16 +726,25 @@ impl Ganglios {
 // ------------------------------------------------------------------ hipocampo
 pub struct Hipocampo {
     dia: std::collections::VecDeque<Momento>,
+    /// (etapa 14, con REPASO_PROPIO) lo que sintió en cada momento del día, en paralelo a `dia`
+    sentires: std::collections::VecDeque<(crate::propia::Sentir, crate::propia::Sentir)>,
 }
 
 impl Hipocampo {
     pub fn new() -> Hipocampo {
-        Hipocampo { dia: Default::default() }
+        Hipocampo { dia: Default::default(), sentires: Default::default() }
     }
-    pub fn anotar(&mut self, m: Momento, c: &Config) {
+    pub fn anotar(&mut self, m: Momento, sentir: Option<(crate::propia::Sentir, crate::propia::Sentir)>,
+                  c: &Config) {
         self.dia.push_back(m);
+        if let Some(s) = sentir {
+            self.sentires.push_back(s);
+        }
         if self.dia.len() as i64 > c.capacidad_dia {
             self.dia.pop_front();
+            if self.sentires.len() as i64 > c.capacidad_dia {
+                self.sentires.pop_front();
+            }
         }
     }
     /// usa el MISMO azar que los ganglios (en Python comparten el objeto).
@@ -728,11 +764,14 @@ impl Hipocampo {
             let pesos: Vec<f64> = dia.iter().map(|m| c.prioridad_base + m.r.abs()).collect();
             let k = c.repasos as usize * dia.len();
             let elegidos = g.rng.choices_pesos(&pesos, k);
+            let parejo = self.sentires.len() == dia.len();
             for i in elegidos {
-                g.repasar(&dia[i], c.aprende_repaso, c);
+                let s = if parejo { self.sentires.get(i) } else { None };
+                g.repasar(&dia[i], s, c.aprende_repaso, c);
             }
         }
         self.dia.clear();
+        self.sentires.clear();
     }
 }
 
@@ -741,8 +780,8 @@ crate::pieza!(Quimica { adenosina, cortisol, dopamina, noradrenalina, previo });
 crate::pieza!(Momento { s, rasgos, a, r, s2, pos, necesidad, p, temp });
 crate::pieza!(Lugares { v });
 crate::pieza!(Ganglios { rng, v, exp_v, w, exp_w, lugares, huella_v, huella_w, activo, activos, prediccion,
-                        s, a, rasgos, probs, temp, necesidad, dopamina, ultimo, propia });
-crate::pieza!(Hipocampo { dia });
+                        s, a, rasgos, probs, temp, necesidad, dopamina, ultimo, propia, ultimo_sentir });
+crate::pieza!(Hipocampo { dia, sentires });
 
 /// Rasgos: solo los índices usados de cada acción (el resto es relleno).
 impl crate::guardar::Pieza for Rasgos {

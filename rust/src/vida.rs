@@ -292,7 +292,7 @@ impl Angri {
             }
             if let Some(h) = &mut self.hipocampo {
                 if let Some(m) = self.mente.ultimo {
-                    h.anotar(m, c);
+                    h.anotar(m, self.mente.ultimo_sentir.take(), c);
                 }
             }
         }

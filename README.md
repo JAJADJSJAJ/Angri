@@ -969,7 +969,16 @@ Para probar: `angri comparar 200000 256 "MUNDO=bosque" "MUNDO=bosque OBJETOS=Tru
 - **Velocidad**: ~42.000 ticks/s con `propios` (~170.000 con la mano y objetos).
 - Pruebas: `config-propios` en determinismo, retomar (cortar, guardar y seguir da la misma vida) y referencia; las 8 configs anteriores no cambiaron. Mente guardada: `angri-rust-mente 3`.
 
-**Sigue** (ver `docs/proxima-etapa.md`): que el sueño repase las unidades propias, ritmo por unidad (que las selectivas aprendan más rápido que las que están casi siempre), más parámetros y vidas más largas (¿la propia alcanza a la mano con 1 M de ticks?).
+### Segunda vuelta: ritmo por unidad, sueño y vidas largas (medido en el i5)
+
+Las mediciones largas ahora corren en el i5 por SSH (`~/medir/Angri`, aparte de la instalación; Angri sigue apagada), así la PC queda libre. La vida es la misma bit a bit en las dos máquinas.
+
+- **Ritmo por unidad** (`RITMO_RARO`: las raras aprenden hasta 3 o 10 veces más rápido): no cambia el malestar (+0,004 ± 0,007 en la grilla); solo baja algo las heridas. Queda apagado (1).
+- **El sueño repasa las unidades propias** (`REPASO_PROPIO`, prendido por defecto con `RASGOS` propios o ambos): el hipocampo guarda lo que sintió en cada momento (antes y después) y al dormir repasa también las unidades, con el mismo peso por importancia. Grilla: malestar 0,168 → 0,158 (z −2,1), menos hambre.
+- **Bosque con objetos** (96 pares de 200.000 ticks, mano contra propios con repaso): malestar 0,395 contra 0,497 (antes del repaso 0,516); duerme en refugio propio **13 % contra 3 %**.
+- **Vidas de 1 M de ticks** (24 pares): la mano no mejora con los años (~0,45) y la propia sí, de 0,519 en el año 3 a 0,487 en el año 10. **La diferencia baja de 0,089 a ~0,04 y deja de ser clara** (z ≈ 1,2 desde el año 6). Duerme en refugio propio el **29 % contra 2,6 %** (z 6,3). Come la mitad y se desmaya más (508 contra 377).
+
+**Sigue**: la propia todavía come menos. Probar bancos más grandes (16.384+, ahora que el i5 mide), vidas de varios millones de ticks y que las unidades aprendan también de lo que predicen (no solo del error TD).
 
 Para probar: `angri comparar 200000 96 "MUNDO=bosque OBJETOS=True" "MUNDO=bosque OBJETOS=True RASGOS=propios" -j 12`.
 

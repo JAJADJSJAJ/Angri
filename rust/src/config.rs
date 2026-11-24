@@ -61,11 +61,13 @@ pub struct Config {
     // mente que arma sus rasgos (etapa 14)
     pub propia: bool, pub rasgos_mano: bool, pub propios: i64, pub nuevos_por_tick: i64,
     pub reemplazo_cada: i64, pub reemplazo_fraccion: f64, pub madurez_propio: i64,
-    pub aprende_propio_actor: f64, pub aprende_propio_critico: f64, pub tope_activa: f64,
+    pub aprende_propio_actor: f64, pub aprende_propio_critico: f64, pub tope_activa: f64, pub ritmo_raro: f64,
+    pub repaso_propio: bool,
 }
 
 /// Claves que pueden faltar (configs viejas): valen lo de por defecto.
-const OPCIONALES: [(&str, &str); 18] = [
+const OPCIONALES: [(&str, &str); 20] = [
+    ("RITMO_RARO", "1"), ("REPASO_PROPIO", "True"),
     ("TOPE_ACTIVA", "0.2"),
     ("RASGOS", "'mano'"), ("PROPIOS", "4096"), ("NUEVOS_POR_TICK", "4"), ("REEMPLAZO_CADA", "100"),
     ("REEMPLAZO_FRACCION", "0.01"), ("MADUREZ_PROPIO", "3000"), ("APRENDE_PROPIO_ACTOR", "0.2"),
@@ -286,7 +288,8 @@ impl Config {
             propios: c.i("PROPIOS"), nuevos_por_tick: c.i("NUEVOS_POR_TICK"),
             reemplazo_cada: c.i("REEMPLAZO_CADA").max(1), reemplazo_fraccion: c.f("REEMPLAZO_FRACCION"),
             madurez_propio: c.i("MADUREZ_PROPIO"), aprende_propio_actor: c.f("APRENDE_PROPIO_ACTOR"),
-            aprende_propio_critico: c.f("APRENDE_PROPIO_CRITICO"), tope_activa: c.f("TOPE_ACTIVA"),
+            aprende_propio_critico: c.f("APRENDE_PROPIO_CRITICO"), tope_activa: c.f("TOPE_ACTIVA"), ritmo_raro: c.f("RITMO_RARO"),
+            repaso_propio: c.b("REPASO_PROPIO") && c.b("HIPOCAMPO"),
         }
     }
 }
