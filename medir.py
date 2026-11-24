@@ -72,6 +72,8 @@ def una_vida(semilla, ticks):
         "novedades": novedades,
         "suenos": a.suenos,
         "% hambre": 100 * hambre / ticks,
+        # vida trabada: pasa más del 60 % con hambre (queda encerrada lejos de la comida)
+        "% trabadas": 100.0 * (hambre / ticks > 0.6),
         "encuentra": st.mean(tardanzas) if tardanzas else 0.0,
         "ronda vieja": st.mean(rondas) if rondas else 0.0,
         **_lenguaje(a, ticks),

@@ -31,13 +31,14 @@ SEROTONINA = 0.95             # γ: cuánto mira al futuro
 APRENDE_CRITICO = 0.1
 APRENDE_ACTOR = 0.06
 HUELLA = 0.8                  # λ: cuánto tiempo atrás llega el crédito de la dopamina
+FRANJAS = 4                   # en cuántas franjas ve el crítico la energía y la integridad (8 y 16 probadas: no mejoran)
 CALMA = 1e12                  # experiencia a partir de la cual aprende más despacio (1e12 = apagado: probado con 2000, empeora)
 APRENDE_MINIMO = 0.1          # nunca aprende menos que esta fracción (el mundo cambia)
 UMBRAL_RECUERDO = 1e9         # alivio para recordar un lugar (1e9 = apagado: probado con 2.0, empeora)
 RECUERDO_DECAE = 0.9995       # por tick: los recuerdos se desvanecen
 TEMPERATURA_BASE = 0.3        # exploración de fondo
 TEMPERATURA_SORPRESA = 0.5    # la noradrenalina sube la exploración
-TEMPERATURA_MALESTAR = 2.0    # cuanto peor la pasa, más explora
+TEMPERATURA_MALESTAR = 8.0    # cuanto peor la pasa, más explora (etapa 10: 2 -> 8, saca a las vidas trabadas)
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
 DOLOR = 3.0                   # castigo directo por lastimarse (no pasa por el malestar: no se satura)
 RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)

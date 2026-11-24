@@ -283,7 +283,8 @@ habla el maestro no cambiaron nada fuera del ruido.
 6. 🔶 Lenguaje: entiende frases (mejora) y compone palabras aprendidas por sorpresa (ajustado: mejor versión, hambre 29 → 13 %); ya en español (etapa 7)
 7. 🔶 Hablar: Angri pide con una palabra. Por dopamina no aprende qué pedir (34–39 %); **escuchando sí (100 %)**, pero pedir todavía no mejora la vida (etapa 8, apagado)
 8. 🔶 Maestro ciego (etapa 9): no sabe qué necesita Angri; pedir no mejora (apagado)
-9. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
+9. ✅ Vidas trabadas (etapa 10): explorar más cuando la pasa mal las saca (malestar 0,179 → 0,144)
+10. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
 
 ## Etapa 6d: cierre del lenguaje (composición, cambio de significado, barrido, memoria)
 
@@ -504,6 +505,51 @@ esa necesidad con esa palabra.
 
 Config final sin cambios de comportamiento: `PIDE=False, MAESTRO_CIEGO=False, PROB_HABLA=0.1` →
 **malestar 0,179 · hambre 28 % (128 vidas)**.
+
+## Etapa 10: vidas trabadas (prendido: malestar 0,179 → 0,144)
+
+**El problema.** Con 128 vidas, el 17 % pasa más del 60 % del tiempo con hambre (mediana del malestar 0,153,
+promedio 0,179: esas vidas arrastran el promedio). Nueva métrica en `medir.py`: `% trabadas`.
+
+**Qué les pasa** (mirando semillas una por una):
+- No es mala suerte del arranque: de las 22 trabadas, 13 comieron en los primeros 150 ticks. Solo 2 no comieron
+  nunca y quedaron quietas (la energía llega a 0 en unos 350 ticks si no encuentra comida).
+- Comen al principio y después pasan **decenas de miles de ticks sin comer**, aunque se mueven: quedan
+  **encerradas en un rincón** (las 4 columnas del borde, la cama) y **nunca ven comida** (0 veces en 15.000
+  ticks). En 10.000 ticks visitan 26–54 de 336 celdas, cuando una caminata al azar recorrería todo.
+- Saben ir a la comida cuando la ven (peso +1,2), pero en 14 de las 22 trabadas el peso de "voy adonde me dijeron"
+  es **negativo** (en las sanas, positivo), y lo mismo con "voy adonde una vez me sentí bien". Aprendieron a
+  alejarse de lo que las llevaría a la comida. Con la energía en el piso el malestar casi no cambia: no hay señal
+  para desaprenderlo, y con poca exploración nunca salen de ahí.
+
+**Arreglos probados** (128 pares contra la base; negativo = mejor):
+
+| cambio | malestar B−A | z | hambre B−A | trabadas % |
+|---|---|---|---|---|
+| `FRANJAS=8` (crítico ve la energía más fino) | −0,008 | −0,9 | −4,2 | 17 → 8,6 |
+| `FRANJAS=16` | +0,005 | +0,5 | +1,6 | 17 → 20 |
+| `HUELLA=0.9` (crédito más largo) | +0,010 | +1,0 | +1,8 | 17 → 16 |
+| `HUELLA=0.95` | **+0,063** | +5,2 | +19,4 | 17 → 39 |
+| `TEMPERATURA_MALESTAR=3` | −0,025 | −2,7 | −9,8 | 17 → 8,6 |
+| `TEMPERATURA_MALESTAR=4` | −0,033 | −3,9 | −12,7 | 17 → 5,5 |
+| `TEMPERATURA_MALESTAR=4, FRANJAS=8` | −0,024 | −2,7 | −9,3 | 17 → 6,3 |
+| `TEMPERATURA_MALESTAR=4, TEMPERATURA_BASE=0.2` | −0,021 | −2,5 | −7,9 | 17 → 10,9 |
+| `TEMPERATURA_MALESTAR=6` | −0,029 | −3,4 | −10,8 | 17 → 6,3 |
+| **`TEMPERATURA_MALESTAR=8`** | **−0,040** | **−5,3** | **−16,5** | **17 → 1,6** |
+| `TEMPERATURA_MALESTAR=12` | −0,037 | −4,9 | −15,7 | 17 → 3,9 (heridas 6,5 → 11,3) |
+| `TEMPERATURA_MALESTAR=16` | −0,038 | −4,8 | −18,2 | 17 → 2,3 (heridas → 13,5) |
+| `TEMPERATURA_MALESTAR=24` | −0,035 | −4,4 | −17,1 | 17 → 1,6 (heridas → 17,3) |
+
+Confirmación, **512 pares, `TEMPERATURA_MALESTAR=8`**: malestar 0,179 → **0,144** (−0,035 ± 0,004, z −8,7);
+malestar final 0,132 → 0,109; hambre 27,4 → **13,3 %**; trabadas 15,6 → **3,9 %**; comidas +19 %; encuentra
+la fuente nueva 22 % antes. Costo: se lastima más (heridas 6,7 → 10,0 por vida).
+
+- **Funcionó:** cuando la pasa mal, explorar mucho más. Es lo que ya decía la idea original ("si lo de siempre no
+  funciona, probar otra cosa", antídoto contra la indefensión aprendida), pero con 2 era demasiado poco para
+  sacarla del rincón. Arriba de 8 ya no mejora y se lastima más.
+- **No funcionó:** que el crítico vea más fino (8 o 16 franjas) ni alargar la huella del crédito (0,95 empeora
+  mucho: el crédito se reparte entre demasiados pasos).
+- Queda prendido `TEMPERATURA_MALESTAR=8`. Nueva base: **malestar 0,144 · hambre 13,3 % (512 vidas)**.
 
 ## Reglas del proyecto
 

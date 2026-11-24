@@ -94,7 +94,7 @@ def _direccion(dx, dy):
 
 
 def _franja(x):
-    return min(int(x * 4), 3)
+    return min(int(x * C.FRANJAS), C.FRANJAS - 1)
 
 
 class Ganglios:
