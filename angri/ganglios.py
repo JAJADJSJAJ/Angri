@@ -17,7 +17,7 @@ Actor-crítico tabular guiado por dopamina:
 """
 import ast
 import math
-import random
+from angri.azar import Azar
 
 from . import config as C
 from .mundo import COMIDA, DESCANSO, NOVEDAD, PELIGRO
@@ -128,7 +128,7 @@ def _franja(x):
 
 class Ganglios:
     def __init__(self, semilla=None, estado=None):
-        self.rng = random.Random(semilla)
+        self.rng = Azar(semilla)
         self.V = {}                    # crítico: situación resumida -> valor esperado
         self.w = [0.0] * N_RASGOS      # actor: peso de cada rasgo
         self.exp_V = {}                # experiencia: cuántas veces vivió cada situación

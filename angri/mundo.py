@@ -3,7 +3,7 @@
   ·  vacío       *  comida      ~  zona de descanso
   ?  algo nuevo  X  peligro     A  Angri
 """
-import random
+from angri.azar import Azar
 
 from . import config as C
 
@@ -12,7 +12,7 @@ VACIO, COMIDA, DESCANSO, NOVEDAD, PELIGRO = "·", "*", "~", "?", "X"
 
 class Mundo:
     def __init__(self, semilla=None):
-        self.rng = random.Random(semilla)
+        self.rng = Azar(semilla)
         self.fuentes = []
         self.tiempo = 0
         self.cambio = None

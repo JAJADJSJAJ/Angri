@@ -21,7 +21,7 @@ sentido se pone en su lugar real (dirección y distancia): olfato de comida
 (8). El tacto y la temperatura llegan por el cuerpo.
 """
 import math
-import random
+from angri.azar import Azar
 
 from . import config as C
 
@@ -40,7 +40,7 @@ TOPE = {"fruta": 24, "baya": 10, "nuez": 14, "raiz": 14}
 
 class Bosque:
     def __init__(self, semilla=None):
-        self.rng = random.Random(semilla)
+        self.rng = Azar(semilla)
         self.ancho, self.alto = C.BOSQUE_ANCHO, C.BOSQUE_ALTO
         self.tiempo = 0
         self.cambio = None          # (interfaz de Mundo: el bosque no muda fuentes)

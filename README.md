@@ -731,6 +731,36 @@ Conclusión: la mente actual (rasgos hechos a mano sobre la celda de destino y "
 2. **Etapa 14**: mente que arma sus propios rasgos (lo que mostró el bosque que falta).
 3. Después: 13b (objetos con física), mundo más grande (256×256, más animales), lenguaje aprendido del usuario y más tarde internet.
 
+## Versión 2 del azar (PCG32 propio)
+
+Todo el azar sale de `angri/azar.py`: PCG32 (XSH RR) sembrado con splitmix64,
+con `random`, `randrange`, `randint`, `choice`, `choices`, `sample` y `shuffle`
+definidos a mano. Es público y simple, así que la misma vida se puede correr
+igual en Python y en Rust. Reemplaza a `random.Random` en bosque, ganglios,
+maestro, mente, mundo y Habla.
+
+- **Las cifras cambian** respecto de las vidas viejas (misma semilla, otra suerte).
+  Comparaciones de antes de este cambio no se mezclan con las de después.
+- **Una mente guardada con `random.Random` (la del i5) ya no es compatible**:
+  `memoria.py` la puede leer, pero sigue con el azar viejo y no da la misma vida
+  que una nueva. No se tocó; si se quiere pasar al azar nuevo, hay que empezarla de cero.
+- `memoria.py` guarda los sets ordenados: su orden de iteración dependía de la
+  historia y hacía fallar `probar_retomar.py` aunque la vida fuera igual.
+  `probar_retomar.py` da IDÉNTICO en la grilla (semillas 0 y 1) y en el bosque.
+
+Línea base nueva (`medir.py 50000 12 -j 12`):
+
+| métrica | grilla | bosque |
+|---|---|---|
+| malestar | 0,120 | 0,348 |
+| mal. final | 0,109 | 0,274 |
+| heridas | 7,5 | 34,2 |
+| comidas | 632 | 544 |
+| % hambre | 6,7 | 36,7 |
+| % mal alto | 0,23 | 40,1 |
+| entiende % | 96,4 | 91,0 |
+| desmayos | — | 8,3 |
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

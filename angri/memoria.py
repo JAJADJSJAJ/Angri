@@ -7,7 +7,7 @@ da exactamente la misma vida que no haber cortado nunca.
 
 Codificación (JSON legible, Python puro):
   tupla        -> {"$t": [...]}
-  set          -> {"$s": [...]}            (en su orden de iteración)
+  set          -> {"$s": [...]}            (ordenado si se puede)
   dict raro    -> {"$d": [[k, v], ...]}     (claves no-str o que empiezan con $)
   random       -> {"$rng": estado}
   objeto       -> {"$o": "modulo.Clase", "a": {atributos}}
@@ -51,6 +51,15 @@ def _atributos(obj):
     return obj.__dict__
 
 
+def _ordenado(conjunto):
+    """Sets en orden fijo: su orden de iteración depende de la historia de
+    inserciones y cambia al recargar, aunque el contenido sea el mismo."""
+    try:
+        return sorted(conjunto)
+    except TypeError:
+        return list(conjunto)
+
+
 def _a_json(obj, vistos, ids):
     if isinstance(obj, _ATOMOS):
         return obj
@@ -67,7 +76,7 @@ def _a_json(obj, vistos, ids):
     if isinstance(obj, tuple):
         return {"$t": [rec(x) for x in obj]}
     if isinstance(obj, (set, frozenset)):
-        return {**marca, "$s": [rec(x) for x in obj]}
+        return {**marca, "$s": [rec(x) for x in _ordenado(obj)]}
     if isinstance(obj, dict):
         if not marca and all(isinstance(k, str) and not k.startswith("$") for k in obj):
             return {k: rec(v) for k, v in obj.items()}

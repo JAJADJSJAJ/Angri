@@ -15,7 +15,7 @@ Con MAESTRO_MIENTE=True el maestro dice palabras al azar: es el control para
 saber si lo que ayuda es el contenido o solo oír algo.
 """
 import math
-import random
+from angri.azar import Azar
 
 from . import config as C
 from .ganglios import ALIVIA, NECESIDADES_BASE as NECESIDADES
@@ -31,7 +31,7 @@ N_PALABRAS = 8  # 4 direcciones + 3 cosas + 1 que nunca se usa ("che")
 
 class Maestro:
     def __init__(self, semilla=None):
-        self.rng = random.Random(None if semilla is None else semilla + 7)
+        self.rng = Azar(None if semilla is None else semilla + 7)
         orden = list(range(N_PALABRAS))
         self.rng.shuffle(orden)
         # significado secreto (solo el maestro lo sabe): palabra -> índice

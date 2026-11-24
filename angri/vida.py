@@ -7,7 +7,7 @@ solo cuando se limpió. Nadie le dice cuándo.
 import csv
 import json
 import os
-import random
+from .azar import Azar
 import time
 
 from . import config as C
@@ -60,7 +60,7 @@ class Angri:
         self.oido.restaurar(guardado.get("oido"))
         if self.maestro:
             self.maestro.restaurar(guardado.get("maestro"))
-        self.habla = Habla(random.Random(None if semilla is None else semilla + 11), self.maestro) if self.maestro and C.PIDE else None
+        self.habla = Habla(Azar(None if semilla is None else semilla + 11), self.maestro) if self.maestro and C.PIDE else None
         if self.habla:
             self.habla.restaurar(guardado.get("habla"))
 

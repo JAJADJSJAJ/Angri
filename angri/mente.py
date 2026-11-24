@@ -5,7 +5,7 @@ tipo "reflejo" (como un bebé: se acerca a lo que alivia su necesidad urgente
 si lo tiene justo al lado). Esto es lo que se reemplaza en la etapa 2 por un
 actor-crítico guiado por dopamina.
 """
-import random
+from angri.azar import Azar
 
 from .config import REFLEJOS
 from .mundo import COMIDA, DESCANSO, NOVEDAD, PELIGRO
@@ -22,7 +22,7 @@ ALIVIA = {
 
 class Mente:
     def __init__(self, semilla=None):
-        self.rng = random.Random(semilla)
+        self.rng = Azar(semilla)
         self.prediccion = None  # qué espera encontrar en el próximo paso
 
     def elegir(self, vista, necesidad):
