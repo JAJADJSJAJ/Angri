@@ -7,8 +7,10 @@
 //! bits) y redondean una sola vez al final, así que dan el double más cercano al
 //! valor exacto salvo casos rarísimos (y, sobre todo, lo mismo en todos lados).
 //! Comprobado contra el valor exacto (80 dígitos) en 4.640 casos donde la de
-//! Windows difería: la de acá era siempre la correcta. Cuesta: la vida corre
-//! ~330.000 ticks/s en la grilla (antes ~540.000 con la del sistema).
+//! Windows difería: la de acá era siempre la correcta. exp (la que se usa en
+//! cada tick) tiene una vía rápida en doubles con cota de error y cae en la
+//! lenta solo cuando la cota no alcanza: misma respuesta, casi la velocidad de
+//! la del sistema (~500.000 ticks/s en la grilla, contra ~550.000).
 //! Rango que usa Angri: exp de x ≤ 0 (softmax: x − máximo), sin/cos de ángulos
 //! chicos (el río y las rocas del bosque), pow de base en (0, 1] con exponente
 //! entero ≥ 0 (el rastro del predador).
@@ -179,7 +181,8 @@ fn tablas() -> &'static TablasExp {
     })
 }
 
-pub fn exp(x: f64) -> f64 {
+/// exp lenta y segura (doble-doble entero): la que decide cuando la rápida no puede.
+fn exp_lenta(x: f64) -> f64 {
     if x.is_nan() {
         return x;
     }
@@ -209,6 +212,46 @@ pub fn exp(x: f64) -> f64 {
     let ki = k as i64;
     let (m, j) = (ki.div_euclid(64), ki.rem_euclid(64) as usize);
     escalar(p.por(t.dos[j]), m)
+}
+
+/// exp(x) correctamente redondeada. Vía rápida en doubles con una cota de error
+/// rigurosa (< 2^-62 relativo): si la cota alcanza para saber a qué double
+/// redondea el valor exacto, devuelve ese; si no (≈1 de cada 500 o menos), usa
+/// la lenta. Las dos dan el redondeo correcto, así que dan los mismos bits: la
+/// vida no cambia (lo prueban `rapida_igual_a_lenta` y la referencia).
+pub fn exp(x: f64) -> f64 {
+    if !(x > -708.0 && x < 709.0) || x == 0.0 {
+        return exp_lenta(x); // NaN, infinitos, subnormales, desbordes y exp(0)
+    }
+    let t = tablas();
+    let k = (x * (64.0 / LN2[0])).round_ties_even();
+    // r = x − k·ln2/64 con Cody–Waite: c1 tiene los 20 bits bajos en cero, así que
+    // k·c1 es exacto (|k| < 2^17) y x − k·c1 también (Sterbenz)
+    let c = LN2[0] / 64.0;
+    let c1 = f64::from_bits(c.to_bits() & !0xfffff);
+    let c2 = c - c1; // exacto, ≤ 20 bits: k·c2 exacto
+    let hi = x - k * c1;
+    let a = k * c2;
+    let (rh, rl) = dos_sumas(hi, -a);
+    // normalizado (|rl| ≤ ulp(rh)/2): si no, los términos cruzados rh²·rl se salen de la cota
+    let (rh, rl) = dos_sumas(rh, rl - k * (LN2[1] / 64.0) - k * (LN2[2] / 64.0));
+    // exp(r) − 1 sin el término lineal: q = r²/2 + r³/6 + ... + r⁶/720
+    let q = rh * rh * (0.5 + rh * (1.0 / 6.0 + rh * (1.0 / 24.0 + rh * (1.0 / 120.0 + rh * (1.0 / 720.0)))));
+    let ki = k as i64;
+    let (m, j) = (ki.div_euclid(64), ki.rem_euclid(64) as usize);
+    let Dd(th, tl) = t.dos[j];
+    // exp(x)/2^m = th + th·rh + [th·(rl + q + rh·rl) + tl·(1 + rh)]
+    let (u, ue) = dos_productos(th, rh);
+    let resto = ue + (th * (rl + q + rh * rl) + tl * (1.0 + rh));
+    let (s, e2) = dos_sumas(th, u);
+    let cola = e2 + resto;
+    let y = s + cola;
+    let e3 = cola - (y - s);
+    let cota = s * (1.0 / 4611686018427387904.0); // 2^-62
+    if y + (e3 + cota) != y || y + (e3 - cota) != y {
+        return exp_lenta(x);
+    }
+    y * dos_a_la(m as i32) // -1022 ≤ m ≤ 1023 en este rango: exacto
 }
 
 /// sin y cos de r reducido (|r| ≤ π/4), en doble-doble.
@@ -310,6 +353,21 @@ mod pruebas {
     }
 
     #[test]
+    fn rapida_igual_a_lenta() {
+        // la rápida y la lenta tienen que dar los mismos bits siempre
+        let mut r = crate::azar::Azar::new(7);
+        for i in 0..4_000_000 {
+            let x = match i % 4 {
+                0 => -10.0 * r.random(),
+                1 => -745.0 * r.random(),
+                2 => 709.0 * r.random() - 0.5,
+                _ => (r.random() - 0.5) * 1e-3,
+            };
+            assert_eq!(exp(x).to_bits(), exp_lenta(x).to_bits(), "exp({x:?})");
+        }
+    }
+
+    #[test]
     fn cerca_de_la_del_sistema() {
         // a lo sumo 1 ulp de la biblioteca de C (que tampoco es exacta siempre)
         let mut r = crate::azar::Azar::new(1);
@@ -323,5 +381,18 @@ mod pruebas {
             let n = r.randrange(0, 500) as f64;
             assert!(ulps(pow(b, n), b.powf(n)) <= 1, "pow({b}, {n})");
         }
+    }
+}
+
+/// Prueba larga (a mano: cargo test --release -- --ignored larga --nocapture):
+/// 50 millones de exp rápidas contra la lenta, en lo que usa Angri y en todo el rango.
+#[cfg(test)]
+#[test]
+#[ignore]
+fn larga_rapida_igual_a_lenta() {
+    let mut r = crate::azar::Azar::new(11);
+    for i in 0..50_000_000u64 {
+        let x = if i % 2 == 0 { -60.0 * r.random() } else { 1417.0 * r.random() - 708.0 };
+        assert_eq!(exp(x).to_bits(), exp_lenta(x).to_bits(), "exp({x:?})");
     }
 }

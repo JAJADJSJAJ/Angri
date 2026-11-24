@@ -803,8 +803,15 @@ que dan el double correcto y lo mismo en todos lados. Comprobado contra el valor
 exacto (80 dígitos) en 4.640 casos en que la de Windows difería: la propia
 acertaba siempre (la de Windows, además, redondea dos veces en los subnormales).
 `cargo test` pasa igual en Windows y en el i5. Cambió la vida (a propósito: la
-referencia se regeneró el 24/11/2026, ya no es la de Python) y cuesta velocidad:
-~330.000 ticks/s en la grilla y ~250.000 en el bosque (antes 540.000 y 374.000).
+referencia se regeneró el 24/11/2026, ya no es la de Python). Al principio
+costaba velocidad (330.000 ticks/s en la grilla); `exp`, la que se usa en cada
+tick, ahora tiene una vía rápida en doubles con una cota de error rigurosa
+(< 2^-62): si la cota alcanza para saber el redondeo, devuelve ese; si no, usa
+la lenta. Como las dos dan el redondeo correcto, dan los mismos bits: la
+referencia pasó sin regenerarla, y `rapida_igual_a_lenta` (4 millones, y 50
+millones en la prueba larga `cargo test --release -- --ignored larga`) lo
+comprueba. Velocidad: ~500.000 ticks/s en la grilla y ~360.000 en el bosque
+(con la matemática del sistema eran 550.000 y 385.000).
 
 **Uso** (desde `rust/`, después de `cargo build --release`; `angri` = `target/release/angri`):
 
@@ -853,7 +860,7 @@ no muestra "dice"/"oye" (Rust no guarda las palabras como texto).
 | `azar_splitmix64`, `azar_pcg32` | splitmix64, PCG32, `random`, `randrange`, `randint`, `choice`, `shuffle`, `sample` y `choices` con pesos dan los valores anotados de la versión en Python |
 | `determinismo` | misma semilla y config = misma traza, misma mente y mismas métricas dos veces; otra semilla, otra vida |
 | `retomar` | cortar (en el tick 1, a la mitad o en uno cualquiera), guardar a disco, cargar y seguir = no cortar: misma traza tick a tick, misma mente final, misma foto |
-| `valores_conocidos`, `cerca_de_la_del_sistema` | `exp`, `sin`, `cos`, `pow` propias: valores exactos conocidos (subnormales incluidos) y a lo sumo 1 ulp de la del sistema |
+| `valores_conocidos`, `cerca_de_la_del_sistema`, `rapida_igual_a_lenta` | `exp`, `sin`, `cos`, `pow` propias: valores exactos conocidos (subnormales incluidos), a lo sumo 1 ulp de la del sistema, y la `exp` rápida da los mismos bits que la lenta |
 | `referencia` | la vida no se mueve sin querer: huella (FNV-1a) de la traza de 20.000 ticks, de la foto final y las métricas, 3 semillas por config, contra `rust/pruebas/referencia.txt` |
 
 Las 7 configs de prueba (`rust/pruebas/config-*.txt`, copias de la config con
@@ -889,10 +896,10 @@ Velocidad (un proceso, esta PC):
 
 | | Python (antes) | Rust | veces |
 |---|---|---|---|
-| grilla | 8.700 ticks/s | 330.000 ticks/s | 38× |
-| bosque | 5.900 ticks/s | 250.000 ticks/s | 42× |
+| grilla | 8.700 ticks/s | 500.000 ticks/s | 57× |
+| bosque | 5.900 ticks/s | 360.000 ticks/s | 61× |
 
-(Con la matemática del sistema eran 540.000 y 374.000; ver "Misma vida en cualquier máquina".)
+(Con la matemática del sistema eran 550.000 y 385.000; ver "Misma vida en cualquier máquina".)
 
 `angri comparar 300000 24 "" "MUNDO=bosque" -j 12` tarda unos 5 s; 256 pares
 de 300.000 ticks, alrededor de un minuto.
