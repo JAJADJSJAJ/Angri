@@ -81,6 +81,7 @@ def _rasgos(vista, necesidad, dir_comida, dir_objetivo, dir_recuerdo, a, palabra
 
 
 N_PALABRAS = 8
+_RITMOS = {}  # caché de _ritmo
 N_RASGOS = 97 + N_PALABRAS * N_PALABRAS * 5 + 5
 
 
@@ -115,6 +116,7 @@ class Ganglios:
                 self.lugares[n] = {ast.literal_eval(k): f for k, f in lugares.items()}
         self.huella_V = {}             # huellas de elegibilidad: lo reciente
         self.huella_w = [0.0] * N_RASGOS  # se lleva crédito por lo que vino después
+        self._activos = set()  # rasgos que alguna vez tuvieron huella
         self.prediccion = None
         self._s = None
         self._a = None
@@ -131,7 +133,12 @@ class Ganglios:
     def _ritmo(self, base, experiencia):
         """Cuánto aprende: mucho de lo nuevo, poco de lo que ya vivió mil veces
         (pero nunca cero: el mundo cambia)."""
-        return max(base * C.APRENDE_MINIMO, base / math.sqrt(1 + experiencia / C.CALMA))
+        clave = (base, experiencia)
+        r = _RITMOS.get(clave)
+        if r is None:  # se calcula una vez por (ritmo, experiencia) y se guarda
+            r = _RITMOS[clave] = max(base * C.APRENDE_MINIMO,
+                                     base / math.sqrt(1 + experiencia / C.CALMA))
+        return r
 
     def _recuerdo(self, necesidad, pos):
         """Dirección al lugar recordado más atractivo (fuerte y cerca) para esta necesidad."""
@@ -205,8 +212,11 @@ class Ganglios:
             ritmo = self._ritmo(C.APRENDE_CRITICO, self.exp_V.get(k, 0))
             self.V[k] = self.V.get(k, 0.0) + ritmo * delta * e
         # actor: gradiente de softmax (sube lo que hizo, baja lo esperado), con huella
+        # (solo recorre los rasgos que alguna vez se usaron: los demás tienen huella 0
+        #  exacta y no cambian; da idéntico y es mucho más rápido)
         hw = self.huella_w
-        for i in range(N_RASGOS):
+        activos = self._activos
+        for i in activos:
             hw[i] *= decae
         for i in self._rasgos[self._a]:
             hw[i] += 1.0
@@ -214,7 +224,8 @@ class Ganglios:
         for b, p in enumerate(self._probs):
             for i in self._rasgos[b]:
                 hw[i] -= p
-        for i in range(N_RASGOS):
+                activos.add(i)
+        for i in activos:
             self.w[i] += self._ritmo(C.APRENDE_ACTOR, self.exp_w[i]) * delta * hw[i]
 
     def repasar(self, momento, fraccion):
@@ -236,13 +247,13 @@ class Ganglios:
             C.APRENDE_CRITICO, self.exp_V.get(s, 0)) * delta
         if not C.REPASO_ACTOR:
             return delta
-        grad = [0.0] * N_RASGOS
+        grad = {}  # solo los rasgos que tocan (mismas cuentas, en el mismo orden)
         for i in rasgos[a]:
-            grad[i] += 1.0
+            grad[i] = grad.get(i, 0.0) + 1.0
         for b, x in enumerate(e):
             for i in rasgos[b]:
-                grad[i] -= x / z
-        for i, g in enumerate(grad):
+                grad[i] = grad.get(i, 0.0) - x / z
+        for i, g in grad.items():
             if g:
                 self.w[i] += fraccion * rho * self._ritmo(C.APRENDE_ACTOR, self.exp_w[i]) * delta * g
         return delta

@@ -40,7 +40,7 @@ En una prueba de 20.000 ticks durmió 21 veces y terminó con un malestar de 0,1
 ## Vara de medir
 
 `python medir.py` corre 5 vidas de 50.000 ticks reproducibles (semillas 0–4) sin tocar `datos/`.
-Con `azar` o `reflejos` al final se mide la mente vieja. Para ablaciones: `python medir.py 50000 16 PESO_CURIOSIDAD=0`. El mundo está calibrado para que sin cerebro **sufra**:
+Con `azar` o `reflejos` al final se mide la mente vieja. Para ablaciones: `python medir.py 50000 16 PESO_CURIOSIDAD=0`. Con `-j 12` reparte las vidas en 12 procesos (da idéntico). `python comparar.py 50000 512 "" "PIDE=True" -j 12` compara en pares (misma semilla con A y con B) y da B−A con su error estándar y z. El mundo está calibrado para que sin cerebro **sufra**:
 poca comida (tope de 10) y 5 peligros que deambulan.
 
 | Mente (5–8 vidas × 50.000 ticks) | Malestar | Malestar final (último 20 %) | % tiempo con hambre |
@@ -282,7 +282,8 @@ habla el maestro no cambiaron nada fuera del ruido.
 5. 🔶 Tálamo y espacio global: necesidades compiten por el foco (hecho y medido; apagado porque no mejora)
 6. 🔶 Lenguaje: entiende frases (mejora) y compone palabras aprendidas por sorpresa (ajustado: mejor versión, hambre 29 → 13 %); ya en español (etapa 7)
 7. 🔶 Hablar: Angri pide con una palabra. Por dopamina no aprende qué pedir (34–39 %); **escuchando sí (100 %)**, pero pedir todavía no mejora la vida (etapa 8, apagado)
-8. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
+8. 🔶 Maestro ciego (etapa 9): no sabe qué necesita Angri; pedir no mejora (apagado)
+9. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
 
 ## Etapa 6d: cierre del lenguaje (composición, cambio de significado, barrido, memoria)
 
@@ -446,6 +447,63 @@ pide bien 100 %**; maestro habla solo → 0,156 · 19,6 % · 100 %. (`UMBRAL_ESC
   falta un maestro que **no** sepa lo que Angri necesita (que solo se entere si le piden).
 
 Config final: igual que la etapa 7 (`PIDE=False`) → malestar 0,137, hambre 12,6 %.
+
+## Etapa 9: maestro ciego, medición corregida y velocidad
+
+**Error de medición grande.** Con 128 vidas, la versión actual da **malestar 0,179 · hambre 28 %**, no 0,137 ·
+12,6 %. Las vidas son bimodales (algunas quedan trabadas con hambre; mediana 0,153) y las semillas 0–31 tenían
+suerte. Con 32 vidas el error estándar es ~0,013 y el ruido entre corridas llega a ~0,04: **los resultados de las
+etapas 6–8 con 32 vidas tienen que leerse con eso en mente**. Cambios desde acá:
+- `medir.py` muestra error estándar (e.e.) y mediana; `-j N` reparte las vidas en N procesos.
+- `comparar.py`: comparación en pares con la misma semilla, B−A ± e.e. y z (|z| > 2 = diferencia real). Las vidas
+  divergen rápido, así que el emparejamiento ayuda poco: lo que manda es la cantidad de vidas (512 → e.e. ~0,005).
+- El maestro hace siempre los mismos sorteos por tick (pedir ya no cambia el resto de la vida), y `Habla` tiene
+  rng propio (etapa 8).
+
+**Velocidad (resultados idénticos, cifra por cifra):** el actor solo actualiza los rasgos que alguna vez usó
+(antes recorría los 422 en cada tick, ~320 nunca se usan), el repaso del sueño también, y `_ritmo` se guarda
+en caché. Una vida de 50.000 ticks pasa de ~13 s a ~5 s; con `-j 12`, 128 vidas tardan ~1 min.
+PyPy (probado, 3.12 v8.0.1) da solo 1,4× más, y no reproduce las cifras de CPython (suma de decimales distinta):
+CPython sigue siendo la referencia.
+
+**Maestro ciego** (`MAESTRO_CIEGO=True`): cuando habla por su cuenta, nombra una cosa al azar; no sabe qué necesita
+Angri. Solo pidiendo se entera. Como lo que oye ya no está correlacionado con lo que siente, se agregó aprender
+**por alivio** (`ESCUCHA_ALIVIO`): si oyó una palabra y en los `VENTANA_ALIVIO` ticks siguientes se le alivia una
+necesidad (baja del déficit > `UMBRAL_ALIVIO`; dormir alivia de a 0,01 por tick, de ahí el umbral 0,005), asocia
+esa necesidad con esa palabra.
+
+128 pares contra la base (malestar 0,179; negativo = mejor):
+
+| B | malestar | B−A | z | pide bien % |
+|---|---|---|---|---|
+| sabe, contesta solo si pide, escucha | 0,160 | −0,019 | −2,1 | 100 |
+| sabe, habla solo, escucha | 0,162 | −0,017 | −1,9 | 100 |
+| sabe, habla solo, dopamina | 0,161 | −0,018 | −2,0 | 37 |
+| sabe, contesta solo si pide, dopamina | 0,163 | −0,016 | −1,9 | 37 |
+| sabe, contesta solo si pide, al azar | 0,189 | +0,010 | +1,1 | 33 |
+| ciego, no pide | 0,185 | +0,006 | +0,6 | – |
+| ciego, contesta solo si pide, alivio (umbral 0,005 / 0,1 / ventana 200) | 0,182 / 0,185 / 0,184 | ≈ +0,005 | ≈ +0,5 | 41 |
+| ciego, contesta solo si pide, al azar | 0,183 | +0,004 | +0,5 | 33 |
+| ciego, habla solo, alivio | 0,164 | −0,015 | −1,7 | 33 |
+
+512 pares (el control que decide):
+
+| B | malestar B−A | z | hambre B−A | z |
+|---|---|---|---|---|
+| **maestro habla el doble** (`PROB_HABLA=0.2`), no pide | −0,010 | −2,1 | −4,4 | −2,5 |
+| pide escuchando, contesta solo si pide | −0,008 | −1,9 | −2,5 | −1,5 |
+| pide por dopamina, maestro habla solo | −0,013 | −2,8 | −4,2 | −2,6 |
+
+- **Lo que ayuda es la cantidad de palabras, no pedir bien.** Pedir por dopamina (37 % de aciertos) mejora lo
+  mismo que pedir escuchando (100 %), y que el maestro hable el doble sin que Angri pida mejora igual. Pedir no
+  agrega nada propio: las diferencias entre las tres están dentro del ruido.
+- **El maestro ciego no funcionó:** aprender por alivio llega a 41 % (azar 33 %), porque lo que se le alivia
+  después de oír depende de mucho más que de la palabra; pedirle a un maestro ciego no mejora nada.
+- Nada se prende: las mejoras son ~2σ y ninguna es de pedir. Que el maestro hable más es un cambio del mundo,
+  no del cerebro; queda documentado (`PROB_HABLA=0.2`: −0,010).
+
+Config final sin cambios de comportamiento: `PIDE=False, MAESTRO_CIEGO=False, PROB_HABLA=0.1` →
+**malestar 0,179 · hambre 28 % (128 vidas)**.
 
 ## Reglas del proyecto
 

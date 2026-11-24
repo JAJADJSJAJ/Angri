@@ -106,7 +106,14 @@ class Angri:
                 self.oido.ver(self.mundo.vecindad(self.x, self.y), (self.x, self.y))
             sorpresa = self.mente.sorpresa(aqui)
             encontrado = aqui
+            if self.habla:
+                antes = {k: abs(self.cuerpo.v[k] - C.EQUILIBRIO[k]) for k in self.cuerpo.v}
             self._interactuar(aqui)
+            if self.habla:
+                baja = {k: antes[k] - abs(self.cuerpo.v[k] - C.EQUILIBRIO[k]) for k in antes}
+                n = max(baja, key=baja.get)
+                if baja[n] > C.UMBRAL_ALIVIO and n in self.habla.assoc:
+                    self.habla.aliviado(n, self.edad)
 
         self.cuerpo.vivir(self.despierto, se_movio)
         malestar_antes = self._malestar

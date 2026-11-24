@@ -108,6 +108,12 @@ TEMPERATURA_ESCUCHA = 0.1
 UMBRAL_ESCUCHA = 0.2          # si ninguna palabra llega a esto, todavía no pide
 MAESTRO_INICIO = 0            # con SOLO_SI_PIDE: ticks del principio en que igual habla solo
 PROB_ESPONTANEO = 0.2         # con SOLO_SI_PIDE: prob. de hablar solo (por la PROB_HABLA ya filtrada)
+# --- Etapa 9: maestro ciego (no sabe qué necesita Angri) ---
+MAESTRO_CIEGO = False         # cuando habla por su cuenta, habla de una cosa al azar
+ESCUCHA_OIDO = True           # aprende necesidad->palabra de lo que siente cuando oye (etapa 8)
+ESCUCHA_ALIVIO = False        # aprende de qué se le alivió después de oír una palabra
+VENTANA_ALIVIO = 60           # ticks entre oír y aliviarse para asociarlos
+UMBRAL_ALIVIO = 0.005         # cuánto tiene que bajar el déficit para contar como alivio
 FRASE = False                 # rasgo por (par de palabras oídas juntas, movimiento)
 
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---

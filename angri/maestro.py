@@ -69,15 +69,18 @@ class Maestro:
         por esa cosa aunque no sea lo que Angri más necesita."""
         self.edad = edad
         self.objetivo = None
+        # siempre los mismos sorteos: así pedir o no pedir no cambia el resto de la vida
+        u_esp, u_habla, u_cosa = self.rng.random(), self.rng.random(), self.rng.randrange(3)
         cosa = {p: c for c, p in self.palabra_cosa.items()}.get(pedido)
         if cosa is not None:
             objetivo = cosa
         elif C.MAESTRO_SOLO_SI_PIDE and not (
-                self.edad < C.MAESTRO_INICIO or self.rng.random() < C.PROB_ESPONTANEO):
+                self.edad < C.MAESTRO_INICIO or u_esp < C.PROB_ESPONTANEO):
             return []  # (salvo al principio o de vez en cuando: así Angri oye antes de pedir)
         else:
-            objetivo = ALIVIA.get(necesidad)
-            if objetivo is None or self.rng.random() >= C.PROB_HABLA:
+            # maestro ciego: no sabe qué necesita Angri, habla de cualquier cosa
+            objetivo = COSAS[u_cosa] if C.MAESTRO_CIEGO else ALIVIA.get(necesidad)
+            if objetivo is None or u_habla >= C.PROB_HABLA:
                 return []
         if C.COMPOSICION and objetivo != (COMIDA if self.edad < C.COMPOSICION else DESCANSO):
             return []  # prueba de composición: primero solo comida, después solo cama
@@ -128,6 +131,8 @@ class Habla:
         # palabra cuando siente eso (Rescorla-Wagner, como el léxico)
         self.assoc = {n: [0.0] * 3 for n in NECESIDADES}
         self.oidas = 0
+        self.edad = 0
+        self.ultima = None  # (palabras de cosa oídas, edad): para aprender por alivio
         self.dicho = None
         self.pedidos = []  # (pidió lo correcto para su necesidad, edad)
 
@@ -151,7 +156,10 @@ class Habla:
 
     def escuchar(self, frase, cuerpo, foco, pedido):
         """El maestro habló: refuerza necesidad -> palabra de cosa que oyó (sorpresa)."""
-        if not C.ESCUCHA or not frase or (pedido is not None and not C.ESCUCHA_PEDIDOS):
+        if frase:
+            self.ultima = ([p in frase for p in self.opciones[:3]], self.edad)
+        if (not C.ESCUCHA or not C.ESCUCHA_OIDO or not frase
+                or (pedido is not None and not C.ESCUCHA_PEDIDOS)):
             return
         x = self._sentir(cuerpo, foco)
         oyo = [1.0 if p in frase else 0.0 for p in self.opciones[:3]]
@@ -161,8 +169,22 @@ class Habla:
                 self.assoc[n][i] += C.APRENDE_ESCUCHA * v * err
         self.oidas += 1
 
+    def aliviado(self, necesidad, edad):
+        """Se le alivió una necesidad (comió, durmió, descubrió). Si hace poco oyó una
+        palabra de cosa, esa palabra queda asociada con lo que se le alivió."""
+        if not (C.ESCUCHA and C.ESCUCHA_ALIVIO) or self.ultima is None:
+            return
+        oyo, cuando = self.ultima
+        if edad - cuando > C.VENTANA_ALIVIO:
+            return
+        a = self.assoc[necesidad]
+        for i in range(3):
+            a[i] += C.APRENDE_ESCUCHA * ((1.0 if oyo[i] else 0.0) - a[i])
+        self.ultima = None
+
     def decidir(self, necesidad, vista, edad, cuerpo=None):
         """Devuelve el índice de la palabra que dice, o None."""
+        self.edad = edad
         objetivo = ALIVIA.get(necesidad)
         if (objetivo is None or self.huella is not None
                 or any(c == objetivo for c in vista.values())

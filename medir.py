@@ -5,6 +5,7 @@
     python medir.py 50000 5 azar     -> mente vieja al azar puro (el piso)
     python medir.py 50000 5 reflejos -> mente vieja con reflejos innatos
     python medir.py 50000 8 PESO_CURIOSIDAD=0 -> cambia un número de config (ablación)
+    python medir.py 50000 32 -j 12   -> reparte las vidas en 12 procesos (mismo resultado)
 
 Cada Angri nace de cero (no toca datos/). Misma semilla = misma vida exacta,
 así dos versiones de la mente se pueden comparar en igualdad de condiciones.
@@ -110,23 +111,55 @@ def _lenguaje(a, ticks):
     return out
 
 
+_ORIGINAL = {k: v for k, v in vars(C).items() if k.isupper()}
+
+
+def _ajustar(ajustes, modo):
+    # (un proceso del Pool corre varias vidas: siempre parte de la config original)
+    for k, v in _ORIGINAL.items():
+        setattr(C, k, v)
+    M.REFLEJOS = C.REFLEJOS
+    for k, v in ajustes:
+        setattr(C, k, type(getattr(C, k))(eval(v)))
+    if modo:
+        C.MENTE = "azar"
+        C.REFLEJOS = M.REFLEJOS = modo == "reflejos"
+
+
+def _vida(tarea):
+    """Una vida en otro proceso: hay que repetir los ajustes (Windows arranca de cero)."""
+    semilla, ticks, ajustes, modo = tarea
+    _ajustar(ajustes, modo)
+    return una_vida(semilla, ticks)
+
+
 def main():
     # ajustes sueltos para ablaciones: python medir.py 50000 8 PESO_CURIOSIDAD=0
+    ajustes = []
     for arg in [a for a in sys.argv[1:] if "=" in a]:
-        k, v = arg.split("=")
-        setattr(C, k, type(getattr(C, k))(eval(v)))
+        ajustes.append(arg.split("=", 1))
         sys.argv.remove(arg)
+    procesos = 1
+    if "-j" in sys.argv:
+        i = sys.argv.index("-j")
+        procesos = int(sys.argv[i + 1])
+        del sys.argv[i:i + 2]
+    modo = next((m for m in ("azar", "reflejos") if m in sys.argv), None)
+    _ajustar(ajustes, modo)
     ticks = int(sys.argv[1]) if len(sys.argv) > 1 else 50_000
     n = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-    if "azar" in sys.argv or "reflejos" in sys.argv:
-        C.MENTE = "azar"
-        C.REFLEJOS = M.REFLEJOS = "reflejos" in sys.argv
-    vidas = [una_vida(s, ticks) for s in range(n)]
+    if procesos > 1:
+        from multiprocessing import Pool
+        with Pool(procesos) as pool:
+            vidas = pool.map(_vida, [(s, ticks, ajustes, modo) for s in range(n)], chunksize=1)
+    else:
+        vidas = [una_vida(s, ticks) for s in range(n)]
     print(f"{n} vidas de {ticks} ticks, mente: {C.MENTE if C.MENTE == 'aprende' else ('reflejos' if C.REFLEJOS else 'azar puro')}\n")
-    print(f"{'métrica':<10} {'promedio':>10} {'desvío':>9}")
+    # e.e. = error estándar del promedio (desvío/√n): diferencias menores a ~2 e.e. son ruido
+    print(f"{'métrica':<10} {'promedio':>10} {'desvío':>9} {'e.e.':>8} {'mediana':>9}")
     for k in max(vidas, key=len):
         xs = [v[k] for v in vidas if k in v]
-        print(f"{k:<10} {st.mean(xs):>10.3f} {st.pstdev(xs):>9.3f}")
+        print(f"{k:<10} {st.mean(xs):>10.3f} {st.pstdev(xs):>9.3f} {st.pstdev(xs) / len(xs) ** 0.5:>8.3f} {st.median(xs):>9.3f}")
 
 
 if __name__ == "__main__":
