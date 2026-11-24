@@ -5,7 +5,9 @@
 
 Por cada semilla corre la vida en Python y en Rust (rust/target/release/angri)
 y compara, cada tick: posición, si está despierto, malestar, cada variable del
-cuerpo, adenosina y dopamina (los bits del float, no un redondeo). Después
+cuerpo, adenosina, dopamina, noradrenalina y confianza en el maestro (los bits
+del float, no un redondeo), el foco del tálamo, cuántas veces pidió y cuántas
+apuestas del léxico comprobó. Después
 compara las métricas de medir.una_vida.
 """
 import json
@@ -13,7 +15,8 @@ import struct
 import sys
 
 from angri import config as C
-from angri.ganglios import Ganglios
+from angri.ganglios import NECESIDADES as NOMBRES, Ganglios
+import angri.mente as M
 from angri.vida import Angri
 import medir
 
@@ -29,6 +32,10 @@ def traza_python(semilla, ticks):
         partes = [str(a.edad), str(a.x), str(a.y), str(int(a.despierto)), _bits(a.cuerpo.malestar())]
         partes += [_bits(v) for v in a.cuerpo.v.values()]
         partes += [_bits(a.quimica.adenosina), _bits(a.mente.dopamina if isinstance(a.mente, Ganglios) else 0.0)]
+        partes += [_bits(a.quimica.noradrenalina), _bits(a.oido.confianza)]
+        foco = a.talamo.foco if a.talamo and a.talamo.foco else None
+        partes += [str(NOMBRES.index(foco) if foco else -1),
+                   str(len(a.habla.pedidos) if a.habla else 0), str(len(a.oido.aciertos))]
         yield " ".join(partes)
 
 
@@ -37,6 +44,7 @@ def main():
         k, v = arg.split("=", 1)
         setattr(C, k, type(getattr(C, k))(eval(v)))
         sys.argv.remove(arg)
+    M.REFLEJOS = C.REFLEJOS  # (mente.py lo importa al cargar)
     ticks = int(sys.argv[1]) if len(sys.argv) > 1 else 20000
     semillas = int(sys.argv[2]) if len(sys.argv) > 2 else 3
     todo_bien = True

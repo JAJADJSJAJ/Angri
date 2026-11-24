@@ -4,12 +4,17 @@
 //!   angri vida SEMILLA TICKS   < config  -> métricas en JSON (una línea)
 //!   angri traza SEMILLA TICKS  < config  -> una línea por tick (para comparar con Python)
 //!   angri velocidad SEMILLA TICKS < config -> ticks/s
+//!   angri retomar SEMILLA TICKS < config  -> cortar, guardar, cargar y seguir da IDÉNTICO
+//!   angri vivir [--carpeta DIR] ...        -> vida continua (ver vivir.rs)
 mod azar;
 mod config;
+mod extra;
+mod guardar;
 mod lenguaje;
 mod mente;
 mod mundo;
 mod vida;
+mod vivir;
 
 use config::Config;
 use mente::*;
@@ -157,10 +162,35 @@ fn una_vida(semilla: u64, ticks: i64, c: &Config) -> String {
         let n = ac.len();
         let tramo: Vec<bool> = ac[(n as f64 * 0.8) as usize..].iter().map(|x| x.0).collect();
         let nuevas: Vec<bool> = ac[n / 5..].iter().filter(|x| x.1).map(|x| x.0).collect();
+        if let Some(h) = &a.habla {
+            if !h.pedidos.is_empty() {
+                let ped = &h.pedidos;
+                let mut tramo_p: Vec<bool> = ped.iter().filter(|p| p.1 as f64 >= tk * 0.8).map(|p| p.0).collect();
+                if tramo_p.is_empty() {
+                    tramo_p = ped.iter().map(|p| p.0).collect();
+                }
+                f("pide bien %", num(100.0 * media_bool(&tramo_p)));
+                f("pedidos", ped.len().to_string());
+            }
+        }
         f("entiende %", num(100.0 * media_bool(&tramo)));
         f("confianza", num(a.oido.confianza));
         if !nuevas.is_empty() {
             f("frase nueva %", num(100.0 * media_bool(&nuevas)));
+        }
+        if c.composicion != 0 {
+            if let Some(ic) = a.oido.indice_composicion {
+                let nuevas: Vec<bool> = ac[ic..].iter().filter(|x| x.1).map(|x| x.0).take(20).collect();
+                f("examen %", num(100.0 * media_bool(&a.oido.examen)));
+                f("compone n", nuevas.len().to_string());
+                f("compone ok", nuevas.iter().filter(|&&b| b).count().to_string());
+            }
+        }
+        if c.cambio_significado != 0 {
+            if let Some(i) = a.oido.indice_cambio {
+                let tramo: Vec<bool> = ac[i.min(n)..(i + 100).min(n)].iter().map(|x| x.0).collect();
+                f("reaprende %", num(if tramo.is_empty() { 0.0 } else { 100.0 * media_bool(&tramo) }));
+            }
         }
     }
     let partes: Vec<String> = o.iter().map(|(k, v)| format!("\"{}\": {}", k, v)).collect();
@@ -178,14 +208,50 @@ fn traza(semilla: u64, ticks: i64, c: &Config) {
             l += &format!(" {:016x}", a.cuerpo.v[k].to_bits());
         }
         l += &format!(" {:016x} {:016x}", a.quimica.adenosina.to_bits(), a.mente.dopamina.to_bits());
+        l += &format!(" {:016x} {:016x}", a.quimica.noradrenalina.to_bits(), a.oido.confianza.to_bits());
+        let foco = a.talamo.as_ref().and_then(|t| t.foco).map_or(-1, |f| f as i64);
+        let pedidos = a.habla.as_ref().map_or(0, |h| h.pedidos.len());
+        l += &format!(" {} {} {}", foco, pedidos, a.oido.aciertos.len());
         writeln!(out, "{l}").unwrap();
     }
 }
 
+/// Prueba de retomar (como probar_retomar.py): una vida de un tirón contra la
+/// misma vida cortada a la mitad, guardada a disco, cargada y seguida.
+fn retomar(semilla: u64, ticks: i64, c: &Config) -> bool {
+    let mut a = Angri::new(semilla, c);
+    for _ in 0..ticks {
+        a.tick(c);
+    }
+    let mut b = Angri::new(semilla, c);
+    for _ in 0..ticks / 2 {
+        b.tick(c);
+    }
+    let ruta = std::env::temp_dir().join(format!("angri-retomar-{}-{semilla}.txt", std::process::id()));
+    guardar::escribir_archivo(&ruta, &b.volcar()).expect("no pude guardar");
+    drop(b);
+    let texto = std::fs::read_to_string(&ruta).expect("no pude leer");
+    let _ = std::fs::remove_file(&ruta);
+    let mut cc = Angri::desde_texto(&texto);
+    for _ in 0..ticks - ticks / 2 {
+        cc.tick(c);
+    }
+    let (ja, jc) = (a.volcar(), cc.volcar());
+    println!("{} ticks, semilla {}: edad {}/{}, malestar {:.6}/{:.6}, mente {} bytes",
+             ticks, semilla, a.edad, cc.edad, a.malestar(c), cc.malestar(c), ja.len());
+    let igual = ja == jc;
+    println!("{}", if igual { "IDÉNTICO" } else { "DISTINTO" });
+    igual
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(|s| s.as_str()) == Some("vivir") {
+        return vivir::vivir(&args[2..]);
+    }
     if args.len() < 4 {
-        eprintln!("uso: angri vida|traza|velocidad SEMILLA TICKS  < config");
+        eprintln!("uso: angri vida|traza|velocidad|retomar SEMILLA TICKS  < config");
+        eprintln!("     angri vivir [--carpeta DIR] [--ticks N] [--semilla S] [--ventana W] [--guardar G]");
         std::process::exit(1);
     }
     let semilla: u64 = args[2].parse().expect("semilla");
@@ -196,6 +262,11 @@ fn main() {
     match args[1].as_str() {
         "vida" => println!("{}", una_vida(semilla, ticks, &c)),
         "traza" => traza(semilla, ticks, &c),
+        "retomar" => {
+            if !retomar(semilla, ticks, &c) {
+                std::process::exit(1);
+            }
+        }
         "velocidad" => {
             let t0 = std::time::Instant::now();
             let mut a = Angri::new(semilla, &c);

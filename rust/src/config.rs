@@ -40,6 +40,21 @@ pub struct Config {
     pub adenosina_por_actividad: f64, pub adenosina_limpieza_sueno: f64, pub umbral_dormir: f64,
     pub umbral_despertar: f64, pub cortisol_sube: f64, pub cortisol_baja: f64,
     pub malestar_maximo: f64,
+    // mente vieja (mente.py)
+    pub mente_azar: bool, pub reflejos: bool,
+    // corteza (etapa 3)
+    pub corteza: bool, pub aprende_corteza: f64, pub escala_error_malestar: f64,
+    pub curiosidad_rapido: f64, pub curiosidad_lento: f64, pub peso_curiosidad: f64,
+    // tálamo (etapa 5)
+    pub talamo: bool, pub ganancia_urgencia: f64, pub temperatura_foco: f64,
+    pub inercia_foco: f64, pub aprende_talamo: f64,
+    // lenguaje
+    pub palabra_suelta: bool, pub frase: bool, pub memoria_palabra: i64, pub maestro_miente: bool,
+    pub holistico: bool, pub cambio_significado: i64, pub composicion: i64,
+    pub pide: bool, pub pide_azar: bool, pub temperatura_habla: f64, pub aprende_habla: f64,
+    pub ventana_habla: i64, pub escucha: bool, pub escucha_cuerpo: bool, pub escucha_pedidos: bool,
+    pub aprende_escucha: f64, pub temperatura_escucha: f64, pub umbral_escucha: f64,
+    pub escucha_oido: bool, pub escucha_alivio: bool, pub ventana_alivio: i64, pub umbral_alivio: f64,
 }
 
 pub const NOMBRES: [&str; 7] = ["energia", "cansancio", "curiosidad", "estres", "integridad", "agua", "calor"];
@@ -87,16 +102,14 @@ impl Config {
             }
         }
         let c = Crudo(m);
-        // lo que el núcleo en Rust no tiene: tiene que estar apagado
-        for k in ["CORTEZA", "TALAMO", "PIDE", "PALABRA_SUELTA", "FRASE", "MAESTRO_MIENTE",
-                  "HOLISTICO", "CAMBIO_SIGNIFICADO", "COMPOSICION"] {
-            if c.b(k) {
-                eprintln!("angri (rust): {k} no está portado a Rust; corré sin --rust");
-                std::process::exit(2);
-            }
+        let mente = c.txt("MENTE");
+        if mente != "aprende" && mente != "azar" {
+            eprintln!("angri (rust): MENTE={mente} no existe");
+            std::process::exit(2);
         }
-        if c.txt("MENTE") != "aprende" {
-            eprintln!("angri (rust): solo MENTE='aprende' está portada");
+        if c.b("PIDE") && c.b("MAESTRO") && c.txt("MUNDO") == "bosque" {
+            // (en Python tampoco anda: Habla usa EQUILIBRIO, que no tiene agua ni calor)
+            eprintln!("angri (rust): PIDE no funciona en el bosque");
             std::process::exit(2);
         }
         let mut equilibrio = [0.0; 7];
@@ -160,6 +173,23 @@ impl Config {
             adenosina_limpieza_sueno: c.f("ADENOSINA_LIMPIEZA_SUENO"), umbral_dormir: c.f("UMBRAL_DORMIR"),
             umbral_despertar: c.f("UMBRAL_DESPERTAR"), cortisol_sube: c.f("CORTISOL_SUBE"),
             cortisol_baja: c.f("CORTISOL_BAJA"), malestar_maximo: c.f("MALESTAR_MAXIMO"),
+            mente_azar: mente == "azar", reflejos: c.b("REFLEJOS"),
+            corteza: c.b("CORTEZA"), aprende_corteza: c.f("APRENDE_CORTEZA"),
+            escala_error_malestar: c.f("ESCALA_ERROR_MALESTAR"), curiosidad_rapido: c.f("CURIOSIDAD_RAPIDO"),
+            curiosidad_lento: c.f("CURIOSIDAD_LENTO"), peso_curiosidad: c.f("PESO_CURIOSIDAD"),
+            talamo: c.b("TALAMO"), ganancia_urgencia: c.f("GANANCIA_URGENCIA"),
+            temperatura_foco: c.f("TEMPERATURA_FOCO"), inercia_foco: c.f("INERCIA_FOCO"),
+            aprende_talamo: c.f("APRENDE_TALAMO"),
+            palabra_suelta: c.b("PALABRA_SUELTA"), frase: c.b("FRASE"), memoria_palabra: c.i("MEMORIA_PALABRA"),
+            maestro_miente: c.b("MAESTRO_MIENTE"), holistico: c.b("HOLISTICO"),
+            cambio_significado: c.i("CAMBIO_SIGNIFICADO"), composicion: c.i("COMPOSICION"),
+            pide: c.b("PIDE"), pide_azar: c.b("PIDE_AZAR"), temperatura_habla: c.f("TEMPERATURA_HABLA"),
+            aprende_habla: c.f("APRENDE_HABLA"), ventana_habla: c.i("VENTANA_HABLA"), escucha: c.b("ESCUCHA"),
+            escucha_cuerpo: c.b("ESCUCHA_CUERPO"), escucha_pedidos: c.b("ESCUCHA_PEDIDOS"),
+            aprende_escucha: c.f("APRENDE_ESCUCHA"), temperatura_escucha: c.f("TEMPERATURA_ESCUCHA"),
+            umbral_escucha: c.f("UMBRAL_ESCUCHA"), escucha_oido: c.b("ESCUCHA_OIDO"),
+            escucha_alivio: c.b("ESCUCHA_ALIVIO"), ventana_alivio: c.i("VENTANA_ALIVIO"),
+            umbral_alivio: c.f("UMBRAL_ALIVIO"),
         }
     }
 }

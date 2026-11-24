@@ -196,10 +196,19 @@ impl Quimica {
 pub const MOVIMIENTOS: [(i64, i64); 5] = [(0, -1), (0, 1), (-1, 0), (1, 0), (0, 0)];
 const N_RASGOS: usize = 507;
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub struct Rasgos {
-    pub idx: [[u16; 8]; 5],
+    pub idx: [[u16; MAXR]; 5],
     pub n: [u8; 5],
+}
+
+/// rasgos por acción: 8 de siempre + 8 de PALABRA_SUELTA + 28 de FRASE
+pub const MAXR: usize = 44;
+
+impl Default for Rasgos {
+    fn default() -> Rasgos {
+        Rasgos { idx: [[0; MAXR]; 5], n: [0; 5] }
+    }
 }
 
 impl Rasgos {
@@ -222,7 +231,7 @@ pub struct Momento {
     pub temp: [f64; 5],
 }
 
-fn hacia(vista: &Vista, objetivo: u8) -> usize {
+pub fn hacia(vista: &Vista, objetivo: u8) -> usize {
     if objetivo == 255 {
         return 4;
     }
@@ -250,7 +259,8 @@ fn direccion(dx: i64, dy: i64) -> usize {
     } else if dx < 0 { 2 } else { 3 }
 }
 
-fn rasgos_de(vista: &Vista, n: usize, dc: usize, d_o: usize, dr: usize, a: usize, dd: usize, out: &mut [u16; 8]) -> u8 {
+fn rasgos_de(vista: &Vista, n: usize, dc: usize, d_o: usize, dr: usize, a: usize, dd: usize,
+             palabras: &[usize], c: &Config, out: &mut [u16; MAXR]) -> u8 {
     let destino = vista.get(MOVIMIENTOS[a]).unwrap_or(ROCA) as usize;
     let mut k = 0usize;
     let mut push = |x: usize| {
@@ -274,6 +284,14 @@ fn rasgos_de(vista: &Vista, n: usize, dc: usize, d_o: usize, dr: usize, a: usize
         if a == dr { push(45 + n); }
         push(50 + destino);
         if a == 4 { push(56); }
+        if c.palabra_suelta {
+            for &p in palabras { push(57 + p * 5 + a); }
+        }
+        if c.frase {
+            for (i, &p) in palabras.iter().enumerate() {
+                for &q in &palabras[i + 1..] { push(97 + (p * 8 + q) * 5 + a); }
+            }
+        }
         if a == dd { push(417 + n); }
     }
     k as u8
@@ -371,13 +389,13 @@ impl Ganglios {
     }
 
     pub fn elegir(&mut self, vista: &Vista, cuerpo: &[f64; 7], n: usize, pos: (i64, i64),
-                  noradrenalina: f64, malestar: f64, dicha: usize, c: &Config) -> (i64, i64) {
+                  noradrenalina: f64, malestar: f64, palabras: &[usize], dicha: usize, c: &Config) -> (i64, i64) {
         let dc = hacia(vista, COMIDA);
         let d_o = hacia(vista, alivia(n));
         let dr = self.recuerdo(n, pos);
         let mut rasgos = Rasgos::default();
         for a in 0..5 {
-            rasgos.n[a] = rasgos_de(vista, n, dc, d_o, dr, a, dicha, &mut rasgos.idx[a]);
+            rasgos.n[a] = rasgos_de(vista, n, dc, d_o, dr, a, dicha, palabras, c, &mut rasgos.idx[a]);
         }
         let mut h = [0.0f64; 5];
         for a in 0..5 {
@@ -508,8 +526,8 @@ impl Ganglios {
             return delta;
         }
         // grad: dict en orden de inserción (cada índice se actualiza por su cuenta)
-        let mut gi: [u16; 40] = [0; 40];
-        let mut gv: [f64; 40] = [0.0; 40];
+        let mut gi: [u16; 5 * MAXR] = [0; 5 * MAXR];
+        let mut gv: [f64; 5 * MAXR] = [0.0; 5 * MAXR];
         let mut ng = 0usize;
         let mut sumar = |i: u16, x: f64, resta: bool| {
             let k = match gi[..ng].iter().position(|&j| j == i) {
@@ -597,5 +615,36 @@ impl Hipocampo {
             }
         }
         self.dia.clear();
+    }
+}
+
+crate::pieza!(Cuerpo { v, n });
+crate::pieza!(Quimica { adenosina, cortisol, dopamina, noradrenalina, previo });
+crate::pieza!(Momento { s, rasgos, a, r, s2, pos, necesidad, p, temp });
+crate::pieza!(Lugares { v });
+crate::pieza!(Ganglios { rng, v, exp_v, w, exp_w, lugares, huella_v, huella_w, activo, activos, prediccion,
+                        s, a, rasgos, probs, temp, necesidad, dopamina, ultimo });
+crate::pieza!(Hipocampo { dia });
+
+/// Rasgos: solo los índices usados de cada acción (el resto es relleno).
+impl crate::guardar::Pieza for Rasgos {
+    // (u8/u16 también son Pieza)
+    fn guardar(&self, e: &mut crate::guardar::Escritor) {
+        for a in 0..5 {
+            self.n[a].guardar(e);
+            for &i in self.de(a) {
+                i.guardar(e);
+            }
+        }
+    }
+    fn cargar(l: &mut crate::guardar::Lector) -> Self {
+        let mut r = Rasgos::default();
+        for a in 0..5 {
+            r.n[a] = u8::cargar(l);
+            for k in 0..r.n[a] as usize {
+                r.idx[a][k] = u16::cargar(l);
+            }
+        }
+        r
     }
 }

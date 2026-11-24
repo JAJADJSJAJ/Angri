@@ -761,16 +761,19 @@ Línea base nueva (`medir.py 50000 12 -j 12`):
 | entiende % | 96,4 | 91,0 |
 | desmayos | — | 8,3 |
 
-## Núcleo en Rust (misma vida, ~70× más rápido)
+## Núcleo en Rust (misma vida, ~65× más rápido)
 
-`rust/` tiene el núcleo de una vida medida portado a Rust (sin dependencias):
-grilla y bosque, cuerpo, química, ganglios, hipocampo, Maestro y Oído, y el
-`tick` de `vida.py`, con el mismo azar (PCG32 de `angri/azar.py`) y las mismas
-cuentas en `f64` en el mismo orden. Detalles que importan para que dé igual:
-`sum()` de Python 3.12 suma floats con Neumaier (Rust usa la misma suma), los
-dicts recorren en orden de inserción y `round()` redondea al par.
-`math.exp`, `sin`, `cos` y `pow` usan la misma biblioteca de C en Windows y
-dieron iguales bit a bit, así que no hizo falta una `exp` propia (en Linux no se probó).
+`rust/` (sin dependencias) tiene a Angri entera en Rust: grilla y bosque, cuerpo,
+química, ganglios, hipocampo, corteza, tálamo, Maestro, Oído (léxico, eco,
+FRASE, PALABRA_SUELTA, HOLISTICO, EGO, CAMBIO_SIGNIFICADO, COMPOSICION), Habla
+(PIDE, PIDE_AZAR, ESCUCHA*, alivio), MAESTRO_MIENTE/CIEGO, la mente vieja
+(MENTE "azar" con o sin REFLEJOS), guardar/retomar y la vida continua. Usa el
+mismo azar (PCG32 de `angri/azar.py`, compartido igual que en Python: ganglios,
+hipocampo y tálamo sacan del mismo) y las mismas cuentas en `f64` en el mismo
+orden. Para que dé igual: `sum()` de Python 3.12 suma floats con Neumaier (Rust
+usa la misma suma), los dicts recorren en orden de inserción y `round()`
+redondea al par. `math.exp`, `sin`, `cos` y `pow` usan la misma biblioteca de C
+en Windows y dieron iguales bit a bit (en Linux no se probó).
 
     cd rust && cargo build --release          (una vez, y cada vez que cambie el núcleo)
     python medir.py 50000 12 -j 12 --rust
@@ -778,27 +781,61 @@ dieron iguales bit a bit, así que no hizo falta una `exp` propia (en Linux no s
     python probar_rust.py 20000 3 MUNDO='"bosque"'   -> Rust = Python, tick a tick
 
 Python manda la config entera (con los ajustes) al binario, así que no hay
-números repetidos. Lo que no está portado (corteza, tálamo, Habla/PIDE, FRASE,
-PALABRA_SUELTA, MAESTRO_MIENTE, HOLISTICO, CAMBIO_SIGNIFICADO, COMPOSICION,
-MENTE azar) tiene que estar apagado: si no, el binario avisa y corta. **Si se
-cambia algo del núcleo en Python, hay que cambiarlo igual en Rust** y volver
-a correr `probar_rust.py`.
+números repetidos. Única excepción: PIDE en el bosque corta con un aviso
+(en Python tampoco anda: Habla usa EQUILIBRIO, que no tiene agua ni calor).
 
-Comprobado con `probar_rust.py` (posición, despierto, malestar, cada variable
-del cuerpo, adenosina y dopamina, bit a bit, cada tick; y las métricas de
-`medir.una_vida`): grilla 100.000 ticks × 4 semillas, bosque 150.000 × 4,
-bosque con `DESMAYO_DONDE="cueva_agua"` y `MAESTRO_SOLO_SI_PIDE`, grilla sin
-hipocampo, con `PELIGRO_SIN_MALESTAR=False` y `MAESTRO_CIEGO`: todo IDÉNTICO.
+**Igual a Python** (`probar_rust.py`: posición, despierto, malestar, cada
+variable del cuerpo, adenosina, dopamina, noradrenalina, confianza, foco del
+tálamo, pedidos y apuestas del léxico, bit a bit, cada tick; y todas las
+métricas de `medir.una_vida`, incluidas pide bien %, pedidos, examen %,
+compone y reaprende %). IDÉNTICO, 40.000 ticks × 3 semillas, en 21 configs:
+la actual en grilla y bosque, MENTE azar (con y sin reflejos, grilla y bosque),
+CORTEZA y TALAMO (grilla y bosque), PIDE (solo, con MAESTRO_SOLO_SI_PIDE, sin
+ESCUCHA, PIDE_AZAR, ESCUCHA_CUERPO + PEDIDOS + ALIVIO), FRASE + PALABRA_SUELTA
+(grilla y bosque), MAESTRO_MIENTE, HOLISTICO, EGO + CAMBIO_SIGNIFICADO,
+COMPOSICION y todo junto. Antes: grilla 100.000 × 4, bosque 150.000 × 4,
+`DESMAYO_DONDE="cueva_agua"`, sin hipocampo, `MAESTRO_CIEGO`.
+
+**Guardar y retomar** (`angri retomar SEMILLA TICKS < config`, la versión Rust
+de `probar_retomar.py`): corta a la mitad, guarda la mente entera a disco,
+la carga en otra Angri y sigue; da IDÉNTICO (grilla, bosque, todo prendido,
+HOLISTICO + COMPOSICION, MENTE azar; semillas 0 y 1). El formato es texto
+propio (`rust/src/guardar.rs`): cada campo con su nombre y los floats con sus
+bits exactos. No lee las mentes viejas de Python.
+
+**Vida continua** (`angri vivir`, como `vivir.py` sin panel ni foto):
+
+    python -c "import medir; print(medir.config_texto(), end='')" | rust/target/release/angri vivir --carpeta datos-rust
+    rust/target/release/angri vivir --carpeta datos-rust --ticks 1000000 --guardar 50000 --ventana 10000
+
+La config queda en `DIR/config.txt` la primera vez; la mente en `DIR/mente.txt`
+(cada `--guardar` ticks, 50.000 por defecto, escrita a .tmp y renombrada) con
+respaldos en `DIR/respaldos/` (los últimos 5 y uno por día, 30 días); si
+`mente.txt` no carga, retoma del respaldo válido más reciente (probado
+rompiéndolo a mano). Log en `DIR/vida.csv` cada `--ventana` ticks. Ctrl-C,
+Ctrl-Break y SIGTERM terminan el tick, guardan y salen (probado en Windows; en
+Linux es el mismo `signal()` de C, sin probar). Una vida de prueba de 38
+millones de ticks en la grilla anduvo a ~350.000 ticks/s con una mente de 2 MB.
 
 Velocidad (un proceso, esta PC):
 
-| mundo | Python | Rust | veces |
+| | Python | Rust | veces |
 |---|---|---|---|
-| grilla | 8.700 ticks/s | 608.000 ticks/s | 70× |
-| bosque | 5.900 ticks/s | 415.000 ticks/s | 70× |
+| grilla | 8.700 ticks/s | 540.000 ticks/s | 62× |
+| bosque | 5.900 ticks/s | 374.000 ticks/s | 63× |
+| grilla con corteza, tálamo y PIDE | — | 394.000 ticks/s | |
 
-`comparar.py 300000 24 "" "MUNDO='bosque'" -j 12 --rust` tarda 5 s; los
-256 pares de 300.000 ticks que tardaban más de una hora pasan a ser ~1 minuto.
+(Un 10 % menos que antes de portar todo: los momentos del hipocampo ahora
+guardan lugar para los rasgos de FRASE.) `comparar.py 300000 24 "" "MUNDO='bosque'" -j 12 --rust`
+tarda unos 5 s; 256 pares de 300.000 ticks, alrededor de un minuto.
+
+**Plan:** Rust pasa a ser la base. Python queda solo mientras sirve de
+comparación (paso 1 hecho: todo portado y comprobado); después se agregan
+pruebas propias de Rust (retomar, misma semilla = misma vida, una vida de
+referencia guardada) y en el paso 3 se borra Python. Hasta entonces, **si se
+cambia algo del núcleo, hay que cambiarlo igual en los dos** y correr
+`probar_rust.py`. Falta en Rust: el panel, la foto para `visor.py`,
+`vivir.py --estado` y el paquete del i5 (`deploy/` sigue con Python; no se tocó).
 
 ## Reglas del proyecto
 

@@ -123,3 +123,5 @@ fn bisect_right(a: &[f64], x: f64, hi: usize) -> usize {
     }
     lo
 }
+
+crate::pieza!(Azar { estado, inc });

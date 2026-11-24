@@ -756,3 +756,22 @@ impl Mundo {
         match self { Mundo::G(m) => &m.g, Mundo::B(b) => &b.g }
     }
 }
+
+crate::pieza!(Grilla { rng, fuentes, tiempo, cambios, cambio, g, w, h });
+crate::pieza!(Bosque { rng, w, h, tiempo, lluvia, crecida, comida, predador, harto, rastro, atacando,
+                      zona, g, rio_x, cuevas, claros, arboles, cueva_predador, inicio, agua_cerca });
+
+impl crate::guardar::Pieza for Mundo {
+    fn guardar(&self, e: &mut crate::guardar::Escritor) {
+        match self {
+            Mundo::G(m) => { e.tok("grilla"); m.guardar(e) }
+            Mundo::B(b) => { e.tok("bosque"); b.guardar(e) }
+        }
+    }
+    fn cargar(l: &mut crate::guardar::Lector) -> Self {
+        match l.tok() {
+            "grilla" => Mundo::G(Grilla::cargar(l)),
+            _ => Mundo::B(Bosque::cargar(l)),
+        }
+    }
+}
