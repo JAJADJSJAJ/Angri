@@ -3,7 +3,7 @@
     python vivir.py                  -> vive para siempre sin panel, guarda y anota
     python vivir.py --panel          -> igual, pero con panel a 10 ticks/seg
     python vivir.py --ticks N        -> vive N ticks más y se detiene (guarda al final)
-    python vivir.py --carpeta DIR    -> dónde está su mente (por defecto datos/)
+    python vivir.py --carpeta DIR    -> dónde está su mente (por defecto $ANGRI_DATOS o datos/)
     python vivir.py --semilla S      -> semilla si nace (si ya hay mente, la retoma)
     python vivir.py --ventana W      -> ticks por renglón del log (por defecto 10.000)
     python vivir.py --guardar G      -> cada cuántos ticks guarda (por defecto 50.000)
@@ -183,7 +183,8 @@ def ram_mb():
 
 def main(argv=None):
     p = argparse.ArgumentParser()
-    p.add_argument("--carpeta", default=os.path.join(os.path.dirname(__file__), "datos"))
+    p.add_argument("--carpeta", default=os.environ.get("ANGRI_DATOS") or
+                   os.path.join(os.path.dirname(os.path.abspath(__file__)), "datos"))
     p.add_argument("--ticks", type=int, default=None)
     p.add_argument("--semilla", type=int, default=None)
     p.add_argument("--ventana", type=int, default=10_000)

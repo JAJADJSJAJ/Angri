@@ -1,24 +1,30 @@
-# Angri viviendo sola (etapa 12b). Ver README, "Etapa 12b: vivir en Linux".
-# Como servicio de usuario: copiar a ~/.config/systemd/user/angri.service
-# Como servicio de sistema: copiar a /etc/systemd/system/angri.service y
-#   descomentar User= (y poner el usuario normal, nunca root).
-# En ambos casos ajustar WorkingDirectory a la carpeta del repo.
+# Angri viviendo sola en el i5 (etapa 12b). Lo instala deploy/instalar.sh.
 [Unit]
-Description=Angri: vida continua
-After=network.target
+Description=Angri - vida continua
+After=local-fs.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/Angri
-#User=angri
+User=angri
+Group=angri
+WorkingDirectory=/opt/angri/codigo
+Environment=ANGRI_DATOS=/var/lib/angri
+Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/bin/python3 -u vivir.py
 Restart=always
 RestartSec=10
-# Al parar, systemd manda SIGTERM: Angri termina el tick, guarda y sale.
+# Al parar (o al reinicio de las 05:30) systemd manda SIGTERM: Angri termina
+# el tick, guarda (~400 KB, menos de 1 s) y sale. Margen de sobra.
 KillSignal=SIGTERM
-TimeoutStopSec=60
-Nice=10
-Environment=PYTHONUNBUFFERED=1
+TimeoutStopSec=120
+# Toda la PC es suya: sin Nice ni topes. Python puro usa 1 núcleo; los otros
+# 3 quedan para mediciones (comparar.py -j 3) o etapas futuras.
+# Solo puede escribir en su carpeta
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/angri
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target

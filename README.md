@@ -630,23 +630,38 @@ Angri ya no vive vidas de 50.000 ticks que se pierden: vive sin fin en la PC.
 
 Para que viva sola en un i5 con Linux sin entorno gráfico, manejada por SSH. Solo hace falta `python3` (nada de Windows; probado en Linux: `probar_retomar.py` IDÉNTICO y `kill -TERM` guarda y retoma).
 
-**Instalar** (como usuario normal, no root):
+**Dónde vive**: el i5-4570 (Debian 13, 4 núcleos sin hyperthreading, 16 GB, sin pantalla; `angri.local`). Reemplaza al proyecto viejo de esa PC (llama.cpp/Qwen) y tiene toda la máquina: sin `Nice` ni topes de CPU/RAM. Python puro usa 1 núcleo; los otros 3 quedan libres para mediciones (`comparar.py -j 3`) o etapas futuras.
 
-    git clone <repo> ~/Angri          # o copiar la carpeta (con datos/ si ya tiene mente)
-    mkdir -p ~/.config/systemd/user
-    cp ~/Angri/deploy/angri.service ~/.config/systemd/user/
-    systemctl --user daemon-reload
-    systemctl --user enable --now angri
-    sudo loginctl enable-linger $USER  # que siga viviendo sin sesión abierta y arranque al prender
+| qué | dónde |
+|---|---|
+| usuario de sistema (sin sudo) | `angri` |
+| código | `/opt/angri/codigo` (root, solo lectura) |
+| mente, respaldos y log | `/var/lib/angri` (`ANGRI_DATOS`; `--carpeta` lo pisa) |
+| servicio | `/etc/systemd/system/angri.service` (de sistema: no hace falta linger) |
+| comando | `/usr/local/bin/angri [estado|log [N]|vivo|parar|seguir|reiniciar]` |
 
-Si el repo no está en `~/Angri`, cambiar `WorkingDirectory` en el `.service`. Como servicio de sistema: copiarlo a `/etc/systemd/system/`, poner la ruta absoluta en `WorkingDirectory`, descomentar `User=` con el usuario normal, `WantedBy=multi-user.target`, y `sudo systemctl enable --now angri` (sin `--user` ni linger).
+El servicio corre `python3 -u vivir.py` con `Restart=always`, `TimeoutStopSec=120` y la misma jaula que usaba la PC (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, solo escribe en `/var/lib/angri`).
+
+**Mudanza** (una vez, como `fran` por SSH):
+
+    # desde esta PC: copiar el repo a ~/despliegue/Angri en el i5
+    scp -r Angri fran@angri.local:despliegue/
+    ssh fran@angri.local
+    sh ~/despliegue/Angri/deploy/desinstalar-viejo.sh   # borra el proyecto viejo entero
+    sh ~/despliegue/Angri/deploy/instalar.sh            # instala y la hace nacer
+
+`desinstalar-viejo.sh` no guarda nada viejo: borra las units `angri-ciclo/angri-sueno` (servicio y timer), `angri-web`, `llama-charla/emb/dia` (y sus drop-ins), `/opt/angri` entero, el contenido de `/var/lib/angri`, `/usr/local/bin/angri`, `/etc/ld.so.conf.d/angri-llama.conf` (+ `ldconfig`), `~/llama.cpp` y `~/modelos`, e imprime lo que borró. **No toca** el usuario `angri` (se reutiliza), las actualizaciones de seguridad (unattended-upgrades y el reinicio de las 05:30: por eso el guardado en SIGTERM es imprescindible) ni la regla udev del wifi Mercusys.
+
+**Actualizar** tras cambiar el código: copiar de nuevo a `~/despliegue/Angri` y correr `instalar.sh` (para el servicio, así guarda; recopia el código, sin `__pycache__`; la mente queda y retoma, con avisos si cambiaron clases o config).
 
 **Mirarla por SSH:**
 
-    cd ~/Angri && python3 vivir.py --estado   # edad, últimas 10 ventanas, ticks/seg, RAM, último guardado, respaldos
-    systemctl --user status angri
-    journalctl --user -u angri -f             # el log en vivo (avisos incluidos)
-    systemctl --user restart angri            # tras un git pull
+    angri                      # = angri estado: edad, últimas 10 ventanas, ticks/seg, RAM, último guardado, respaldos
+    angri log 50               # journalctl -u angri (avisos incluidos)
+    angri vivo                 # el log en vivo
+    angri parar / angri seguir
+
+Para probarla en otra PC sin instalar nada: `python3 vivir.py` (usa `datos/` del repo).
 
 - **Parar es seguro**: systemd manda SIGTERM; `vivir.py` termina el tick en curso (no corta a mitad: la mente quedaría a medias), guarda y sale. Un segundo SIGTERM durante el guardado se ignora. `Restart=always` la levanta si se cae.
 - **Respaldos** en `datos/respaldos/`: cada guardado (cada 50.000 ticks y al salir) copia `mente.json` como `mente-<edad>.json` (quedan las últimas 5) y `dia-<fecha>.json` (una por día, 30 días). Si `mente.json` no carga, retoma de la copia válida más reciente y lo avisa; si ninguna carga, no hace nacer otra encima: sale con error.
