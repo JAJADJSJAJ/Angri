@@ -16,6 +16,12 @@ pub enum Evento {
     Bebe,
     Desmaya,
     Otro,
+    // (agregados después de Otro, así las mentes guardadas antes cargan igual)
+    Trabaja,
+    Duerme,
+    Despierta,
+    Nace,
+    Apagado,
 }
 
 pub struct Angri {
@@ -67,7 +73,7 @@ impl Angri {
             talamo: if aprende && c.talamo { Some(Talamo::new()) } else { None },
             maestro, habla,
             oido: Oido::new(c), mundo, x, y, despierto: true, edad: 0, suenos: 0, desmayos: 0,
-            causas: [0; 4], malestar, evento: Evento::Otro,
+            causas: [0; 4], malestar, evento: Evento::Nace,
         }
     }
 
@@ -257,7 +263,7 @@ impl Angri {
         let Mundo::B(b) = &mut self.mundo else { unreachable!() };
         match aqui {
             COMIDA => match b.trabajar(self.x, self.y, c) {
-                None => self.evento = Evento::Otro,
+                None => self.evento = Evento::Trabaja,
                 Some(t) => {
                     if t == BAYA && b.rng.random() < c.prob_enferma {
                         self.cuerpo.comer(0.1);
@@ -350,10 +356,10 @@ impl Angri {
             if let Some(h) = &mut self.hipocampo {
                 h.dormir(&mut self.mente, c);
             }
-            self.evento = Evento::Otro;
+            self.evento = Evento::Duerme;
         } else if !self.despierto && a <= despertar {
             self.despierto = true;
-            self.evento = Evento::Otro;
+            self.evento = Evento::Despierta;
         }
     }
 
@@ -371,7 +377,7 @@ impl crate::guardar::Pieza for Evento {
     }
     fn cargar(l: &mut crate::guardar::Lector) -> Self {
         use Evento::*;
-        [Nada, Come, Descubre, Lastima, Muerde, Enferma, Bebe, Desmaya, Otro][u8::cargar(l) as usize]
+        [Nada, Come, Descubre, Lastima, Muerde, Enferma, Bebe, Desmaya, Otro, Trabaja, Duerme, Despierta, Nace, Apagado][u8::cargar(l) as usize]
     }
 }
 

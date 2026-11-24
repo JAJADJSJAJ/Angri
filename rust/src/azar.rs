@@ -2,7 +2,7 @@
 
 const MULT: u64 = 6364136223846793005;
 
-fn splitmix64(x: u64) -> (u64, u64) {
+pub(crate) fn splitmix64(x: u64) -> (u64, u64) {
     let x = x.wrapping_add(0x9E3779B97F4A7C15);
     let mut z = x;
     z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);

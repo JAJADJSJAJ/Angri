@@ -197,11 +197,11 @@ def config_texto():
     return "\n".join(lineas) + "\n"
 
 
-def rust(modo, semilla, ticks):
+def rust(modo, semilla, ticks, *extra):
     """Corre el binario de Rust (cargo build --release en rust/) con la config actual."""
     if not os.path.exists(RUST):
         sys.exit(f"no está {RUST}: compilalo con  cargo build --release  en rust/")
-    r = subprocess.run([RUST, modo, str(semilla), str(ticks)], input=config_texto(),
+    r = subprocess.run([RUST, modo, str(semilla), str(ticks), *map(str, extra)], input=config_texto(),
                        capture_output=True, text=True, encoding="utf-8")
     if r.returncode:
         sys.exit(r.stderr.strip() or f"angri (rust) falló con código {r.returncode}")

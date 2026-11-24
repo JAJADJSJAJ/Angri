@@ -5,14 +5,19 @@
 //!   angri traza SEMILLA TICKS  < config  -> una línea por tick (para comparar con Python)
 //!   angri velocidad SEMILLA TICKS < config -> ticks/s
 //!   angri retomar SEMILLA TICKS < config  -> cortar, guardar, cargar y seguir da IDÉNTICO
+//!   angri foto SEMILLA TICKS [CADA] < config -> la foto del visor (angri/foto.py) tras TICKS ticks
+//!                                           (o una cada CADA ticks)
 //!   angri vivir [--carpeta DIR] ...        -> vida continua (ver vivir.rs)
 mod azar;
 mod config;
 mod extra;
+mod foto;
 mod guardar;
 mod lenguaje;
 mod mente;
 mod mundo;
+#[cfg(test)]
+mod pruebas;
 mod vida;
 mod vivir;
 
@@ -197,22 +202,27 @@ fn una_vida(semilla: u64, ticks: i64, c: &Config) -> String {
     format!("{{{}}}", partes.join(", "))
 }
 
+/// El renglón de la traza de un tick (lo mismo que arma probar_rust.py en Python).
+fn linea_traza(a: &Angri, c: &Config) -> String {
+    let mut l = format!("{} {} {} {} {:016x}", a.edad, a.x, a.y, a.despierto as i32, a.malestar(c).to_bits());
+    for k in 0..a.cuerpo.n {
+        l += &format!(" {:016x}", a.cuerpo.v[k].to_bits());
+    }
+    l += &format!(" {:016x} {:016x}", a.quimica.adenosina.to_bits(), a.mente.dopamina.to_bits());
+    l += &format!(" {:016x} {:016x}", a.quimica.noradrenalina.to_bits(), a.oido.confianza.to_bits());
+    let foco = a.talamo.as_ref().and_then(|t| t.foco).map_or(-1, |f| f as i64);
+    let pedidos = a.habla.as_ref().map_or(0, |h| h.pedidos.len());
+    l += &format!(" {} {} {}", foco, pedidos, a.oido.aciertos.len());
+    l
+}
+
 fn traza(semilla: u64, ticks: i64, c: &Config) {
     let mut a = Angri::new(semilla, c);
     let out = std::io::stdout();
     let mut out = std::io::BufWriter::new(out.lock());
     for _ in 0..ticks {
         a.tick(c);
-        let mut l = format!("{} {} {} {} {:016x}", a.edad, a.x, a.y, a.despierto as i32, a.malestar(c).to_bits());
-        for k in 0..a.cuerpo.n {
-            l += &format!(" {:016x}", a.cuerpo.v[k].to_bits());
-        }
-        l += &format!(" {:016x} {:016x}", a.quimica.adenosina.to_bits(), a.mente.dopamina.to_bits());
-        l += &format!(" {:016x} {:016x}", a.quimica.noradrenalina.to_bits(), a.oido.confianza.to_bits());
-        let foco = a.talamo.as_ref().and_then(|t| t.foco).map_or(-1, |f| f as i64);
-        let pedidos = a.habla.as_ref().map_or(0, |h| h.pedidos.len());
-        l += &format!(" {} {} {}", foco, pedidos, a.oido.aciertos.len());
-        writeln!(out, "{l}").unwrap();
+        writeln!(out, "{}", linea_traza(&a, c)).unwrap();
     }
 }
 
@@ -250,8 +260,8 @@ fn main() {
         return vivir::vivir(&args[2..]);
     }
     if args.len() < 4 {
-        eprintln!("uso: angri vida|traza|velocidad|retomar SEMILLA TICKS  < config");
-        eprintln!("     angri vivir [--carpeta DIR] [--ticks N] [--semilla S] [--ventana W] [--guardar G]");
+        eprintln!("uso: angri vida|traza|foto|velocidad|retomar SEMILLA TICKS  < config");
+        eprintln!("     angri vivir [--carpeta DIR] [--ticks N] [--semilla S] [--ventana W] [--guardar G] [--panel] [--foto S] [--estado]");
         std::process::exit(1);
     }
     let semilla: u64 = args[2].parse().expect("semilla");
@@ -262,6 +272,18 @@ fn main() {
     match args[1].as_str() {
         "vida" => println!("{}", una_vida(semilla, ticks, &c)),
         "traza" => traza(semilla, ticks, &c),
+        "foto" => {
+            // con un 4.º argumento CADA, una foto cada CADA ticks
+            let cada: i64 = args.get(4).map_or(ticks.max(1), |x| x.parse().expect("cada"));
+            let mut a = Angri::new(semilla, &c);
+            for t in 1..=ticks {
+                a.evento = Evento::Nada;
+                a.tick(&c);
+                if t % cada == 0 {
+                    println!("{}", foto::foto(&a, &c));
+                }
+            }
+        }
         "retomar" => {
             if !retomar(semilla, ticks, &c) {
                 std::process::exit(1);

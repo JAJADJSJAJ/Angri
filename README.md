@@ -803,7 +803,7 @@ HOLISTICO + COMPOSICION, MENTE azar; semillas 0 y 1). El formato es texto
 propio (`rust/src/guardar.rs`): cada campo con su nombre y los floats con sus
 bits exactos. No lee las mentes viejas de Python.
 
-**Vida continua** (`angri vivir`, como `vivir.py` sin panel ni foto):
+**Vida continua** (`angri vivir`, como `vivir.py`, con `--panel`, `--foto S` y `--estado`):
 
     python -c "import medir; print(medir.config_texto(), end='')" | rust/target/release/angri vivir --carpeta datos-rust
     rust/target/release/angri vivir --carpeta datos-rust --ticks 1000000 --guardar 50000 --ventana 10000
@@ -829,13 +829,56 @@ Velocidad (un proceso, esta PC):
 guardan lugar para los rasgos de FRASE.) `comparar.py 300000 24 "" "MUNDO='bosque'" -j 12 --rust`
 tarda unos 5 s; 256 pares de 300.000 ticks, alrededor de un minuto.
 
-**Plan:** Rust pasa a ser la base. Python queda solo mientras sirve de
-comparación (paso 1 hecho: todo portado y comprobado); después se agregan
-pruebas propias de Rust (retomar, misma semilla = misma vida, una vida de
-referencia guardada) y en el paso 3 se borra Python. Hasta entonces, **si se
+**Panel, foto y estado.** `angri vivir --panel` dibuja el panel de
+`angri/panel.py` en la terminal (igual, salvo "dice"/"oye": Rust no guarda las
+palabras); `--foto S` (1 s por defecto, 0 = nunca) escribe `DIR/foto.json`, la
+misma foto que `vivir.py`, así `python visor.py --carpeta DIR` mira una vida de
+Rust; `--estado` muestra lo mismo que `vivir.py --estado` (edad al guardar,
+respaldos, últimas 10 ventanas con RAM; `vida.csv` de Rust ahora anota
+`ram_mb`). La foto es byte a byte la de Python: `python probar_foto.py 2 6000 7
+MUNDO='"bosque"'` compara una foto cada 7 ticks (grilla, bosque, mente vieja,
+corteza+tálamo: IDÉNTICO, con todos los eventos). Para eso los eventos de Rust
+ahora distinguen "trabaja la comida", "se duerme", "se despierta", "nace" y
+"despierta del apagado" (se agregaron al final: las mentes guardadas antes cargan
+igual). `angri foto SEMILLA TICKS [CADA] < config` imprime la foto.
+
+**Pruebas propias de Rust (paso 2, sin Python):**
+
+    cd rust && cargo test --release          (unos 7 s)
+
+| prueba | qué cubre |
+|---|---|
+| `azar_splitmix64`, `azar_pcg32` | splitmix64, PCG32, `random`, `randrange`, `randint`, `choice`, `shuffle`, `sample` y `choices` con pesos dan los valores anotados de `angri/azar.py` |
+| `determinismo` | misma semilla y config = misma traza, misma mente y mismas métricas dos veces; otra semilla, otra vida |
+| `retomar` | cortar (en el tick 1, a la mitad o en uno cualquiera), guardar a disco, cargar y seguir = no cortar: misma traza tick a tick, misma mente final, misma foto |
+| `referencia` | la vida de hoy no se mueve: huella (FNV-1a) de la traza de 20.000 ticks, de la foto final y las métricas, 3 semillas por config, contra `rust/pruebas/referencia.txt` |
+
+Las 7 configs (`rust/pruebas/config-*.txt`, las arma
+`rust/pruebas/hacer_configs.py` desde `angri/config.py`): grilla, bosque,
+corteza+tálamo en grilla y en bosque, PIDE con ESCUCHA_CUERPO/PEDIDOS/ALIVIO,
+MENTE azar con reflejos, y todo junto (corteza, tálamo, PIDE, FRASE,
+PALABRA_SUELTA, COMPOSICION, EGO, CAMBIO_SIGNIFICADO). La referencia se generó
+el 24/11/2026 con `probar_rust.py` en IDÉNTICO para esas 7 configs (y la huella
+de la traza de Python, grilla semilla 0, da la misma: `25786d38b2b14d1c`). Si un
+cambio la mueve **a propósito**: cambiarlo igual en Python, comprobar con
+`probar_rust.py`, y regenerar con
+
+    cd rust && ANGRI_REGENERAR=1 cargo test --release referencia
+
+y commitear el `referencia.txt` nuevo junto con el cambio. Si la mueve sin
+querer, la prueba dice qué config y semilla cambió.
+
+**Plan:** Rust pasa a ser la base. Paso 1 (todo portado, incluidos panel, foto
+y `--estado`) y paso 2 (pruebas propias) hechos. Hasta el paso 3, **si se
 cambia algo del núcleo, hay que cambiarlo igual en los dos** y correr
-`probar_rust.py`. Falta en Rust: el panel, la foto para `visor.py`,
-`vivir.py --estado` y el paquete del i5 (`deploy/` sigue con Python; no se tocó).
+`probar_rust.py` y `cargo test --release`. Falta para el paso 3 (borrar
+Python): pasar el i5 a Rust (`deploy/` sigue con Python y su `mente.json`; no
+se tocó; Rust no lee las mentes de Python, así que la vida del i5 tendría que
+renacer o hace falta un conversor), servir el visor sin `visor.py` (o dejarlo
+como único Python, solo lee `foto.json`), pasar a Rust lo que todavía mide en
+Python (`medir.py`/`comparar.py` arman la config y juntan resultados; el
+número lo da Rust) y sacar `hacer_configs.py` (las configs ya quedan en el repo).
+Lo de "dice"/"oye" del panel necesitaría guardar las palabras en Rust.
 
 ## Reglas del proyecto
 
