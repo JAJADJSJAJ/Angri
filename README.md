@@ -744,7 +744,7 @@ Conclusión: la mente actual (rasgos hechos a mano sobre la celda de destino y "
 
 Ver `docs/proxima-etapa.md`. Orden acordado: **13b** (objetos con física) → **14**
 (mente que arma sus propios rasgos) → **avatar de Fran en el visor** → imitación →
-chat. En el i5 Angri queda **apagada** hasta que esté completa (todavía con la versión en Python; la de Rust sin instalar).
+chat. En el i5 Angri queda instalada en Rust y **apagada** hasta que esté completa (no nació todavía).
 
 ## Versión 2 del azar (PCG32 propio)
 
@@ -879,9 +879,10 @@ y no instala si fallan, instala el binario en `/opt/angri/angri`, borra el
 visor`. La primera vez, lo de Python (`mente.json`, `vida.csv`, respaldos,
 foto) se mueve a `/var/lib/angri/python-viejo/` y **Angri renace en Rust**: no
 hay conversor de mentes de Python. Antes de correrlo: `sudo apt install cargo`.
-Todavía no se instaló: el 24/11/2026 el i5 seguía con la versión en Python
-(81.862.072 ticks, guardada en `/var/lib/angri/mente.json`) y quedó **apagada a
-propósito** (`systemctl disable --now angri`) hasta que Angri esté completa; `instalar.sh` solo prende los servicios que ya estaban
+Instalado en el i5 el 24/11/2026: la Angri de Python (81.862.072 ticks) quedó
+guardada en `/var/lib/angri/python-viejo/` y la de Rust todavía no nació. Está
+**apagada a propósito** (`systemctl disable --now angri angri-visor`) hasta que
+Angri esté completa; `instalar.sh` solo prende los servicios que ya estaban
 habilitados, así que actualizar no la despierta.
 
 Velocidad (un proceso, esta PC):
