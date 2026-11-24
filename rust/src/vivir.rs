@@ -1,26 +1,27 @@
-//! Vida continua (como vivir.py): vive sin fin, guarda la mente cada
+//! Vida continua: vive sin fin, guarda la mente cada
 //! tanto con respaldos rotativos y termina bien con Ctrl-C o SIGTERM.
 //!
 //!   angri vivir [--carpeta DIR] [--ticks N] [--semilla S] [--ventana W] [--guardar G]
-//!               [--panel] [--foto S] [--estado]
+//!               [--panel] [--foto S] [--estado] [--mundo grilla|bosque]
+//!               [--config ARCHIVO] [CLAVE=VALOR ...]
 //!
-//! --panel: dibuja el panel en la terminal a TICKS_POR_SEGUNDO (como vivir.py --panel).
-//! --foto S: cada S segundos (1 por defecto; 0 = nunca) escribe DIR/foto.json, la misma
-//!   foto que vivir.py, así `python visor.py --carpeta DIR` mira esta vida.
+//! --panel: dibuja el panel en la terminal a TICKS_POR_SEGUNDO.
+//! --foto S: cada S segundos (1 por defecto; 0 = nunca) escribe DIR/foto.json, que lee
+//!   `angri visor --carpeta DIR`.
 //! --estado: cómo anda (edad al guardar, respaldos, últimas ventanas) y sale.
 //!
-//! La config: DIR/config.txt (líneas CLAVE=valor). Si no existe, se lee de stdin
-//! y se guarda ahí, así la vida sigue siempre con la misma config:
-//!   python -c "import medir; print(medir.config_texto(), end='')" | angri vivir --carpeta DIR
+//! La config: DIR/config.txt. Si no existe (la vida nace), se arma con la de
+//! adentro del binario (o --config) más --mundo y los CLAVE=VALOR, y se guarda
+//! ahí: la vida sigue siempre con la misma config aunque cambie la de por defecto.
 //! Si existe DIR/mente.txt la retoma exactamente donde estaba; si no carga, retoma
 //! del respaldo válido más reciente (DIR/respaldos/: los últimos 5 y uno por día, 30 días).
 //! Log liviano en DIR/vida.csv, un renglón por ventana.
-use crate::config::Config;
+use crate::config::{armar, Config};
 use crate::foto;
 use crate::guardar::escribir_archivo;
 use crate::mente::ENERGIA;
 use crate::vida::{Angri, Evento};
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -118,6 +119,7 @@ pub fn vivir(args: &[String]) {
     let mut carpeta = PathBuf::from(std::env::var("ANGRI_DATOS").unwrap_or_else(|_| "datos-rust".into()));
     let (mut ticks, mut semilla, mut ventana, mut guardar_cada) = (None, None, 10_000i64, 50_000i64);
     let (mut panel, mut cada_foto, mut ver_estado) = (false, 1.0f64, false);
+    let (mut ajustes, mut archivo_base): (Vec<String>, Option<String>) = (vec![], None);
     let mut i = 0;
     while i < args.len() {
         let v = args.get(i + 1).cloned().unwrap_or_default();
@@ -133,6 +135,13 @@ pub fn vivir(args: &[String]) {
             "--semilla" => semilla = Some(v.parse::<u64>().expect("--semilla")),
             "--ventana" => ventana = v.parse().expect("--ventana"),
             "--guardar" => guardar_cada = v.parse().expect("--guardar"),
+            "--mundo" => ajustes.push(format!("MUNDO={v}")),
+            "--config" => archivo_base = Some(v),
+            o if o.contains('=') => {
+                ajustes.push(o.to_string());
+                i += 1;
+                continue;
+            }
             o => {
                 eprintln!("opción desconocida: {o}");
                 std::process::exit(1);
@@ -145,16 +154,20 @@ pub fn vivir(args: &[String]) {
     }
     std::fs::create_dir_all(&carpeta).expect("no puedo crear la carpeta");
     let archivo_config = carpeta.join("config.txt");
-    let texto_config = match std::fs::read_to_string(&archivo_config) {
-        Ok(t) => t,
+    let c = match std::fs::read_to_string(&archivo_config) {
+        Ok(t) => {
+            if !ajustes.is_empty() || archivo_base.is_some() {
+                eprintln!("AVISO: ya hay {} (la vida sigue con esa config); ignoro --mundo/--config/ajustes.",
+                          archivo_config.display());
+            }
+            Config::leer(&t)
+        }
         Err(_) => {
-            let mut t = String::new();
-            std::io::stdin().read_to_string(&mut t).unwrap();
+            let (t, c) = armar(archivo_base.as_deref(), &ajustes);
             escribir_archivo(&archivo_config, &t).expect("no puedo guardar config.txt");
-            t
+            c
         }
     };
-    let c = Config::leer(&texto_config);
     escuchar_senales();
     let archivo = carpeta.join("mente.txt");
     let mut a = match retomar(&carpeta) {
@@ -242,6 +255,9 @@ pub fn vivir(args: &[String]) {
         println!("Señal recibida: guarda y duerme.");
     }
     guardar(&a);
+    if cada_foto > 0.0 {
+        let _ = foto::escribir(&a, &c, &archivo_foto); // la última, para el visor
+    }
     println!("Guardado en {} ({} ticks vividos).", archivo.display(), a.edad);
 }
 

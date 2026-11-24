@@ -2,6 +2,7 @@
 name = "angri"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.85"   # la de Debian 13 (apt install cargo), para el i5
 
 [[bin]]
 name = "angri"

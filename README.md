@@ -4,36 +4,51 @@ Guía completa de investigación y diseño: https://claude.ai/artifact/2q9F7Wwrn
 
 ## Cómo correrlo
 
-Solo necesita Python 3.10 o más nuevo. No usa librerías externas.
+Todo en Rust (`rust/`), sin dependencias. Hace falta `cargo` (Rust 1.85 o más nuevo).
 
 ```
-python vivir.py              # vive para siempre, con panel en vivo
-python vivir.py --rapido 20000   # vive 20.000 ticks sin panel (para probar)
+cd rust
+cargo build --release                       # el binario queda en rust/target/release/angri
+cargo test --release                        # pruebas (unos 7 s)
+target/release/angri vivir --panel          # vive para siempre, con panel en la terminal
+target/release/angri vivir --ticks 20000    # vive 20.000 ticks sin panel
+target/release/angri visor                  # http://localhost:8080, la mira desde el navegador
+target/release/angri medir 50000 8 -j 8     # vara de medir
 ```
 
-Con Ctrl+C se pausa: guarda su estado en `datos/estado.json` y la próxima vez sigue desde ahí.
-Todo lo que vive queda anotado en `datos/diario.csv` (cuerpo, química y eventos cada 10 ticks).
-Para que "renazca" desde cero, borrá la carpeta `datos/`.
+`angri vivir` guarda la mente en `datos-rust/` (o `--carpeta DIR`, o `ANGRI_DATOS`) y la
+próxima vez sigue desde ahí; con Ctrl+C termina el tick, guarda y sale. Para que
+"renazca" desde cero, borrá la carpeta. Sin argumentos, `angri` muestra la ayuda.
 
-## Estructura (una región por archivo)
+**Historia:** Angri se escribió primero en Python (`angri/*.py`, `vivir.py`,
+`medir.py`...), se pasó entera a Rust dando la misma vida bit a bit, y Python se
+borró (paso 3; está en la historia de git hasta el commit `f3ce27d`). Las
+etapas de abajo cuentan los comandos de entonces: `python medir.py ...` es hoy
+`angri medir ...`, `python comparar.py ...` es `angri comparar ...`,
+`python vivir.py` es `angri vivir`, `python visor.py` es `angri visor`, y los
+ajustes `CLAVE=VALOR` son los mismos (sin las comillas de Python:
+`MUNDO=bosque`). Los dicts de la config se ajustan como `PESO_NECESIDAD.curiosidad=0`.
+
+## Estructura
 
 | Archivo | Región | Qué hace |
 |---|---|---|
-| `angri/config.py` | — | Todos los números que se pueden afinar |
-| `angri/cuerpo.py` | Hipotálamo / tronco | Energía, cansancio, curiosidad, estrés, integridad; malestar = distancia al equilibrio |
-| `angri/quimica.py` | Neuromoduladores | Adenosina (sueño), cortisol, dopamina (¿mejoró el equilibrio?), noradrenalina (sorpresa) |
-| `angri/mundo.py` | El entorno | Grilla 2D con comida `*`, descanso `~`, novedades `?` y peligros `X` |
-| `angri/bosque.py` | El entorno (etapa 13a) | Bosque 64×64: zonas, día/noche, estaciones, lluvia, río que crece, comida que cuesta, agua, espinas, predador; sentidos (`sentir`) |
-| `angri/foto.py` | — | Foto chica del estado para el visor |
-| `visor.py` | — | Visor web (stdlib `http.server`, pixel art en canvas) |
-| `angri/ganglios.py` | Ganglios basales | Etapa 2: actor-crítico que aprende con dopamina (error TD) |
-| `angri/corteza.py` | Corteza | Etapa 3: predice qué va a encontrar y cómo cambia su malestar; curiosidad por progreso de aprendizaje (apagada) |
-| `angri/maestro.py` | Lenguaje | Etapas 6–7: un maestro le dice con palabras (en español, sin significado de nacimiento) dónde está lo que necesita; el significado se aprende con dopamina |
-| `angri/mente.py` | — | Mente vieja (azar / reflejos), queda como vara de comparación |
-| `medir.py` | — | Vara de medir: vidas reproducibles sin panel |
-| `angri/vida.py` | El bucle | Latido continuo; se duerme y se despierta solo por adenosina |
-| `angri/panel.py` | — | Muestra el mundo y su interior en la terminal |
-| `vivir.py` | — | Punto de entrada |
+| `rust/config.txt` | — | Todos los números que se pueden afinar (va metido en el binario; `--config ARCHIVO` usa otro) |
+| `rust/src/config.rs` | — | Lee la config y los ajustes `CLAVE=VALOR` |
+| `rust/src/azar.rs` | — | Azar propio: PCG32 sembrado con splitmix64 |
+| `rust/src/mente.rs` | Hipotálamo, neuromoduladores, ganglios basales | Cuerpo y malestar; química (adenosina, cortisol, dopamina, noradrenalina); actor-crítico que aprende con dopamina |
+| `rust/src/extra.rs` | Corteza, hipocampo, tálamo, mente vieja | Predicción (apagada), repaso al dormir, foco (apagado), azar/reflejos como vara |
+| `rust/src/lenguaje.rs` | Lenguaje | Maestro, oído (léxico por sorpresa) y habla (pedir) |
+| `rust/src/mundo.rs` | El entorno | Grilla 24×14 y bosque 64×64 (zonas, día/noche, estaciones, lluvia, río, comida que cuesta, agua, predador) |
+| `rust/src/vida.rs` | El bucle | El tick: se duerme y se despierta solo por adenosina |
+| `rust/src/guardar.rs` | — | Guardar/cargar la mente entera como texto (floats con sus bits) |
+| `rust/src/vivir.rs` | — | Vida continua, respaldos, panel, foto, `--estado` |
+| `rust/src/foto.rs` | — | Foto para el visor y panel de la terminal |
+| `rust/src/visor.rs`, `visor.html` | — | Visor web (HTTP mínimo; el pixel art lo dibuja el navegador) |
+| `rust/src/medir.rs` | — | `angri medir` y `angri comparar` |
+| `rust/src/main.rs` | — | Punto de entrada y modos de una vida (`vida`, `traza`, `foto`, `velocidad`, `retomar`) |
+| `rust/src/pruebas.rs`, `rust/pruebas/` | — | `cargo test`: azar, determinismo, retomar, vida de referencia |
+| `deploy/` | — | Instalación en el i5 |
 
 ## Etapa 1 — mundo y cuerpo ✅
 
@@ -631,19 +646,19 @@ Angri ya no vive vidas de 50.000 ticks que se pierden: vive sin fin en la PC.
 
 ### Etapa 12b: vivir en Linux
 
-Para que viva sola en un i5 con Linux sin entorno gráfico, manejada por SSH. Solo hace falta `python3` (nada de Windows; probado en Linux: `probar_retomar.py` IDÉNTICO y `kill -TERM` guarda y retoma).
+Para que viva sola en un i5 con Linux sin entorno gráfico, manejada por SSH. (Desde el paso 3 corre el binario de Rust: ver "Angri en Rust" más abajo; lo que sigue se escribió para la versión en Python.)
 
 **Dónde vive**: el i5-4570 (Debian 13, 4 núcleos sin hyperthreading, 16 GB, sin pantalla; `angri.local`). Reemplaza al proyecto viejo de esa PC (llama.cpp/Qwen) y tiene toda la máquina: sin `Nice` ni topes de CPU/RAM. Python puro usa 1 núcleo; los otros 3 quedan libres para mediciones (`comparar.py -j 3`) o etapas futuras.
 
 | qué | dónde |
 |---|---|
 | usuario de sistema (sin sudo) | `angri` |
-| código | `/opt/angri/codigo` (root, solo lectura) |
+| programa | `/opt/angri/angri` (root, solo lectura; antes `/opt/angri/codigo` en Python) |
 | mente, respaldos y log | `/var/lib/angri` (`ANGRI_DATOS`; `--carpeta` lo pisa) |
 | servicio | `/etc/systemd/system/angri.service` (de sistema: no hace falta linger) |
 | comando | `/usr/local/bin/angri [estado|log [N]|vivo|parar|seguir|reiniciar]` |
 
-El servicio corre `python3 -u vivir.py` con `Restart=always`, `TimeoutStopSec=120` y la misma jaula que usaba la PC (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, solo escribe en `/var/lib/angri`).
+El servicio corre `/opt/angri/angri vivir` con `Restart=always`, `TimeoutStopSec=120` y la misma jaula que usaba la PC (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, solo escribe en `/var/lib/angri`).
 
 **Mudanza** (una vez, como `fran` por SSH):
 
@@ -761,124 +776,107 @@ Línea base nueva (`medir.py 50000 12 -j 12`):
 | entiende % | 96,4 | 91,0 |
 | desmayos | — | 8,3 |
 
-## Núcleo en Rust (misma vida, ~65× más rápido)
+## Angri en Rust (paso 3: Python borrado)
 
-`rust/` (sin dependencias) tiene a Angri entera en Rust: grilla y bosque, cuerpo,
+Angri se pasó entera a Rust (`rust/`, sin dependencias): grilla y bosque, cuerpo,
 química, ganglios, hipocampo, corteza, tálamo, Maestro, Oído (léxico, eco,
 FRASE, PALABRA_SUELTA, HOLISTICO, EGO, CAMBIO_SIGNIFICADO, COMPOSICION), Habla
 (PIDE, PIDE_AZAR, ESCUCHA*, alivio), MAESTRO_MIENTE/CIEGO, la mente vieja
-(MENTE "azar" con o sin REFLEJOS), guardar/retomar y la vida continua. Usa el
-mismo azar (PCG32 de `angri/azar.py`, compartido igual que en Python: ganglios,
-hipocampo y tálamo sacan del mismo) y las mismas cuentas en `f64` en el mismo
-orden. Para que dé igual: `sum()` de Python 3.12 suma floats con Neumaier (Rust
-usa la misma suma), los dicts recorren en orden de inserción y `round()`
-redondea al par. `math.exp`, `sin`, `cos` y `pow` usan la misma biblioteca de C
-en Windows y dieron iguales bit a bit (en Linux no se probó).
+(MENTE "azar" con o sin REFLEJOS), guardar/retomar, la vida continua, el panel,
+la foto, el visor y la vara de medir. Antes de borrar Python se comprobó que
+daba **la misma vida bit a bit** (paso 1): posición, despierto, malestar, cada
+variable del cuerpo, adenosina, dopamina, noradrenalina, confianza, foco,
+pedidos y apuestas del léxico, cada tick, y todas las métricas, 40.000 ticks ×
+3 semillas en 21 configs; la foto del visor byte a byte; y `angri medir` /
+`angri comparar` con la misma salida que `medir.py` / `comparar.py`. Para que
+diera igual: azar propio (PCG32), `sum()` con Neumaier como Python 3.12, dicts
+en orden de inserción, `round()` al par; `exp`, `sin`, `cos` y `pow` de la
+biblioteca de C (iguales en Windows; en Linux no se comparó contra Python).
 
-    cd rust && cargo build --release          (una vez, y cada vez que cambie el núcleo)
-    python medir.py 50000 12 -j 12 --rust
-    python comparar.py 300000 256 "" "MUNDO='bosque'" -j 12 --rust
-    python probar_rust.py 20000 3 MUNDO='"bosque"'   -> Rust = Python, tick a tick
+**Uso** (desde `rust/`, después de `cargo build --release`; `angri` = `target/release/angri`):
 
-Python manda la config entera (con los ajustes) al binario, así que no hay
-números repetidos. Única excepción: PIDE en el bosque corta con un aviso
-(en Python tampoco anda: Habla usa EQUILIBRIO, que no tiene agua ni calor).
+    angri medir 50000 12 -j 12                       (métricas; azar|reflejos: la mente vieja)
+    angri comparar 300000 256 "" "MUNDO=bosque" -j 12  (pares A/B con la misma semilla)
+    angri vida 0 20000 TALAMO=True                   (una vida, métricas en JSON)
+    angri traza 0 1000                               (una línea por tick, bits exactos)
+    angri foto 0 1000 7                              (la foto del visor cada 7 ticks)
+    angri velocidad 0 100000
+    angri retomar 0 20000                            (cortar, guardar, cargar y seguir = IDÉNTICO)
 
-**Igual a Python** (`probar_rust.py`: posición, despierto, malestar, cada
-variable del cuerpo, adenosina, dopamina, noradrenalina, confianza, foco del
-tálamo, pedidos y apuestas del léxico, bit a bit, cada tick; y todas las
-métricas de `medir.una_vida`, incluidas pide bien %, pedidos, examen %,
-compone y reaprende %). IDÉNTICO, 40.000 ticks × 3 semillas, en 21 configs:
-la actual en grilla y bosque, MENTE azar (con y sin reflejos, grilla y bosque),
-CORTEZA y TALAMO (grilla y bosque), PIDE (solo, con MAESTRO_SOLO_SI_PIDE, sin
-ESCUCHA, PIDE_AZAR, ESCUCHA_CUERPO + PEDIDOS + ALIVIO), FRASE + PALABRA_SUELTA
-(grilla y bosque), MAESTRO_MIENTE, HOLISTICO, EGO + CAMBIO_SIGNIFICADO,
-COMPOSICION y todo junto. Antes: grilla 100.000 × 4, bosque 150.000 × 4,
-`DESMAYO_DONDE="cueva_agua"`, sin hipocampo, `MAESTRO_CIEGO`.
+La config es `rust/config.txt` (la de `angri/config.py`, con sus comentarios),
+metida en el binario al compilar; `--config ARCHIVO` usa otra y los
+`CLAVE=VALOR` se aplican encima (una clave que no existe es un error). PIDE en
+el bosque corta con un aviso (Habla usa EQUILIBRIO, que no tiene agua ni calor).
 
-**Guardar y retomar** (`angri retomar SEMILLA TICKS < config`, la versión Rust
-de `probar_retomar.py`): corta a la mitad, guarda la mente entera a disco,
-la carga en otra Angri y sigue; da IDÉNTICO (grilla, bosque, todo prendido,
-HOLISTICO + COMPOSICION, MENTE azar; semillas 0 y 1). El formato es texto
-propio (`rust/src/guardar.rs`): cada campo con su nombre y los floats con sus
-bits exactos. No lee las mentes viejas de Python.
+**Guardar y retomar**: la mente entera en texto propio (`rust/src/guardar.rs`):
+cada campo con su nombre y los floats con sus bits exactos. Cortar, guardar,
+cargar y seguir da IDÉNTICO (lo prueba `cargo test`).
 
-**Vida continua** (`angri vivir`, como `vivir.py`, con `--panel`, `--foto S` y `--estado`):
+**Vida continua** (`angri vivir`):
 
-    python -c "import medir; print(medir.config_texto(), end='')" | rust/target/release/angri vivir --carpeta datos-rust
-    rust/target/release/angri vivir --carpeta datos-rust --ticks 1000000 --guardar 50000 --ventana 10000
+    angri vivir --carpeta datos-rust                       (nace con la config de adentro)
+    angri vivir --carpeta datos-bosque --mundo bosque PIDE=True   (nace con ajustes)
+    angri vivir --carpeta datos-rust --ticks 1000000 --guardar 50000 --ventana 10000
+    angri vivir --carpeta datos-rust --panel             (mirándola en la terminal)
+    angri vivir --carpeta datos-rust --estado            (cómo anda)
+    angri visor --carpeta datos-rust                     (http://localhost:8080)
 
-La config queda en `DIR/config.txt` la primera vez; la mente en `DIR/mente.txt`
+La config queda en `DIR/config.txt` al nacer (con los ajustes al final) y la vida
+sigue siempre con esa, aunque cambie la de adentro. La mente en `DIR/mente.txt`
 (cada `--guardar` ticks, 50.000 por defecto, escrita a .tmp y renombrada) con
 respaldos en `DIR/respaldos/` (los últimos 5 y uno por día, 30 días); si
-`mente.txt` no carga, retoma del respaldo válido más reciente (probado
-rompiéndolo a mano). Log en `DIR/vida.csv` cada `--ventana` ticks. Ctrl-C,
-Ctrl-Break y SIGTERM terminan el tick, guardan y salen (probado en Windows; en
-Linux es el mismo `signal()` de C, sin probar). Una vida de prueba de 38
-millones de ticks en la grilla anduvo a ~350.000 ticks/s con una mente de 2 MB.
+`mente.txt` no carga, retoma del respaldo válido más reciente. Log en
+`DIR/vida.csv` cada `--ventana` ticks (con `ram_mb`). `--foto S` (1 s por
+defecto, 0 = nunca) escribe `DIR/foto.json` para el visor, y una última al
+salir. Ctrl-C, Ctrl-Break y SIGTERM terminan el tick, guardan y salen. El panel
+no muestra "dice"/"oye" (Rust no guarda las palabras como texto).
 
-Velocidad (un proceso, esta PC):
-
-| | Python | Rust | veces |
-|---|---|---|---|
-| grilla | 8.700 ticks/s | 540.000 ticks/s | 62× |
-| bosque | 5.900 ticks/s | 374.000 ticks/s | 63× |
-| grilla con corteza, tálamo y PIDE | — | 394.000 ticks/s | |
-
-(Un 10 % menos que antes de portar todo: los momentos del hipocampo ahora
-guardan lugar para los rasgos de FRASE.) `comparar.py 300000 24 "" "MUNDO='bosque'" -j 12 --rust`
-tarda unos 5 s; 256 pares de 300.000 ticks, alrededor de un minuto.
-
-**Panel, foto y estado.** `angri vivir --panel` dibuja el panel de
-`angri/panel.py` en la terminal (igual, salvo "dice"/"oye": Rust no guarda las
-palabras); `--foto S` (1 s por defecto, 0 = nunca) escribe `DIR/foto.json`, la
-misma foto que `vivir.py`, así `python visor.py --carpeta DIR` mira una vida de
-Rust; `--estado` muestra lo mismo que `vivir.py --estado` (edad al guardar,
-respaldos, últimas 10 ventanas con RAM; `vida.csv` de Rust ahora anota
-`ram_mb`). La foto es byte a byte la de Python: `python probar_foto.py 2 6000 7
-MUNDO='"bosque"'` compara una foto cada 7 ticks (grilla, bosque, mente vieja,
-corteza+tálamo: IDÉNTICO, con todos los eventos). Para eso los eventos de Rust
-ahora distinguen "trabaja la comida", "se duerme", "se despierta", "nace" y
-"despierta del apagado" (se agregaron al final: las mentes guardadas antes cargan
-igual). `angri foto SEMILLA TICKS [CADA] < config` imprime la foto.
-
-**Pruebas propias de Rust (paso 2, sin Python):**
+**Pruebas** (sin nada externo):
 
     cd rust && cargo test --release          (unos 7 s)
 
 | prueba | qué cubre |
 |---|---|
-| `azar_splitmix64`, `azar_pcg32` | splitmix64, PCG32, `random`, `randrange`, `randint`, `choice`, `shuffle`, `sample` y `choices` con pesos dan los valores anotados de `angri/azar.py` |
+| `azar_splitmix64`, `azar_pcg32` | splitmix64, PCG32, `random`, `randrange`, `randint`, `choice`, `shuffle`, `sample` y `choices` con pesos dan los valores anotados de la versión en Python |
 | `determinismo` | misma semilla y config = misma traza, misma mente y mismas métricas dos veces; otra semilla, otra vida |
 | `retomar` | cortar (en el tick 1, a la mitad o en uno cualquiera), guardar a disco, cargar y seguir = no cortar: misma traza tick a tick, misma mente final, misma foto |
-| `referencia` | la vida de hoy no se mueve: huella (FNV-1a) de la traza de 20.000 ticks, de la foto final y las métricas, 3 semillas por config, contra `rust/pruebas/referencia.txt` |
+| `referencia` | la vida no se mueve sin querer: huella (FNV-1a) de la traza de 20.000 ticks, de la foto final y las métricas, 3 semillas por config, contra `rust/pruebas/referencia.txt` |
 
-Las 7 configs (`rust/pruebas/config-*.txt`, las arma
-`rust/pruebas/hacer_configs.py` desde `angri/config.py`): grilla, bosque,
-corteza+tálamo en grilla y en bosque, PIDE con ESCUCHA_CUERPO/PEDIDOS/ALIVIO,
-MENTE azar con reflejos, y todo junto (corteza, tálamo, PIDE, FRASE,
-PALABRA_SUELTA, COMPOSICION, EGO, CAMBIO_SIGNIFICADO). La referencia se generó
-el 24/11/2026 con `probar_rust.py` en IDÉNTICO para esas 7 configs (y la huella
-de la traza de Python, grilla semilla 0, da la misma: `25786d38b2b14d1c`). Si un
-cambio la mueve **a propósito**: cambiarlo igual en Python, comprobar con
-`probar_rust.py`, y regenerar con
+Las 7 configs de prueba (`rust/pruebas/config-*.txt`, copias de la config con
+ajustes): grilla, bosque, corteza+tálamo en grilla y en bosque, PIDE con
+ESCUCHA_CUERPO/PEDIDOS/ALIVIO, MENTE azar con reflejos, y todo junto. La
+referencia se generó el 24/11/2026 cuando Rust = Python (la huella de la traza
+de Python, grilla semilla 0, daba la misma: `25786d38b2b14d1c`). Ahora que no
+hay Python, **la referencia es la vara**: si un cambio la mueve **a propósito**
+(una mejora de la mente, un número de la config), se regenera con
 
     cd rust && ANGRI_REGENERAR=1 cargo test --release referencia
 
-y commitear el `referencia.txt` nuevo junto con el cambio. Si la mueve sin
-querer, la prueba dice qué config y semilla cambió.
+y se commitea el `referencia.txt` nuevo junto con el cambio, diciendo en el
+commit por qué se movió. Si la mueve sin querer, la prueba dice qué config y
+semilla cambió. Un cambio en `rust/config.txt` no mueve la referencia (las
+pruebas usan sus propias configs); si se quiere que la siga, hay que copiarlo
+también a `rust/pruebas/config-*.txt` y regenerar.
 
-**Plan:** Rust pasa a ser la base. Paso 1 (todo portado, incluidos panel, foto
-y `--estado`) y paso 2 (pruebas propias) hechos. Hasta el paso 3, **si se
-cambia algo del núcleo, hay que cambiarlo igual en los dos** y correr
-`probar_rust.py` y `cargo test --release`. Falta para el paso 3 (borrar
-Python): pasar el i5 a Rust (`deploy/` sigue con Python y su `mente.json`; no
-se tocó; Rust no lee las mentes de Python, así que la vida del i5 tendría que
-renacer o hace falta un conversor), servir el visor sin `visor.py` (o dejarlo
-como único Python, solo lee `foto.json`), pasar a Rust lo que todavía mide en
-Python (`medir.py`/`comparar.py` arman la config y juntan resultados; el
-número lo da Rust) y sacar `hacer_configs.py` (las configs ya quedan en el repo).
-Lo de "dice"/"oye" del panel necesitaría guardar las palabras en Rust.
+**En el i5**: `deploy/instalar.sh` compila (`cargo` de Debian 13, Rust 1.85;
+`Cargo.toml` lo declara y clippy no encontró nada más nuevo), corre las pruebas
+y no instala si fallan, instala el binario en `/opt/angri/angri`, borra el
+`/opt/angri/codigo` de Python, y los servicios corren `angri vivir` y `angri
+visor`. La primera vez, lo de Python (`mente.json`, `vida.csv`, respaldos,
+foto) se mueve a `/var/lib/angri/python-viejo/` y **Angri renace en Rust**: no
+hay conversor de mentes de Python. Antes de correrlo: `sudo apt install cargo`.
+No se probó en el i5 ni en Linux (todo lo de arriba corrió en Windows).
+
+Velocidad (un proceso, esta PC):
+
+| | Python (antes) | Rust | veces |
+|---|---|---|---|
+| grilla | 8.700 ticks/s | 540.000 ticks/s | 62× |
+| bosque | 5.900 ticks/s | 374.000 ticks/s | 63× |
+| grilla con corteza, tálamo y PIDE | — | 394.000 ticks/s | |
+
+`angri comparar 300000 24 "" "MUNDO=bosque" -j 12` tarda unos 5 s; 256 pares
+de 300.000 ticks, alrededor de un minuto.
 
 ## Reglas del proyecto
 

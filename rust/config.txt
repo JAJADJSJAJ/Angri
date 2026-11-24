@@ -1,7 +1,8 @@
-"""Constantes de Angri. Todo lo que se puede "afinar" vive acá.
+# Config de Angri: todo lo que se puede "afinar" vive acá (antes angri/config.py).
+# Formato: CLAVE = valor   # comentario. Los dicts van como CLAVE.subclave = valor.
+# Se puede cambiar cualquier valor al correr: angri medir 50000 8 PESO_NECESIDAD.curiosidad=0
+# OJO: si cambia algo acá, la vida cambia y rust/pruebas/referencia.txt se tiene que regenerar.
 
-Cambiá estos números para ver cómo cambia su comportamiento.
-"""
 
 # --- Bucle de vida ---
 TICKS_POR_SEGUNDO = 10        # "latido": cuántos ciclos por segundo
@@ -23,7 +24,7 @@ ESTACION = 5000               # cada cuántos ticks una fuente se seca y brota e
 PROB_MUEVE_PELIGRO = 0.02     # por tick: un peligro da un paso
 
 # --- Bosque (etapa 13a): mundo grande con dependencias ---
-MUNDO = "grilla"              # "grilla" (el de siempre, 24x14) o "bosque" (etapa 13a)
+MUNDO = 'grilla'              # "grilla" (el de siempre, 24x14) o "bosque" (etapa 13a)
 BOSQUE_ANCHO = 64
 BOSQUE_ALTO = 64
 DIA = 1000                    # ticks de un día entero (el ciclo de sueño propio dura ~1000)
@@ -53,13 +54,13 @@ PREDADOR_HARTO = 1500         # ticks sin cazar después de atacar (tope ético:
 RASTRO_DECAE = 0.99           # por tick, el olor de Angri
 RASTRO_DURA = 400
 SUENO_NOCHE = 0.3             # proceso C: de noche el umbral para dormirse baja esto; de día el de despertar sube
-DESMAYO_DONDE = "cueva"       # dónde despierta: "cueva" (la más cercana), "cueva_agua" o "aqui"
+DESMAYO_DONDE = 'cueva'       # dónde despierta: "cueva" (la más cercana), "cueva_agua" o "aqui"
 DESMAYO_INTEGRIDAD = 0.3      # integridad 0 -> se desmaya y despierta en una cueva con esto
 DESMAYO_RESTO = 0.35          # y con al menos esto de energía y agua (no muere: decisión del usuario)
 MALESTAR_ALTO = 0.4           # para medir el % del tiempo en malestar alto (ética)
 
 # --- Mente ---
-MENTE = "aprende"             # "aprende" (etapa 2), o "azar" (vieja mente.py)
+MENTE = 'aprende'             # "aprende" (etapa 2), o "azar" (vieja mente.py)
 REFLEJOS = False              # solo para MENTE="azar": False = azar puro (el piso)
 
 # --- Ganglios basales (etapa 2) ---
@@ -68,14 +69,14 @@ APRENDE_CRITICO = 0.1
 APRENDE_ACTOR = 0.06
 HUELLA = 0.8                  # λ: cuánto tiempo atrás llega el crédito de la dopamina
 FRANJAS = 4                   # en cuántas franjas ve el crítico la energía y la integridad (8 y 16 probadas: no mejoran)
-CALMA = 1e12                  # experiencia a partir de la cual aprende más despacio (1e12 = apagado: probado con 2000, empeora)
+CALMA = 1000000000000.0       # experiencia a partir de la cual aprende más despacio (1e12 = apagado: probado con 2000, empeora)
 APRENDE_MINIMO = 0.1          # nunca aprende menos que esta fracción (el mundo cambia)
-UMBRAL_RECUERDO = 1e9         # alivio para recordar un lugar (1e9 = apagado: probado con 2.0, empeora)
+UMBRAL_RECUERDO = 1000000000.0# alivio para recordar un lugar (1e9 = apagado: probado con 2.0, empeora)
 RECUERDO_DECAE = 0.9995       # por tick: los recuerdos se desvanecen
 TEMPERATURA_BASE = 0.3        # exploración de fondo
 TEMPERATURA_SORPRESA = 0.5    # la noradrenalina sube la exploración
 TEMPERATURA_MALESTAR = 8.0    # cuanto peor la pasa, más explora (etapa 10: 2 -> 8, saca a las vidas trabadas)
-MARGEN_EXPLORAR = 0.0          # (0 = apagado; 1, 2 y 4 probados: traban casi todas las vidas) las acciones peores que la mejor por más de esto no reciben la temperatura por malestar
+MARGEN_EXPLORAR = 0.0         # (0 = apagado; 1, 2 y 4 probados: traban casi todas las vidas) las acciones peores que la mejor por más de esto no reciben la temperatura por malestar
 PELIGRO_SIN_MALESTAR = True   # (etapa 11) la temperatura por malestar no se aplica a moverse sobre un peligro visible
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
 DOLOR = 6.0                   # (etapa 11: 3 -> 6) castigo directo por lastimarse (no pasa por el malestar: no se satura)
@@ -117,7 +118,7 @@ MEMORIA_PALABRA = 6           # ticks que una palabra oída sigue sonando
 MAESTRO_MIENTE = False        # control: dice palabras al azar
 PALABRA_SUELTA = False        # rasgo por (palabra, movimiento) (apagado: la palabra de la cosa se vuelve una manía de dirección y empeora)
 LEXICO = True                 # significado de cada palabra aprendido por sorpresa (compone)
-APRENDE_PALABRA = 0.1 
+APRENDE_PALABRA = 0.1
 PISO_PALABRA = 0.25           # nunca aprende menos que esta fracción (anti-ego)
 EGO = False                   # prueba: aprende cada vez menos con la experiencia
 ESPERA_VERIFICAR = 60         # ticks que espera ver lo que le dijeron para comprobarlo
@@ -156,31 +157,28 @@ UMBRAL_ALIVIO = 0.005         # cuánto tiene que bajar el déficit para contar 
 FRASE = False                 # rasgo por (par de palabras oídas juntas, movimiento)
 
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---
-EQUILIBRIO = {
-    "energia": 0.8,
-    "cansancio": 0.2,
-    "curiosidad": 0.4,
-    "estres": 0.1,
-    "integridad": 1.0,
-}
+EQUILIBRIO.energia = 0.8
+EQUILIBRIO.cansancio = 0.2
+EQUILIBRIO.curiosidad = 0.4
+EQUILIBRIO.estres = 0.1
+EQUILIBRIO.integridad = 1.0
 # (bosque) necesidades que suma el cuerpo en el bosque: sed y temperatura corporal
-EQUILIBRIO_BOSQUE = {"agua": 0.8, "calor": 0.6}
+EQUILIBRIO_BOSQUE.agua = 0.8
+EQUILIBRIO_BOSQUE.calor = 0.6
 # Importancia de cada necesidad al calcular el malestar total
-PESO_NECESIDAD = {
-    "energia": 1.5,
-    "cansancio": 1.0,
-    "curiosidad": 0.6,
-    "estres": 1.2,
-    "integridad": 2.0,
-    "agua": 1.5,
-    "calor": 1.2,
-}
+PESO_NECESIDAD.energia = 1.5
+PESO_NECESIDAD.cansancio = 1.0
+PESO_NECESIDAD.curiosidad = 0.6
+PESO_NECESIDAD.estres = 1.2
+PESO_NECESIDAD.integridad = 2.0
+PESO_NECESIDAD.agua = 1.5
+PESO_NECESIDAD.calor = 1.2
 
 # --- Cuerpo: cómo cambian solas las variables ---
 GASTO_ENERGIA_BASE = 0.0008   # vivir cuesta
 GASTO_ENERGIA_MOVER = 0.0015
 SUBE_CANSANCIO_DESPIERTO = 0.0006
-SUBE_CURIOSIDAD = 0.0010      # el aburrimiento crece solo
+SUBE_CURIOSIDAD = 0.001       # el aburrimiento crece solo
 CALMA_ESTRES = 0.004          # el estrés vuelve a la calma de a poco
 RECUPERA_INTEGRIDAD = 0.0005
 DANO_INANICION = 0.0          # sin energía, se consume (0 = apagado: probado, empeora)
@@ -193,12 +191,12 @@ DANO_FRIO = 0.0004            # integridad por tick con calor < 0.3 (hipotermia)
 DANO_SED = 0.0004             # integridad por tick con agua o energía < 0.05 (además de no curarse)
 
 # --- Química ---
-ADENOSINA_POR_ACTIVIDAD = 0.0009  # se acumula estando despierto
-ADENOSINA_LIMPIEZA_SUENO = 0.004  # se limpia durmiendo
-UMBRAL_DORMIR = 0.75              # presión de sueño para dormirse
+ADENOSINA_POR_ACTIVIDAD = 0.0009# se acumula estando despierto
+ADENOSINA_LIMPIEZA_SUENO = 0.004# se limpia durmiendo
+UMBRAL_DORMIR = 0.75          # presión de sueño para dormirse
 UMBRAL_DESPERTAR = 0.08
 CORTISOL_SUBE = 0.02
 CORTISOL_BAJA = 0.002
 
 # --- Límites éticos ---
-MALESTAR_MAXIMO = 0.85  # tope duro: el malestar nunca pasa de acá
+MALESTAR_MAXIMO = 0.85        # tope duro: el malestar nunca pasa de acá

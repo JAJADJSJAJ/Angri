@@ -59,6 +59,42 @@ pub struct Config {
 
 pub const NOMBRES: [&str; 7] = ["energia", "cansancio", "curiosidad", "estres", "integridad", "agua", "calor"];
 
+/// El valor sin el comentario del final (un '#' fuera de comillas).
+fn sin_comentario(v: &str) -> &str {
+    let mut comilla: Option<char> = None;
+    for (i, ch) in v.char_indices() {
+        match (comilla, ch) {
+            (None, '\'' | '"') => comilla = Some(ch),
+            (Some(c), _) if c == ch => comilla = None,
+            (None, '#') => return v[..i].trim(),
+            _ => {}
+        }
+    }
+    v.trim()
+}
+
+/// Una config armada: la de por defecto (o un archivo) con ajustes encima.
+pub fn armar(archivo: Option<&str>, ajustes: &[String]) -> (String, Config) {
+    let texto = match archivo {
+        Some(a) => std::fs::read_to_string(a).unwrap_or_else(|e| {
+            eprintln!("angri (rust): no puedo leer {a} ({e})");
+            std::process::exit(2)
+        }),
+        None => Config::texto_por_defecto().to_string(),
+    };
+    let c = Config::leer_con(&texto, ajustes);
+    // el texto con los ajustes, para guardarlo (vivir) y que la vida siga igual
+    let mut t = texto;
+    if !ajustes.is_empty() {
+        t += "\n# ajustes\n";
+        for a in ajustes {
+            t += a;
+            t += "\n";
+        }
+    }
+    (t, c)
+}
+
 struct Crudo(HashMap<String, String>);
 
 impl Crudo {
@@ -94,12 +130,37 @@ impl Crudo {
 }
 
 impl Config {
+    /// La config de rust/config.txt (metida en el binario al compilar).
+    pub fn texto_por_defecto() -> &'static str {
+        include_str!("../config.txt")
+    }
+
     pub fn leer(texto: &str) -> Config {
+        Config::leer_con(texto, &[])
+    }
+
+    /// Lee la config (líneas `CLAVE = valor  # comentario`) y le aplica ajustes
+    /// `CLAVE=valor` encima. Un ajuste con una clave que no existe es un error.
+    pub fn leer_con(texto: &str, ajustes: &[String]) -> Config {
         let mut m = HashMap::new();
         for l in texto.lines() {
-            if let Some((k, v)) = l.split_once('=') {
-                m.insert(k.trim().to_string(), v.trim().to_string());
+            if l.trim_start().starts_with('#') {
+                continue;
             }
+            if let Some((k, v)) = l.split_once('=') {
+                m.insert(k.trim().to_string(), sin_comentario(v).to_string());
+            }
+        }
+        for a in ajustes {
+            let Some((k, v)) = a.split_once('=') else {
+                eprintln!("angri (rust): ajuste sin '=': {a}");
+                std::process::exit(2);
+            };
+            if !m.contains_key(k.trim()) {
+                eprintln!("angri (rust): {} no existe en la config", k.trim());
+                std::process::exit(2);
+            }
+            m.insert(k.trim().to_string(), sin_comentario(v).to_string());
         }
         let c = Crudo(m);
         let mente = c.txt("MENTE");

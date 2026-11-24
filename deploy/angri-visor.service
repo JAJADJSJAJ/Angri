@@ -1,5 +1,5 @@
 # Visor web de Angri (etapa 13a): http://angri.local:8080, solo red local.
-# Lee /var/lib/angri/foto.json (la escribe vivir.py cada segundo); no toca la mente.
+# Lee /var/lib/angri/foto.json (la escribe angri vivir cada segundo); no toca la mente.
 # Lo instala deploy/instalar.sh.
 [Unit]
 Description=Angri - visor web
@@ -10,16 +10,15 @@ Wants=network-online.target
 Type=simple
 User=angri
 Group=angri
-WorkingDirectory=/opt/angri/codigo
+WorkingDirectory=/var/lib/angri
 Environment=ANGRI_DATOS=/var/lib/angri
-Environment=PYTHONUNBUFFERED=1
-ExecStart=/usr/bin/python3 -u visor.py --host 0.0.0.0 --puerto 8080
+ExecStart=/opt/angri/angri visor --host 0.0.0.0 --puerto 8080
 Restart=always
 RestartSec=10
 # Liviano: que nunca le quite CPU a la vida
 Nice=10
 CPUQuota=25%
-MemoryMax=200M
+MemoryMax=50M
 # Solo la red local (privada, link-local y la propia máquina)
 IPAddressDeny=any
 IPAddressAllow=localhost 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 fc00::/7 fe80::/10

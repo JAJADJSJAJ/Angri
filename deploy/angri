@@ -1,9 +1,8 @@
 #!/bin/sh
 # Comando para manejar a Angri. Uso: angri [estado|log [N]|vivo|parar|seguir|reiniciar]
 DATOS=/var/lib/angri
-cd /opt/angri/codigo || exit 1
 case "${1:-estado}" in
-  estado)    sudo -u angri ANGRI_DATOS=$DATOS python3 vivir.py --estado
+  estado)    sudo -u angri /opt/angri/angri vivir --carpeta $DATOS --estado
              echo; systemctl is-active angri.service ;;
   log)       sudo journalctl -u angri -n "${2:-30}" --no-pager -o short ;;
   vivo)      sudo journalctl -u angri -f -o cat ;;

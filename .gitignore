@@ -1,3 +1,2 @@
 datos/
-__pycache__/
-*.pyc
+datos-rust/

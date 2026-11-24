@@ -7,18 +7,17 @@ After=local-fs.target
 Type=simple
 User=angri
 Group=angri
-WorkingDirectory=/opt/angri/codigo
+WorkingDirectory=/var/lib/angri
 Environment=ANGRI_DATOS=/var/lib/angri
-Environment=PYTHONUNBUFFERED=1
-ExecStart=/usr/bin/python3 -u vivir.py
+ExecStart=/opt/angri/angri vivir
 Restart=always
 RestartSec=10
 # Al parar (o al reinicio de las 05:30) systemd manda SIGTERM: Angri termina
-# el tick, guarda (~400 KB, menos de 1 s) y sale. Margen de sobra.
+# el tick, guarda (unos MB, menos de 1 s) y sale. Margen de sobra.
 KillSignal=SIGTERM
 TimeoutStopSec=120
-# Toda la PC es suya: sin Nice ni topes. Python puro usa 1 núcleo; los otros
-# 3 quedan para mediciones (comparar.py -j 3) o etapas futuras.
+# Toda la PC es suya: sin Nice ni topes. Usa 1 núcleo; los otros 3 quedan
+# para mediciones (angri comparar ... -j 3) o etapas futuras.
 # Solo puede escribir en su carpeta
 NoNewPrivileges=yes
 ProtectSystem=strict

@@ -1,30 +1,35 @@
-//! Núcleo de Angri en Rust: corre una vida y devuelve las métricas de
-//! medir.una_vida en JSON. La config llega por stdin (la arma medir.py --rust).
+//! Angri: una simulación de un agente con cerebro bioinspirado. Todo en Rust,
+//! sin dependencias. La config está en rust/config.txt (metida en el binario).
 //!
-//!   angri vida SEMILLA TICKS   < config  -> métricas en JSON (una línea)
-//!   angri traza SEMILLA TICKS  < config  -> una línea por tick (para comparar con Python)
-//!   angri velocidad SEMILLA TICKS < config -> ticks/s
-//!   angri retomar SEMILLA TICKS < config  -> cortar, guardar, cargar y seguir da IDÉNTICO
-//!   angri foto SEMILLA TICKS [CADA] < config -> la foto del visor (angri/foto.py) tras TICKS ticks
-//!                                           (o una cada CADA ticks)
-//!   angri vivir [--carpeta DIR] ...        -> vida continua (ver vivir.rs)
+//!   angri vivir [--carpeta DIR] ...             -> vida continua (ver vivir.rs)
+//!   angri visor [--carpeta DIR] [--puerto P]    -> mirarla desde el navegador (visor.rs)
+//!   angri medir [TICKS] [N] [CLAVE=VALOR ...]   -> métricas de N vidas (medir.rs)
+//!   angri comparar TICKS N "A" "B" [-j J]       -> pares A/B con la misma semilla
+//!   angri vida SEMILLA TICKS      [CLAVE=VALOR ...] -> métricas de una vida en JSON
+//!   angri traza SEMILLA TICKS     ...              -> una línea por tick (bits exactos)
+//!   angri foto SEMILLA TICKS [CADA] ...            -> la foto del visor (o una cada CADA ticks)
+//!   angri velocidad SEMILLA TICKS ...              -> ticks/s
+//!   angri retomar SEMILLA TICKS   ...              -> cortar, guardar, cargar y seguir da IDÉNTICO
+//! En todos, `--config ARCHIVO` usa otra config en vez de la de adentro.
 mod azar;
 mod config;
 mod extra;
 mod foto;
 mod guardar;
 mod lenguaje;
+mod medir;
 mod mente;
 mod mundo;
 #[cfg(test)]
 mod pruebas;
 mod vida;
+mod visor;
 mod vivir;
 
 use config::Config;
 use mente::*;
 use mundo::*;
-use std::io::{Read, Write};
+use std::io::Write;
 use vida::{Angri, Evento};
 
 fn num(x: f64) -> String {
@@ -39,7 +44,8 @@ fn media_int(xs: &[i64]) -> f64 {
     xs.iter().sum::<i64>() as f64 / xs.len() as f64
 }
 
-fn una_vida(semilla: u64, ticks: i64, c: &Config) -> String {
+/// Las métricas de una vida (las de medir.py), como (nombre, número en texto).
+fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     let mut a = Angri::new(semilla, c);
     let corte = (ticks as f64 * 0.8) as i64;
     let (mut malestar, mut fin) = (0.0f64, 0.0f64);
@@ -198,7 +204,12 @@ fn una_vida(semilla: u64, ticks: i64, c: &Config) -> String {
             }
         }
     }
-    let partes: Vec<String> = o.iter().map(|(k, v)| format!("\"{}\": {}", k, v)).collect();
+    o
+}
+
+/// Las métricas en JSON, una línea (el formato de siempre: lo usa la referencia).
+fn una_vida(semilla: u64, ticks: i64, c: &Config) -> String {
+    let partes: Vec<String> = metricas(semilla, ticks, c).iter().map(|(k, v)| format!("\"{}\": {}", k, v)).collect();
     format!("{{{}}}", partes.join(", "))
 }
 
@@ -256,25 +267,41 @@ fn retomar(semilla: u64, ticks: i64, c: &Config) -> bool {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.get(1).map(|s| s.as_str()) == Some("vivir") {
-        return vivir::vivir(&args[2..]);
-    }
-    if args.len() < 4 {
-        eprintln!("uso: angri vida|traza|foto|velocidad|retomar SEMILLA TICKS  < config");
-        eprintln!("     angri vivir [--carpeta DIR] [--ticks N] [--semilla S] [--ventana W] [--guardar G] [--panel] [--foto S] [--estado]");
-        std::process::exit(1);
+    let resto = if args.len() > 2 { &args[2..] } else { &[] };
+    match args.get(1).map(|s| s.as_str()) {
+        Some("vivir") => return vivir::vivir(resto),
+        Some("medir") => return medir::medir(resto),
+        Some("comparar") => return medir::comparar(resto),
+        Some("visor") => return visor::visor(resto),
+        Some("vida" | "traza" | "foto" | "velocidad" | "retomar") if args.len() >= 4 => {}
+        _ => {
+            eprintln!("{}", AYUDA);
+            std::process::exit(1);
+        }
     }
     let semilla: u64 = args[2].parse().expect("semilla");
     let ticks: i64 = args[3].parse().expect("ticks");
-    let mut texto = String::new();
-    std::io::stdin().read_to_string(&mut texto).unwrap();
-    let c = Config::leer(&texto);
+    // resto: [CADA] (solo foto), CLAVE=VALOR..., --config ARCHIVO
+    let (mut ajustes, mut archivo, mut sueltos) = (vec![], None, vec![]);
+    let mut i = 4;
+    while i < args.len() {
+        if args[i] == "--config" {
+            archivo = args.get(i + 1).cloned();
+            i += 1;
+        } else if args[i].contains('=') {
+            ajustes.push(args[i].clone());
+        } else {
+            sueltos.push(args[i].clone());
+        }
+        i += 1;
+    }
+    let (_, c) = config::armar(archivo.as_deref(), &ajustes);
     match args[1].as_str() {
         "vida" => println!("{}", una_vida(semilla, ticks, &c)),
         "traza" => traza(semilla, ticks, &c),
         "foto" => {
-            // con un 4.º argumento CADA, una foto cada CADA ticks
-            let cada: i64 = args.get(4).map_or(ticks.max(1), |x| x.parse().expect("cada"));
+            // con CADA, una foto cada CADA ticks
+            let cada: i64 = sueltos.first().map_or(ticks.max(1), |x| x.parse().expect("cada"));
             let mut a = Angri::new(semilla, &c);
             for t in 1..=ticks {
                 a.evento = Evento::Nada;
@@ -289,7 +316,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        "velocidad" => {
+        _ => {
             let t0 = std::time::Instant::now();
             let mut a = Angri::new(semilla, &c);
             for _ in 0..ticks {
@@ -298,9 +325,13 @@ fn main() {
             let s = t0.elapsed().as_secs_f64();
             println!("{} ticks en {:.3} s: {:.0} ticks/s (malestar final {:.6})", ticks, s, ticks as f64 / s, a.malestar(&c));
         }
-        m => {
-            eprintln!("modo desconocido: {m}");
-            std::process::exit(1);
-        }
     }
 }
+
+const AYUDA: &str = "uso: angri vivir [--carpeta DIR] [--ticks N] [--semilla S] [--ventana W] [--guardar G]
+                   [--panel] [--foto S] [--estado] [CLAVE=VALOR ...]
+     angri visor [--carpeta DIR] [--puerto P] [--host H]
+     angri medir [TICKS] [N] [azar|reflejos] [CLAVE=VALOR ...] [-j J]
+     angri comparar TICKS N \"AJUSTES A\" \"AJUSTES B\" [-j J]
+     angri vida|traza|foto|velocidad|retomar SEMILLA TICKS [CLAVE=VALOR ...]
+  (todos aceptan --config ARCHIVO; la de por defecto es rust/config.txt)";
