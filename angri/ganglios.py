@@ -162,7 +162,15 @@ class Ganglios:
         temp = (C.TEMPERATURA_BASE + C.TEMPERATURA_SORPRESA * noradrenalina
                 + C.TEMPERATURA_MALESTAR * malestar)
         m = max(h)
-        e = [math.exp((x - m) / temp) for x in h]
+        if C.MARGEN_EXPLORAR or C.PELIGRO_SIN_MALESTAR:
+            # la exploración por malestar no alcanza a lo que ya sabe que está mal
+            t0 = C.TEMPERATURA_BASE + C.TEMPERATURA_SORPRESA * noradrenalina
+            temp = [t0 if ((C.MARGEN_EXPLORAR and x < m - C.MARGEN_EXPLORAR)
+                           or (C.PELIGRO_SIN_MALESTAR and vista.get(MOVIMIENTOS[b]) == PELIGRO))
+                    else temp for b, x in enumerate(h)]
+            e = [math.exp((x - m) / t) for x, t in zip(h, temp)]
+        else:
+            e = [math.exp((x - m) / temp) for x in h]
         z = sum(e)
         probs = [x / z for x in e]
         a = self.rng.choices(range(len(MOVIMIENTOS)), probs)[0]
@@ -238,7 +246,10 @@ class Ganglios:
         p_entonces, temp = momento[7], momento[8]
         h = [sum(self.w[i] for i in rs) for rs in rasgos]
         m = max(h)
-        e = [math.exp((x - m) / temp) for x in h]
+        if isinstance(temp, list):
+            e = [math.exp((x - m) / t) for x, t in zip(h, temp)]
+        else:
+            e = [math.exp((x - m) / temp) for x in h]
         z = sum(e)
         # corrección por importancia: si hoy ya no haría eso, el recuerdo pesa menos
         rho = min(C.TOPE_IMPORTANCIA, (e[a] / z) / p_entonces) if C.IMPORTANCIA else 1.0

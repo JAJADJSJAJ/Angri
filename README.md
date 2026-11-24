@@ -551,6 +551,49 @@ la fuente nueva 22 % antes. Costo: se lastima más (heridas 6,7 → 10,0 por vid
   mucho: el crédito se reparte entre demasiados pasos).
 - Queda prendido `TEMPERATURA_MALESTAR=8`. Nueva base: **malestar 0,144 · hambre 13,3 % (512 vidas)**.
 
+## Etapa 11: chequeo general y heridas (prendido: malestar 0,144 → 0,122)
+
+Antes de seguir, re-medí todo con la base nueva (256 pares de 50.000 ticks, en pares). Un agente revisó el código para ver de dónde salían las heridas.
+
+**Re-medición (vs. base de la etapa 10):**
+
+| pieza | Δ malestar | z | qué pasa |
+|---|---|---|---|
+| pedir (escucha) | −0,005 | −1,1 | dentro del ruido |
+| pedir (dopamina) | −0,005 | −1,2 | dentro del ruido |
+| maestro habla el doble | −0,006 | −1,3 | dentro del ruido |
+| sin maestro | +0,011 | +3,2 | el maestro sí sirve |
+| recordar lugares | −0,008 | −2,1 | candidato |
+| corteza | +0,022 | +4,2 | empeora: sigue apagada |
+| tálamo | +0,002 | +0,4 | nada |
+| pedir + escuchar el cuerpo | −0,010 | −2,6 | candidato |
+| pedir + escuchar pedidos | −0,005 | −1,2 | nada |
+| DOLOR 6 | −0,003 | −0,7 | heridas 9,9 → 7,2 (z −11,5) |
+| DOLOR 12 | +0,004 | +0,8 | heridas 5,4 pero más trabadas |
+| menos exploración (base o sorpresa) | ≈ −0,004 | ≈ −1 | nada |
+
+**Por qué se lastimaba más desde la etapa 10.** Ya sabía que la X duele: el peso de "voy a una X" estaba entre −3,5 y −6. Pero la temperatura por malestar aplana el softmax para todas las acciones. Cuando la pasa mal, pisar una X que está viendo tenía probabilidad 0,09–0,13, contra menos de 0,01 con la temperatura base. No le faltaba aprender: la desesperación borraba lo aprendido.
+
+**Arreglo: `PELIGRO_SIN_MALESTAR`.** Moverse sobre un peligro visible usa solo la temperatura base + sorpresa. El resto de las acciones sigue explorando con la desesperación. Es como un miedo innato: el malestar empuja a probar cosas nuevas, pero no a meterse en el fuego.
+
+| 512 pares | antes | ahora | z |
+|---|---|---|---|
+| malestar | 0,144 | **0,122** | −8,8 |
+| heridas | 10,0 | 8,3 | −8,6 |
+| % hambre | 13,3 | **7,2** | −7,1 |
+| % trabadas | 3,9 | 0,2 | −4,2 |
+| comidas | 591 | 638 | +4,8 |
+
+Mejora el hambre, no solo las heridas: lastimarse sube el estrés y el malestar, y eso sube la temperatura. Era un círculo vicioso.
+
+**Encima de eso, `DOLOR` 3 → 6** (512 pares): heridas 8,3 → **6,8** (z −12,7), malestar igual (z −0,1), hambre 7,2 → 8,0 (z +1,3, dentro del ruido).
+
+**Probado y apagado:**
+- `MARGEN_EXPLORAR`: no aplicar la temperatura alta a las acciones que considera claramente peores. Es un desastre: traba entre el 73 y el 88 % de las vidas. Salir de un rincón requiere justamente probar lo que cree malo.
+- Con el peligro arreglado, ya no suman nada: recordar lugares, escuchar el cuerpo, que el maestro hable el doble, y bajar o subir TEMPERATURA_MALESTAR a 4 o a 12. Todo da |z| < 2, salvo 4, que empeora (z +2,7).
+
+Nueva base: **malestar 0,121, hambre 8 %, heridas 6,8, trabadas 0,4 %**.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

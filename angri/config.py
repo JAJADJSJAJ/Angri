@@ -39,8 +39,10 @@ RECUERDO_DECAE = 0.9995       # por tick: los recuerdos se desvanecen
 TEMPERATURA_BASE = 0.3        # exploración de fondo
 TEMPERATURA_SORPRESA = 0.5    # la noradrenalina sube la exploración
 TEMPERATURA_MALESTAR = 8.0    # cuanto peor la pasa, más explora (etapa 10: 2 -> 8, saca a las vidas trabadas)
+MARGEN_EXPLORAR = 0.0          # (0 = apagado; 1, 2 y 4 probados: traban casi todas las vidas) las acciones peores que la mejor por más de esto no reciben la temperatura por malestar
+PELIGRO_SIN_MALESTAR = True   # (etapa 11) la temperatura por malestar no se aplica a moverse sobre un peligro visible
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
-DOLOR = 3.0                   # castigo directo por lastimarse (no pasa por el malestar: no se satura)
+DOLOR = 6.0                   # (etapa 11: 3 -> 6) castigo directo por lastimarse (no pasa por el malestar: no se satura)
 RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)
 
 # --- Corteza (etapa 3): modelo predictivo y curiosidad ---
