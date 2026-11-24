@@ -21,6 +21,7 @@ mod mate;
 mod medir;
 mod mente;
 mod mundo;
+mod propia;
 #[cfg(test)]
 mod pruebas;
 mod vida;
@@ -189,6 +190,12 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     } else {
         f("encuentra", num(if tardanzas.is_empty() { 0.0 } else { media_int(&tardanzas) }));
         f("ronda vieja", num(if rondas.is_empty() { 0.0 } else { media_int(&rondas) }));
+    }
+    if let Some(p) = &a.mente.propia {
+        let (vivas, mezclan) = p.resumen();
+        f("unidades", vivas.to_string());
+        f("mezclan", mezclan.to_string());
+        f("reiniciadas", p.reiniciadas.to_string());
     }
     let ac = &a.oido.aciertos;
     if !ac.is_empty() {

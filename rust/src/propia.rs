@@ -1,0 +1,477 @@
+//! Etapa 14: una mente que arma sus propios rasgos.
+//!
+//! En vez de la lista hecha a mano (`rasgos_de`: "me acerco a X", "lo que alivia la
+//! necesidad del foco está para allá"), la mente ve **átomos** crudos de dos clases:
+//!
+//! - **del estado**: franjas del cuerpo, el foco, noche, lluvia, qué hay acá, qué lleva,
+//!   qué toca. Tienen un peso por acción.
+//! - **de cada movimiento** (egocéntricos, como tener un frente para cada paso posible):
+//!   qué hay en la celda a la que lleva, qué ve o huele en esa dirección y a qué
+//!   distancia, qué altura tiene, si está tapada o hay fuego, si es hacia donde le
+//!   dijeron o hacia donde recuerda algo. Tienen un solo peso, el mismo para los cinco
+//!   movimientos (lo que aprende de "comida adelante" vale para cualquier lado).
+//!
+//! Con eso arma **unidades**: cada átomo solo y un banco de conjunciones de 2 o 3 átomos
+//! (pueden mezclar las dos clases: "con hambre" y "comida adelante") que nacen de lo que
+//! está viviendo, prefiriendo los átomos raros. Solo se tocan las activas.
+//!
+//! Plasticidad (generate-and-test; Dohare et al. 2024): cada tanto, las unidades
+//! maduras que menos sirven (poco peso, casi nunca activas, o activas casi siempre: no
+//! distinguen nada) se reinician con átomos de lo que acaba de pasar. Las de un átomo
+//! nunca se reinician.
+use crate::azar::Azar;
+use crate::config::Config;
+use crate::mente::{MOVIMIENTOS, NACC};
+use crate::mundo::*;
+
+/// átomos del estado: 0..N_ESTADO; de un movimiento: N_ESTADO..N_ATOMOS
+pub const N_ESTADO: usize = 68;
+pub const N_MOVER: usize = 44;
+pub const N_ATOMOS: usize = N_ESTADO + N_MOVER;
+const SIN_ATOMO: u16 = u16::MAX;
+/// marca de una unidad del estado en la lista de activas (las de movimiento llevan
+/// en esos bits para qué movimientos está activa)
+const DEL_ESTADO: u8 = 0x80;
+
+#[derive(Clone, Copy)]
+pub struct Unidad {
+    pub atomos: [u16; 3],
+    pub k: u8,      // cuántos átomos (0 = vacía, todavía no nació)
+    pub mover: bool, // tiene algún átomo de movimiento: un solo peso (w[0]) para los 5
+    pub v: f64,
+    pub w: [f64; NACC],
+    pub util: f64,  // promedio de cuánto pesa cuando está activa
+    pub veces: i64, // cuántas veces estuvo activa
+    pub nace: i64,  // paso en que nació
+}
+
+impl Unidad {
+    fn vacia() -> Unidad {
+        Unidad { atomos: [SIN_ATOMO; 3], k: 0, mover: false, v: 0.0, w: [0.0; NACC], util: 0.0, veces: 0, nace: 0 }
+    }
+}
+
+/// Lo que siente en un momento, en átomos.
+#[derive(Clone, Default)]
+pub struct Sentir {
+    pub estado: Vec<u16>,     // ordenados
+    pub mover: [Vec<u16>; 5], // por movimiento (índices >= N_ESTADO), ordenados
+}
+
+pub struct Propia {
+    rng: Azar,
+    pub unidades: Vec<Unidad>, // las primeras N_ATOMOS son los átomos solos
+    indice: Vec<Vec<u32>>,     // átomo -> unidades del banco cuyo primer átomo es ese
+    // huellas densas por unidad; `huella` lista las que no están en cero
+    ev: Vec<f64>,
+    ew: Vec<[f64; NACC]>,
+    marca: Vec<bool>,
+    huella: Vec<u32>,
+    cuenta: Vec<i64>, // cuántas veces estuvo cada átomo (su frecuencia = cuenta / t)
+    ahora: Sentir,     // lo de s (al elegir)
+    activas: Vec<(u32, u8)>,
+    elegida: usize,
+    pub vs: f64, // V propio de s
+    pub t: i64,
+    pub nacidas: i64,
+    pub reiniciadas: i64,
+}
+
+#[inline]
+fn franja4(x: f64) -> usize {
+    ((x * 4.0) as usize).min(3)
+}
+
+#[inline]
+fn dir_de(dx: i64, dy: i64) -> usize {
+    if dy.abs() >= dx.abs() { if dy < 0 { 0 } else { 1 } } else if dx < 0 { 2 } else { 3 }
+}
+
+/// Los átomos de este momento (sin orden de importancia, sin "hacia dónde ir").
+pub fn sentir(vista: &Vista, cuerpo: &[f64; 7], ncuerpo: usize, n: usize, dr: usize, dicha: usize,
+              tacto: Option<&Tacto>, clima: u8) -> Sentir {
+    let mut s = Sentir::default();
+    let e = &mut s.estado;
+    e.push(0); // siempre (solo para el crítico)
+    for k in 0..ncuerpo {
+        e.push((1 + k * 4 + franja4(cuerpo[k])) as u16);
+    }
+    e.push((29 + n) as u16);
+    if clima & 1 != 0 { e.push(36); }
+    if clima & 2 != 0 { e.push(37); }
+    if let Some(t) = tacto {
+        if let Some(o) = t.lleva {
+            e.push(38);
+            for (p, &si) in o.props().iter().enumerate() {
+                if si { e.push((39 + p) as u16); }
+            }
+        }
+        if let Some(o) = t.aqui {
+            for (p, &si) in o.props().iter().enumerate() {
+                if si { e.push((45 + p) as u16); }
+            }
+        }
+        e.push((51 + t.h_aqui.min(2)) as u16);
+        e.push((54 + t.paredes.min(4)) as u16);
+        if t.cubierto { e.push(59); }
+        if t.dura { e.push(60); }
+    }
+    let m = N_ESTADO;
+    for &((dx, dy), cod) in &vista.v {
+        let cod = cod.min(6) as usize;
+        if (dx, dy) == (0, 0) {
+            s.estado.push((61 + cod) as u16);
+            s.mover[4].push((m + cod) as u16);
+            continue;
+        }
+        if let Some(a) = MOVIMIENTOS[..4].iter().position(|&x| x == (dx, dy)) {
+            s.mover[a].push((m + cod) as u16);
+        }
+        let dist = match dx.abs() + dy.abs() { 1 => 0, 2 => 1, 3 | 4 => 2, _ => 3 };
+        s.mover[dir_de(dx, dy)].push((m + 7 + cod * 4 + dist) as u16);
+    }
+    for a in 0..5 {
+        if let Some(t) = tacto {
+            s.mover[a].push((m + 35 + t.h_dest[a].clamp(0, 3) as usize) as u16);
+            if t.techo_dest[a] { s.mover[a].push((m + 39) as u16); }
+            if t.fuego_dest[a] { s.mover[a].push((m + 40) as u16); }
+            if a < 4 && t.lleva.is_some() { s.mover[a].push((m + 41) as u16); }
+        }
+        if dicha == a { s.mover[a].push((m + 42) as u16); }
+        if dr == a { s.mover[a].push((m + 43) as u16); }
+    }
+    s.estado.sort_unstable();
+    s.estado.dedup();
+    for r in s.mover.iter_mut() {
+        r.sort_unstable();
+        r.dedup();
+    }
+    s
+}
+
+impl Propia {
+    pub fn new(semilla: u64, c: &Config) -> Propia {
+        let mut unidades = Vec::with_capacity(N_ATOMOS + c.propios as usize);
+        for a in 0..N_ATOMOS {
+            unidades.push(Unidad { atomos: [a as u16, SIN_ATOMO, SIN_ATOMO], k: 1, mover: a >= N_ESTADO,
+                                   ..Unidad::vacia() });
+        }
+        for _ in 0..c.propios {
+            unidades.push(Unidad::vacia());
+        }
+        let n = unidades.len();
+        Propia {
+            rng: Azar::new(semilla ^ 0x14_0b5e55), unidades, indice: vec![vec![]; N_ATOMOS],
+            ev: vec![0.0; n], ew: vec![[0.0; NACC]; n], marca: vec![false; n], huella: vec![],
+            cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0,
+            t: 0, nacidas: 0, reiniciadas: 0,
+        }
+    }
+
+    /// las unidades activas: (unidad, DEL_ESTADO o los movimientos para los que está activa)
+    fn activas_de(&self, s: &Sentir) -> Vec<(u32, u8)> {
+        let mut presente = [false; N_ESTADO];
+        for &a in &s.estado {
+            presente[a as usize] = true;
+        }
+        let mut mascara = [0u8; N_MOVER];
+        for (a, r) in s.mover.iter().enumerate() {
+            for &x in r {
+                mascara[x as usize - N_ESTADO] |= 1 << a;
+            }
+        }
+        let mut act: Vec<(u32, u8)> = Vec::with_capacity(256);
+        for &a in &s.estado {
+            act.push((a as u32, DEL_ESTADO));
+        }
+        for (i, &m) in mascara.iter().enumerate() {
+            if m != 0 {
+                act.push(((N_ESTADO + i) as u32, m));
+            }
+        }
+        let probar = |a: usize, act: &mut Vec<(u32, u8)>| {
+            for &u in &self.indice[a] {
+                let un = &self.unidades[u as usize];
+                let mut m: u8 = 0x1f;
+                let mut ok = true;
+                for &b in &un.atomos[..un.k as usize] {
+                    let b = b as usize;
+                    if b < N_ESTADO {
+                        ok &= presente[b];
+                    } else {
+                        m &= mascara[b - N_ESTADO];
+                    }
+                }
+                if ok {
+                    if !un.mover {
+                        act.push((u, DEL_ESTADO));
+                    } else if m != 0 {
+                        act.push((u, m));
+                    }
+                }
+            }
+        };
+        for &a in &s.estado {
+            probar(a as usize, &mut act);
+        }
+        for (i, &m) in mascara.iter().enumerate() {
+            if m != 0 {
+                probar(N_ESTADO + i, &mut act);
+            }
+        }
+        act
+    }
+
+    fn valor(&self, act: &[(u32, u8)]) -> f64 {
+        act.iter().filter(|x| x.1 == DEL_ESTADO).map(|&(u, _)| self.unidades[u as usize].v).sum()
+    }
+
+    /// al elegir: guarda s y suma a cada acción lo que dicen sus unidades
+    pub fn preferencias(&mut self, s: Sentir, h: &mut [f64; NACC], na: usize) {
+        let act = self.activas_de(&s);
+        for &(u, m) in &act {
+            let un = &self.unidades[u as usize];
+            if m == DEL_ESTADO {
+                if u != 0 {
+                    for b in 0..na {
+                        h[b] += un.w[b];
+                    }
+                }
+            } else {
+                for a in 0..5 {
+                    if m >> a & 1 == 1 {
+                        h[a] += un.w[0];
+                    }
+                }
+            }
+        }
+        self.vs = self.valor(&act);
+        self.ahora = s;
+        self.activas = act;
+    }
+
+    /// V propio de s2 (para el error TD)
+    pub fn valor_de(&self, s: &Sentir) -> f64 {
+        self.valor(&self.activas_de(s))
+    }
+
+    /// aprende de un paso: `delta` es el error TD de toda la mente; `probs` las de s
+    pub fn aprender(&mut self, delta: f64, probs: &[f64; NACC], a: usize, na: usize, c: &Config) {
+        if self.activas.is_empty() {
+            return;
+        }
+        self.t += 1;
+        self.elegida = a;
+        for &x in &self.ahora.estado {
+            self.cuenta[x as usize] += 1;
+        }
+        if a < 5 {
+            for &x in &self.ahora.mover[a] {
+                self.cuenta[x as usize] += 1;
+            }
+        }
+        let decae = c.serotonina * c.huella;
+        let n = self.activas.len() as f64;
+        // las huellas se desvanecen; las que quedan en casi cero se sueltan
+        let (ev, ew, marca) = (&mut self.ev, &mut self.ew, &mut self.marca);
+        self.huella.retain(|&u| {
+            let u = u as usize;
+            ev[u] *= decae;
+            let mut m = ev[u];
+            for x in ew[u].iter_mut() {
+                *x *= decae;
+                m = m.max(x.abs());
+            }
+            if m < 0.01 {
+                ev[u] = 0.0;
+                ew[u] = [0.0; NACC];
+                marca[u] = false;
+                false
+            } else {
+                true
+            }
+        });
+        for &(u, m) in &self.activas {
+            let u = u as usize;
+            let e = &mut self.ew[u];
+            if m == DEL_ESTADO {
+                self.ev[u] = 1.0;
+                for b in 0..na {
+                    e[b] -= probs[b];
+                }
+                e[a] += 1.0;
+            } else {
+                // d log π(a) / d w: [a está entre los suyos] − Σ π de los suyos
+                let mut g = if a < 5 && m >> a & 1 == 1 { 1.0 } else { 0.0 };
+                for b in 0..5 {
+                    if m >> b & 1 == 1 {
+                        g -= probs[b];
+                    }
+                }
+                e[0] += g;
+            }
+            if !self.marca[u] {
+                self.marca[u] = true;
+                self.huella.push(u as u32);
+            }
+        }
+        let ac = c.aprende_propio_critico / n * delta;
+        let aa = c.aprende_propio_actor / n * delta;
+        for &u in &self.huella {
+            let u = u as usize;
+            let un = &mut self.unidades[u];
+            let e = &self.ew[u];
+            if un.mover {
+                un.w[0] += aa * e[0];
+            } else {
+                un.v += ac * self.ev[u];
+                if u != 0 {
+                    for b in 0..na {
+                        un.w[b] += aa * e[b];
+                    }
+                }
+            }
+        }
+        // utilidad: cuánto pesan cuando están activas
+        for &(u, _) in &self.activas {
+            let un = &mut self.unidades[u as usize];
+            let peso = if un.mover {
+                un.w[0].abs()
+            } else {
+                un.v.abs() + un.w[..na].iter().map(|x| x.abs()).sum::<f64>() / na as f64
+            };
+            un.util += 0.02 * (peso - un.util);
+            un.veces += 1;
+        }
+        self.crecer(c);
+    }
+
+    /// nacen unidades nuevas (mientras haya lugar) y se reinician las que menos sirven
+    fn crecer(&mut self, c: &Config) {
+        if self.t < 500 {
+            return;
+        }
+        if self.nacidas < c.propios {
+            for _ in 0..c.nuevos_por_tick {
+                if self.nacidas >= c.propios {
+                    break;
+                }
+                let u = N_ATOMOS + self.nacidas as usize;
+                self.nacer(u, c);
+                self.nacidas += 1;
+            }
+            return;
+        }
+        if self.t % c.reemplazo_cada != 0 {
+            return;
+        }
+        let t = self.t;
+        let mut maduras: Vec<(f64, usize)> = (N_ATOMOS..self.unidades.len())
+            .filter(|&u| t - self.unidades[u].nace >= c.madurez_propio)
+            .map(|u| {
+                let un = &self.unidades[u];
+                let frec = un.veces as f64 / (t - un.nace).max(1) as f64;
+                // una unidad casi siempre activa no distingue nada: es la primera en irse
+                (if un.k == 0 || frec > c.tope_activa { -1.0 } else { un.util * frec }, u)
+            })
+            .collect();
+        let k = (c.reemplazo_fraccion * c.propios as f64).ceil() as usize;
+        if maduras.len() <= k {
+            return;
+        }
+        maduras.select_nth_unstable_by(k, |a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+        let mut peores: Vec<usize> = maduras[..k].iter().map(|x| x.1).collect();
+        peores.sort_unstable();
+        for u in peores {
+            self.nacer(u, c);
+            self.reiniciadas += 1;
+        }
+    }
+
+    /// la unidad `u` (re)nace: 2 o 3 átomos de lo que acaba de pasar (el estado y el
+    /// movimiento que hizo), prefiriendo los raros, hasta que sea selectiva
+    fn nacer(&mut self, u: usize, c: &Config) {
+        let viejo = self.unidades[u];
+        if viejo.k > 0 {
+            let l = &mut self.indice[viejo.atomos[0] as usize];
+            if let Some(i) = l.iter().position(|&x| x as usize == u) {
+                l.swap_remove(i);
+            }
+        }
+        self.ev[u] = 0.0;
+        self.ew[u] = [0.0; NACC];
+        if self.marca[u] {
+            self.marca[u] = false;
+            self.huella.retain(|&x| x as usize != u);
+        }
+        self.unidades[u] = Unidad { nace: self.t, ..Unidad::vacia() };
+        let t = self.t.max(1) as f64;
+        let mut pool: Vec<(u16, f64)> = self.ahora.estado.iter().copied().filter(|&a| a != 0)
+            .map(|a| (a, self.cuenta[a as usize] as f64 / t)).collect();
+        if self.elegida < 5 {
+            pool.extend(self.ahora.mover[self.elegida].iter().map(|&a| (a, self.cuenta[a as usize] as f64 / t)));
+        }
+        if pool.len() < 2 {
+            return;
+        }
+        let mut mejor: (f64, Vec<u16>) = (f64::INFINITY, vec![]);
+        for _ in 0..8 {
+            let mut quedan = pool.clone();
+            let mut elegidos: Vec<u16> = vec![];
+            let mut frec = 1.0;
+            while elegidos.len() < 3 && !quedan.is_empty() {
+                let pesos: Vec<f64> = quedan.iter().map(|x| (1.0 - x.1.min(1.0)).powi(2) + 1e-3).collect();
+                let i = self.rng.choices_pesos(&pesos, 1)[0];
+                let (a, f) = quedan.swap_remove(i);
+                elegidos.push(a);
+                frec *= f;
+                if elegidos.len() >= 2 && frec <= c.tope_activa / 4.0 {
+                    break;
+                }
+            }
+            if elegidos.len() >= 2 && frec < mejor.0 {
+                mejor = (frec, elegidos);
+            }
+            if mejor.0 <= c.tope_activa / 4.0 {
+                break;
+            }
+        }
+        let mut elegidos = mejor.1;
+        if elegidos.len() < 2 {
+            return;
+        }
+        let k = elegidos.len();
+        elegidos.sort_unstable();
+        let mut atomos = [SIN_ATOMO; 3];
+        atomos[..k].copy_from_slice(&elegidos);
+        let mover = elegidos.iter().any(|&a| a as usize >= N_ESTADO);
+        self.unidades[u] = Unidad { atomos, k: k as u8, mover, nace: self.t, ..Unidad::vacia() };
+        self.indice[atomos[0] as usize].push(u as u32);
+    }
+
+    pub fn olvidar_paso(&mut self) {
+        for &u in &self.huella {
+            let u = u as usize;
+            self.ev[u] = 0.0;
+            self.ew[u] = [0.0; NACC];
+            self.marca[u] = false;
+        }
+        self.huella.clear();
+        self.activas.clear();
+    }
+
+    /// cuántas unidades del banco viven y cuántas mezclan estado y movimiento
+    pub fn resumen(&self) -> (i64, i64) {
+        let banco = &self.unidades[N_ATOMOS..];
+        let vivas = banco.iter().filter(|u| u.k > 0).count() as i64;
+        let mezclan = banco.iter()
+            .filter(|u| u.mover && u.atomos[..u.k as usize].iter().any(|&a| (a as usize) < N_ESTADO))
+            .count() as i64;
+        (vivas, mezclan)
+    }
+}
+
+crate::pieza!(Unidad { atomos, k, mover, v, w, util, veces, nace });
+crate::pieza!(Sentir { estado, mover });
+crate::pieza!(Propia { rng, unidades, indice, ev, ew, marca, huella, cuenta, ahora, activas, elegida, vs, t,
+                      nacidas, reiniciadas });

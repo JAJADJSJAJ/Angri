@@ -421,6 +421,7 @@ pub struct Ganglios {
     necesidad: usize,
     pub dopamina: f64,
     pub ultimo: Option<Momento>,
+    pub propia: Option<crate::propia::Propia>, // etapa 14
 }
 
 impl Ganglios {
@@ -430,7 +431,7 @@ impl Ganglios {
             w: vec![0.0; N_RASGOS], exp_w: vec![0; N_RASGOS], lugares: Default::default(),
             huella_v: vec![], huella_w: vec![0.0; N_RASGOS], activo: vec![false; N_RASGOS],
             activos: vec![], prediccion: None, s: None, a: 0, rasgos: Rasgos::default(),
-            probs: [0.0; NACC], temp: [0.0; NACC], necesidad: 0, dopamina: 0.0, ultimo: None,
+            probs: [0.0; NACC], temp: [0.0; NACC], necesidad: 0, dopamina: 0.0, ultimo: None, propia: None,
         }
     }
 
@@ -469,7 +470,7 @@ impl Ganglios {
     /// Elige una acción: 0..5 son MOVIMIENTOS; con `tacto` (OBJETOS) también AGARRAR..FROTAR.
     pub fn elegir(&mut self, vista: &Vista, cuerpo: &[f64; 7], n: usize, pos: (i64, i64),
                   noradrenalina: f64, malestar: f64, palabras: &[usize], dicha: usize,
-                  tacto: Option<&Tacto>, c: &Config) -> usize {
+                  tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, c: &Config) -> usize {
         let dc = hacia(vista, COMIDA);
         let d_o = hacia(vista, alivia(n));
         let dr = self.recuerdo(n, pos);
@@ -478,20 +479,26 @@ impl Ganglios {
         if let Some(t) = tacto {
             rasgos.posibles = posibles(t);
         }
-        for a in 0..5 {
-            rasgos.n[a] = rasgos_de(vista, n, dc, d_o, dr, a, dicha, palabras, c, &mut rasgos.idx[a]);
-            if let Some(t) = tacto {
-                rasgos.n[a] = rasgos_mover(t, n, a, &mut rasgos.idx[a], rasgos.n[a]);
+        if c.rasgos_mano {
+            for a in 0..5 {
+                rasgos.n[a] = rasgos_de(vista, n, dc, d_o, dr, a, dicha, palabras, c, &mut rasgos.idx[a]);
+                if let Some(t) = tacto {
+                    rasgos.n[a] = rasgos_mover(t, n, a, &mut rasgos.idx[a], rasgos.n[a]);
+                }
             }
-        }
-        if let Some(t) = tacto {
-            for a in 5..NACC {
-                rasgos.n[a] = rasgos_objeto(t, n, a - 5, &mut rasgos.idx[a]);
+            if let Some(t) = tacto {
+                for a in 5..NACC {
+                    rasgos.n[a] = rasgos_objeto(t, n, a - 5, &mut rasgos.idx[a]);
+                }
             }
         }
         let mut h = [0.0f64; NACC];
         for a in 0..na {
             h[a] = psum(rasgos.de(a).iter().map(|&i| self.w[i as usize]));
+        }
+        if let Some(p) = &mut self.propia {
+            let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, dicha, tacto, clima);
+            p.preferencias(at, &mut h, na);
         }
         let t_todo = c.temperatura_base + c.temperatura_sorpresa * noradrenalina + c.temperatura_malestar * malestar;
         let mut m = h[0];
@@ -533,7 +540,7 @@ impl Ganglios {
     }
 
     pub fn aprender(&mut self, recompensa: f64, vista: &Vista, cuerpo: &[f64; 7], n: usize,
-                    pos: (i64, i64), tacto: Option<&Tacto>, c: &Config) {
+                    pos: (i64, i64), tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, c: &Config) {
         let s = match self.s { None => return, Some(s) => s };
         for l in self.lugares.iter_mut() {
             l.decaer(c.recuerdo_decae);
@@ -553,7 +560,15 @@ impl Ganglios {
             }
         }
         let v = *self.v.get(&s).unwrap_or(&0.0);
-        let delta = recompensa + c.serotonina * *self.v.get(&s2).unwrap_or(&0.0) - v;
+        let delta = match &self.propia {
+            None => recompensa + c.serotonina * *self.v.get(&s2).unwrap_or(&0.0) - v,
+            Some(p) => {
+                let dr = self.recuerdo(n, pos);
+                let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, 4, tacto, clima);
+                let v2 = *self.v.get(&s2).unwrap_or(&0.0) + p.valor_de(&at);
+                recompensa + c.serotonina * v2 - (v + p.vs)
+            }
+        };
         self.dopamina = delta;
         let decae = c.serotonina * c.huella;
         self.huella_v.retain_mut(|e| {
@@ -592,6 +607,9 @@ impl Ganglios {
         }
         for &i in &self.activos {
             self.w[i] += Self::ritmo(c.aprende_actor, self.exp_w[i], c) * delta * hw[i];
+        }
+        if let Some(p) = &mut self.propia {
+            p.aprender(delta, &self.probs, self.a, self.rasgos.na as usize, c);
         }
     }
 
@@ -658,6 +676,9 @@ impl Ganglios {
     }
 
     pub fn olvidar_paso(&mut self) {
+        if let Some(p) = &mut self.propia {
+            p.olvidar_paso();
+        }
         self.s = None;
         self.huella_v.clear();
         for x in self.huella_w.iter_mut() {
@@ -720,7 +741,7 @@ crate::pieza!(Quimica { adenosina, cortisol, dopamina, noradrenalina, previo });
 crate::pieza!(Momento { s, rasgos, a, r, s2, pos, necesidad, p, temp });
 crate::pieza!(Lugares { v });
 crate::pieza!(Ganglios { rng, v, exp_v, w, exp_w, lugares, huella_v, huella_w, activo, activos, prediccion,
-                        s, a, rasgos, probs, temp, necesidad, dopamina, ultimo });
+                        s, a, rasgos, probs, temp, necesidad, dopamina, ultimo, propia });
 crate::pieza!(Hipocampo { dia });
 
 /// Rasgos: solo los índices usados de cada acción (el resto es relleno).

@@ -64,7 +64,10 @@ impl Angri {
         let bosque = c.bosque;
         let cuerpo = Cuerpo::new(bosque, c);
         let aprende = !c.mente_azar;
-        let mente = Ganglios::new(semilla);
+        let mut mente = Ganglios::new(semilla);
+        if c.propia {
+            mente.propia = Some(crate::propia::Propia::new(semilla, c));
+        }
         let mundo = if bosque {
             Mundo::B(Bosque::new(semilla + 1, c))
         } else {
@@ -94,6 +97,14 @@ impl Angri {
         match &self.mundo {
             Mundo::B(b) if c.objetos => Some(b.tacto(self.x, self.y, self.lleva, c)),
             _ => None,
+        }
+    }
+
+    /// bit 0: noche; bit 1: lluvia
+    fn clima(&self, c: &Config) -> u8 {
+        match &self.mundo {
+            Mundo::B(b) => b.noche(c) as u8 | ((b.lluvia != 0) as u8) << 1,
+            Mundo::G(_) => 0,
         }
     }
 
@@ -156,6 +167,7 @@ impl Angri {
             }
             let dicha = if c.lexico { self.oido.direccion_dicha(c) } else { 4 };
             let tacto = self.tacto(c);
+            let clima = self.clima(c);
             let accion = match &mut self.vieja {
                 Some(v) => {
                     let m = v.elegir(&vista, necesidad, c);
@@ -165,7 +177,7 @@ impl Angri {
                     let palabras = if c.frase { self.oido.palabras() } else { vec![] };
                     self.mente.elegir(&sentida, &self.cuerpo.v, necesidad, (self.x, self.y),
                                       self.quimica.noradrenalina, self.malestar, &palabras, dicha,
-                                      tacto.as_ref(), c)
+                                      tacto.as_ref(), clima, self.cuerpo.n, c)
                 }
             };
             let (dx, dy) = if accion < 5 { MOVIMIENTOS[accion] } else { (0, 0) };
@@ -269,7 +281,9 @@ impl Angri {
                 None => self.cuerpo.necesidad_urgente(c),
             };
             let tacto = self.tacto(c);
-            self.mente.aprender(recompensa, &sentida, &self.cuerpo.v, foco, (self.x, self.y), tacto.as_ref(), c);
+            let clima = self.clima(c);
+            self.mente.aprender(recompensa, &sentida, &self.cuerpo.v, foco, (self.x, self.y), tacto.as_ref(),
+                                clima, self.cuerpo.n, c);
             if let Some(t) = &mut self.talamo {
                 t.aprender(self.mente.dopamina, c);
             }

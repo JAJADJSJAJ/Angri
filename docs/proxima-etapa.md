@@ -4,7 +4,8 @@ Hoy Angri resuelve su mundo a los ~200.000 ticks (malestar ~0,073, hambre 0 %, h
 
 ## Estado (actualizado el 2026-11-24)
 - 13a (bosque, sentidos, visor) hecha.
-- **13b (objetos con física) hecha** (2026-11-24, ver el README): con `OBJETOS = True` usa los objetos (lleva cosas, apila, abre nueces a golpes, alguna viga, algún fuego) sin empeorar (malestar −0,008 ± 0,010; heridas y mordidas bajan), pero **no arma refugio**: la cadena es larga para la mente de hoy. Queda apagada por defecto; es el problema real para la 14. Angri pasó entera a Rust (misma vida bit a bit, ~60× más rápido) y Python se borró.
+- **13b (objetos con física) hecha** (2026-11-24, ver el README): con `OBJETOS = True` usa los objetos (lleva cosas, apila, abre nueces a golpes, alguna viga, algún fuego) sin empeorar (malestar −0,008 ± 0,010; heridas y mordidas bajan), pero **no arma refugio**: la cadena es larga para la mente de hoy. Queda apagada por defecto; es el problema real para la 14.
+- **14 (mente que arma sus rasgos) empezada** (2026-11-24, ver el README, `rust/src/propia.rs`, `RASGOS = 'propios'`): átomos crudos del estado y de cada movimiento, un banco de 4.096 conjunciones que nacen de lo vivido y se reinician de a poco. Aprende (grilla: 0,168 contra 0,116 de la mano) y en el bosque con objetos **duerme en refugios propios 12 % contra 3 %**, pero come mucho menos (malestar 0,516 contra 0,395). Falta: que el sueño repase las unidades, ritmo por unidad, vidas más largas. Angri pasó entera a Rust (misma vida bit a bit, ~60× más rápido) y Python se borró.
 - En el i5 quedó **apagada a propósito** (`systemctl disable --now angri`): no vive ni evoluciona hasta que Angri esté completa. Ya tiene la versión en Rust instalada (`/opt/angri/angri`), sin nacer; la de Python (81.862.072 ticks) quedó en `/var/lib/angri/python-viejo/`. `instalar.sh` no la prende sola; para prenderla: `sudo systemctl enable --now angri angri-visor`.
 
 ## Orden

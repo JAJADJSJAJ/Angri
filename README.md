@@ -937,6 +937,42 @@ En el bosque aparecen cosas sueltas (~90 al nacer, tope 160; cae una nueva con p
 
 Para probar: `angri comparar 200000 256 "MUNDO=bosque" "MUNDO=bosque OBJETOS=True" -j 12`.
 
+## Etapa 14: mente que arma sus propios rasgos (empezada; apagada: `RASGOS = 'mano'`)
+
+`rust/src/propia.rs`. En vez de la lista hecha a mano (`rasgos_de`: "me acerco a la comida", "lo que alivia el foco está para allá"), la mente ve **átomos** crudos y arma con ellos sus propias **unidades**. `RASGOS = 'mano'` (de siempre, bit a bit), `'propios'` (solo las suyas) o `'ambos'` (sumadas).
+
+- **Átomos del estado** (68; un peso por acción): franjas del cuerpo, el foco, noche, lluvia, qué hay acá, qué lleva y qué toca. El "siempre" solo va al crítico.
+- **Átomos de cada movimiento** (44; un solo peso compartido por los cinco movimientos, como tener un frente para cada paso posible): qué hay en la celda a la que lleva, qué ve o huele en esa dirección y a qué distancia, la altura, si está tapada o hay fuego, si es hacia donde le dijeron o hacia donde recuerda algo. Lo que aprende de "comida adelante" vale para cualquier lado.
+- **Unidades**: cada átomo solo y un banco de `PROPIOS = 4096` conjunciones de 2 o 3 átomos que **nacen de lo que acaba de vivir** (el estado y el movimiento que hizo), prefiriendo los átomos raros hasta que la unidad sea selectiva. Pueden mezclar las dos clases ("con hambre" y "comida adelante"). Solo se tocan las activas (~100–600 por tick).
+- **Plasticidad** (generate-and-test, Dohare et al. 2024): cada 100 pasos, el 1 % de las unidades maduras que menos sirven se reinicia con átomos de ahora. "Sirve" = cuánto pesa cuando está activa × qué tan seguido. Una activa más del 20 % del tiempo no distingue nada y se va primero.
+- Aprende con el mismo error TD que el resto (crítico tabular + el lineal de las unidades), con huellas densas por unidad. El ritmo se divide por cuántas unidades están activas. El sueño todavía no repasa las unidades propias.
+
+**Lo que costó** (anotado para no repetirlo):
+1. Con huellas guardadas en listas, 513 ticks/s; con huellas densas por unidad, ~40.000.
+2. Unidades nacidas de átomos comunes (el cuerpo, el foco) quedaban activas casi siempre (~2.000 a la vez) y diluían todo; por eso nacen de átomos raros y se reinician las que están siempre.
+3. Con átomos por celda exacta ("comida en (1,−2)") y peso por acción, el peso del "siempre" ganaba (0,94 contra ~0,2 de "comida arriba"): caminaba contra un borde para siempre (empujar una pared es quedarse quieta y cuesta menos) y comía menos que el azar. Se arregló con los átomos de cada movimiento.
+4. `APRENDE_PROPIO_ACTOR`: 0,1–0,2 andan; 0,5 o más empeora (con 5: 278 heridas).
+
+**Resultados.** En la grilla (48 pares de 100.000 ticks), la mano tiene malestar 0,116 y la propia 0,168 (solo átomos, sin banco: 0,226; mente al azar: ~0,4). En el bosque con objetos (96 pares de 200.000 ticks), contra `mano`:
+
+| | mano | propios | ambos |
+|---|---|---|---|
+| malestar | 0,395 | 0,516 (z 8,9) | 0,445 (z 3,2) |
+| heridas | 48 | 73 | 35 |
+| comidas | 1.481 | 633 | 1.001 |
+| % trabadas | 39 % | 74 % | 51 % |
+| desmayos | 58 | 111 | 73 |
+| **% duerme en refugio propio** | **2,8 %** | **12,4 % (z 7,4)** | 4,4 % (z 2,9) |
+| % duerme bajo techo | 0 % | 0,8 % | 0,1 % |
+
+- **Todavía no alcanza a la mano** en lo básico (comer, beber), pero **ya ve algo que la lista hecha a mano no ve**: duerme en refugios que armó cuatro veces más (y a veces bajo techo, que con la mano no pasa nunca). De 4.096 unidades, ~1.000 mezclan estado y movimiento; en 200.000 ticks se reiniciaron ~65.000.
+- **Velocidad**: ~42.000 ticks/s con `propios` (~170.000 con la mano y objetos).
+- Pruebas: `config-propios` en determinismo, retomar (cortar, guardar y seguir da la misma vida) y referencia; las 8 configs anteriores no cambiaron. Mente guardada: `angri-rust-mente 3`.
+
+**Sigue** (ver `docs/proxima-etapa.md`): que el sueño repase las unidades propias, ritmo por unidad (que las selectivas aprendan más rápido que las que están casi siempre), más parámetros y vidas más largas (¿la propia alcanza a la mano con 1 M de ticks?).
+
+Para probar: `angri comparar 200000 96 "MUNDO=bosque OBJETOS=True" "MUNDO=bosque OBJETOS=True RASGOS=propios" -j 12`.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

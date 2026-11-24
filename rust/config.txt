@@ -76,6 +76,22 @@ CORTA_VIENTO = 0.04           # de noche o con lluvia: calor por cada pared al l
 PROB_PRENDER = 0.15           # por frote de dos cosas que arden (sin lluvia encima)
 FUEGO_TICKS = 120             # cuánto dura el fuego por cada unidad de largo que quema
 
+# --- Mente que arma sus rasgos (etapa 14) ---
+# "mano": la lista hecha a mano de siempre. "propios": la mente ve átomos crudos (qué hay en
+# cada celda, hacia dónde huele algo, franjas del cuerpo, noche, lluvia, lo que toca) y arma
+# unidades: cada átomo solo y un banco de conjunciones de 2-3 átomos nacidas de lo vivido.
+# "ambos": las dos cosas sumadas. Las unidades maduras que menos sirven se reinician de a poco
+# (contra la pérdida de plasticidad). Solo se tocan las activas.
+RASGOS = 'mano'
+PROPIOS = 4096                # unidades del banco (además de un átomo por unidad)
+NUEVOS_POR_TICK = 4           # mientras el banco no está lleno
+REEMPLAZO_CADA = 100          # cada cuántos pasos de aprendizaje mira cuáles reiniciar
+REEMPLAZO_FRACCION = 0.01     # qué parte del banco reinicia cada vez (las que menos sirven)
+MADUREZ_PROPIO = 3000         # pasos antes de poder reiniciar una unidad
+APRENDE_PROPIO_ACTOR = 0.2    # (se divide por cuántas unidades están activas; 0,1-0,2 andan, 0,5 o más empeora)
+APRENDE_PROPIO_CRITICO = 0.5
+TOPE_ACTIVA = 0.2             # una unidad activa más que esto no distingue nada: se reinicia primero
+
 # --- Mente ---
 MENTE = 'aprende'             # "aprende" (etapa 2), o "azar" (vieja mente.py)
 REFLEJOS = False              # solo para MENTE="azar": False = azar puro (el piso)
