@@ -197,7 +197,7 @@ impl Habla {
             if m < c.umbral_escucha {
                 return None;
             }
-            let ps: Vec<f64> = a.iter().map(|&v| ((v - m) / c.temperatura_escucha).exp()).collect();
+            let ps: Vec<f64> = a.iter().map(|&v| crate::mate::exp((v - m) / c.temperatura_escucha)).collect();
             let mut r = self.rng.random() * psum(ps.iter().copied());
             let mut k = 0;
             while k < 2 && r > ps[k] {
@@ -213,7 +213,7 @@ impl Habla {
                     m = v;
                 }
             }
-            let ps: Vec<f64> = w.iter().map(|&x| ((x - m) / c.temperatura_habla).exp()).collect();
+            let ps: Vec<f64> = w.iter().map(|&x| crate::mate::exp((x - m) / c.temperatura_habla)).collect();
             let mut r = self.rng.random() * psum(ps.iter().copied());
             let mut k = 0;
             while k < ps.len() - 1 && r > ps[k] {

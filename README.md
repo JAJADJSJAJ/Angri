@@ -791,7 +791,20 @@ pedidos y apuestas del léxico, cada tick, y todas las métricas, 40.000 ticks �
 `angri comparar` con la misma salida que `medir.py` / `comparar.py`. Para que
 diera igual: azar propio (PCG32), `sum()` con Neumaier como Python 3.12, dicts
 en orden de inserción, `round()` al par; `exp`, `sin`, `cos` y `pow` de la
-biblioteca de C (iguales en Windows; en Linux no se comparó contra Python).
+biblioteca de C de Windows.
+
+**Misma vida en cualquier máquina** (`rust/src/mate.rs`): al instalar en el i5,
+la referencia falló: la biblioteca de C de Linux (glibc) redondea distinto que
+la de Windows el último bit de `exp`, `sin`, `cos` y `pow` en algunos valores, y
+la vida se iba por otro lado (en la grilla, solo bits de la traza; en el bosque,
+otra vida). Ahora Angri trae sus propias `exp`, `sin`, `cos` y `pow`: solo +, −,
+×, ÷ de IEEE 754 en doble-doble (~106 bits) y un único redondeo al final, así
+que dan el double correcto y lo mismo en todos lados. Comprobado contra el valor
+exacto (80 dígitos) en 4.640 casos en que la de Windows difería: la propia
+acertaba siempre (la de Windows, además, redondea dos veces en los subnormales).
+`cargo test` pasa igual en Windows y en el i5. Cambió la vida (a propósito: la
+referencia se regeneró el 24/11/2026, ya no es la de Python) y cuesta velocidad:
+~330.000 ticks/s en la grilla y ~250.000 en el bosque (antes 540.000 y 374.000).
 
 **Uso** (desde `rust/`, después de `cargo build --release`; `angri` = `target/release/angri`):
 
@@ -840,14 +853,15 @@ no muestra "dice"/"oye" (Rust no guarda las palabras como texto).
 | `azar_splitmix64`, `azar_pcg32` | splitmix64, PCG32, `random`, `randrange`, `randint`, `choice`, `shuffle`, `sample` y `choices` con pesos dan los valores anotados de la versión en Python |
 | `determinismo` | misma semilla y config = misma traza, misma mente y mismas métricas dos veces; otra semilla, otra vida |
 | `retomar` | cortar (en el tick 1, a la mitad o en uno cualquiera), guardar a disco, cargar y seguir = no cortar: misma traza tick a tick, misma mente final, misma foto |
+| `valores_conocidos`, `cerca_de_la_del_sistema` | `exp`, `sin`, `cos`, `pow` propias: valores exactos conocidos (subnormales incluidos) y a lo sumo 1 ulp de la del sistema |
 | `referencia` | la vida no se mueve sin querer: huella (FNV-1a) de la traza de 20.000 ticks, de la foto final y las métricas, 3 semillas por config, contra `rust/pruebas/referencia.txt` |
 
 Las 7 configs de prueba (`rust/pruebas/config-*.txt`, copias de la config con
 ajustes): grilla, bosque, corteza+tálamo en grilla y en bosque, PIDE con
 ESCUCHA_CUERPO/PEDIDOS/ALIVIO, MENTE azar con reflejos, y todo junto. La
-referencia se generó el 24/11/2026 cuando Rust = Python (la huella de la traza
-de Python, grilla semilla 0, daba la misma: `25786d38b2b14d1c`). Ahora que no
-hay Python, **la referencia es la vara**: si un cambio la mueve **a propósito**
+referencia se generó primero cuando Rust = Python, y se regeneró el 24/11/2026
+al pasar a la matemática propia (la misma en Windows y Linux). Ahora que no hay
+Python, **la referencia es la vara**: si un cambio la mueve **a propósito**
 (una mejora de la mente, un número de la config), se regenera con
 
     cd rust && ANGRI_REGENERAR=1 cargo test --release referencia
@@ -874,9 +888,10 @@ Velocidad (un proceso, esta PC):
 
 | | Python (antes) | Rust | veces |
 |---|---|---|---|
-| grilla | 8.700 ticks/s | 540.000 ticks/s | 62× |
-| bosque | 5.900 ticks/s | 374.000 ticks/s | 63× |
-| grilla con corteza, tálamo y PIDE | — | 394.000 ticks/s | |
+| grilla | 8.700 ticks/s | 330.000 ticks/s | 38× |
+| bosque | 5.900 ticks/s | 250.000 ticks/s | 42× |
+
+(Con la matemática del sistema eran 540.000 y 374.000; ver "Misma vida en cualquier máquina".)
 
 `angri comparar 300000 24 "" "MUNDO=bosque" -j 12` tarda unos 5 s; 256 pares
 de 300.000 ticks, alrededor de un minuto.

@@ -93,7 +93,7 @@ impl Corteza {
         }
         let mut e = [0.0f64; N_CELDAS];
         for i in 0..N_CELDAS {
-            e[i] = (logits[i] - m).exp();
+            e[i] = crate::mate::exp(logits[i] - m);
         }
         let z = psum(e.iter().copied());
         for i in 0..N_CELDAS {
@@ -183,7 +183,7 @@ impl Talamo {
         }
         let mut e = [0.0f64; 5];
         for n in 0..5 {
-            e[n] = ((sal[n] - m) / c.temperatura_foco).exp();
+            e[n] = crate::mate::exp((sal[n] - m) / c.temperatura_foco);
         }
         let z = psum(e.iter().copied());
         let mut probs = [0.0f64; 5];

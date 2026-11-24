@@ -268,7 +268,7 @@ impl Bosque {
         let x0 = (w as f64 * 0.6) as i64;
         let fase = self.rng.random() * 6.28;
         for y in 0..h {
-            let rx = x0 + (3.0 * (y as f64 / 7.0 + fase).sin()) as i64;
+            let rx = x0 + (3.0 * crate::mate::sin(y as f64 / 7.0 + fase)) as i64;
             self.rio_x.push(rx);
             for x in 0..w {
                 let i = self.i(x, y);
@@ -294,8 +294,8 @@ impl Bosque {
                     break;
                 }
                 let a = self.rng.random() * 6.28;
-                let x = round_par(cx as f64 + (rr - 1) as f64 * a.cos());
-                let y = round_par(cy as f64 + (rr - 1) as f64 * a.sin());
+                let x = round_par(cx as f64 + (rr - 1) as f64 * crate::mate::cos(a));
+                let y = round_par(cy as f64 + (rr - 1) as f64 * crate::mate::sin(a));
                 if !(0 < x && x < w - 1 && 0 < y && y < h - 1) {
                     continue;
                 }
@@ -645,7 +645,7 @@ impl Bosque {
             }
             let t = self.rastro[self.i(qx, qy)];
             if t >= 0 {
-                let v = f * c.rastro_decae.powf((self.tiempo - t) as f64);
+                let v = f * crate::mate::pow(c.rastro_decae, (self.tiempo - t) as f64);
                 if v > mejor {
                     mejor = v;
                 }

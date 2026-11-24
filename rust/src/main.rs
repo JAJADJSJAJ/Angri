@@ -17,6 +17,7 @@ mod extra;
 mod foto;
 mod guardar;
 mod lenguaje;
+mod mate;
 mod medir;
 mod mente;
 mod mundo;

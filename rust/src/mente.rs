@@ -421,7 +421,7 @@ impl Ganglios {
         }
         let mut e = [0.0f64; 5];
         for b in 0..5 {
-            e[b] = ((h[b] - m) / temp[b]).exp();
+            e[b] = crate::mate::exp((h[b] - m) / temp[b]);
         }
         let z = psum(e.iter().copied());
         let mut probs = [0.0f64; 5];
@@ -514,7 +514,7 @@ impl Ganglios {
         }
         let mut e = [0.0f64; 5];
         for b in 0..5 {
-            e[b] = ((h[b] - mx) / m.temp[b]).exp();
+            e[b] = crate::mate::exp((h[b] - mx) / m.temp[b]);
         }
         let z = psum(e.iter().copied());
         let rho = if c.importancia { c.tope_importancia.min((e[m.a] / z) / m.p) } else { 1.0 };
