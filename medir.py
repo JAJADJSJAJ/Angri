@@ -29,6 +29,11 @@ def una_vida(semilla, ticks):
     alto = 0    # ticks con malestar alto (ética: que no haya bucles de sufrimiento)
     bosque = C.MUNDO == "bosque"
     sed = frio = mordidas = enfermo = bebidas = dormido = refugio = 0
+    racha = racha_max = 0          # ticks seguidos en malestar alto (ética: bucles)
+    plantada = 0                   # parada en el agua con el agua ya llena
+    cerca_pred = huye = 0          # con el predador a <= 5: veces que se alejó
+    anio, por_anio = 0.0, []       # curva: malestar por año del mundo (4 estaciones)
+    largo_anio = 4 * C.ESTACION_BOSQUE
     # olvido: tras cada estación, cuánto tarda en comer en la fuente nueva y
     # cuántos ticks sigue rondando la vieja (perseveración) en la ventana siguiente
     tardanzas, rondas = [], []
@@ -41,6 +46,9 @@ def una_vida(semilla, ticks):
     for t in range(ticks):
         a.evento = ""
         cambio = a.mundo.cambio
+        if bosque:
+            px, py = a.mundo.predador
+            d0 = abs(px - a.x) + abs(py - a.y) if not a.mundo.harto else 99
         a.tick()
         if a.mundo.cambio is not cambio:
             if pendiente:
@@ -68,8 +76,20 @@ def una_vida(semilla, ticks):
         novedades += a.evento == "descubre algo nuevo"
         hambre += a.cuerpo.v["energia"] < 0.3
         alto += m > C.MALESTAR_ALTO
+        racha = racha + 1 if m > C.MALESTAR_ALTO else 0
+        racha_max = max(racha_max, racha)
         if bosque:
             v = a.cuerpo.v
+            anio += m
+            if (t + 1) % largo_anio == 0:
+                por_anio.append(anio / largo_anio)
+                anio = 0.0
+            if a.despierto and a.mundo.en(a.x, a.y) == "≈" and v["agua"] > 0.9:
+                plantada += 1
+            if d0 <= 5 and a.despierto and a.evento != "se desmaya":
+                px, py = a.mundo.predador
+                cerca_pred += 1
+                huye += abs(px - a.x) + abs(py - a.y) > d0
             sed += v["agua"] < 0.3
             frio += v["calor"] < 0.4
             mordidas += a.evento == "lo muerde el predador"
@@ -83,7 +103,11 @@ def una_vida(semilla, ticks):
         extra = {"% sed": 100 * sed / ticks, "% frío": 100 * frio / ticks,
                  "mordidas": mordidas, "enfermó": enfermo, "bebe": bebidas,
                  "% duerme cueva": 100 * refugio / max(1, dormido),
-                 "desmayos": a.desmayos}
+                 "desmayos": a.desmayos,
+                 **{f"desm. {k}": n for k, n in a.desmayo_causas.items()},
+                 "% plantada": 100 * plantada / ticks,
+                 "% huye": 100 * huye / cerca_pred if cerca_pred else 0.0,
+                 **{f"mal. año {i + 1}": x for i, x in enumerate(por_anio)}}
     return {
         "malestar": malestar / ticks,
         "mal. final": final / (ticks - corte),
@@ -95,9 +119,11 @@ def una_vida(semilla, ticks):
         # vida trabada: pasa más del 60 % con hambre (queda encerrada lejos de la comida)
         "% trabadas": 100.0 * (hambre / ticks > 0.6),
         "% mal alto": 100 * alto / ticks,
+        "racha alta": racha_max,
         **extra,
-        "encuentra": st.mean(tardanzas) if tardanzas else 0.0,
-        "ronda vieja": st.mean(rondas) if rondas else 0.0,
+        **({} if bosque else {  # (la mudanza de fuentes solo existe en la grilla)
+            "encuentra": st.mean(tardanzas) if tardanzas else 0.0,
+            "ronda vieja": st.mean(rondas) if rondas else 0.0}),
         **_lenguaje(a, ticks),
     }
 

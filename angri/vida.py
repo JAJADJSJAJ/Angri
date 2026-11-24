@@ -53,6 +53,7 @@ class Angri:
         self.edad = guardado.get("edad", 0)  # ticks vividos
         self.suenos = guardado.get("suenos", 0)
         self.desmayos = 0  # (bosque) veces que llegó a integridad 0
+        self.desmayo_causas = {"hambre": 0, "sed": 0, "frio": 0, "heridas": 0}
         self._malestar = self.cuerpo.malestar()
         self.evento = "nace" if self.edad == 0 else "despierta del apagado"
         self.oido = Oido()
@@ -215,8 +216,19 @@ class Angri:
         desmaya y despierta en la cueva más cercana, con lo justo para moverse.
         Corta los bucles de sufrimiento; se cuenta para medirlo."""
         m = self.mundo
-        self.x, self.y = min(m.cuevas, key=lambda c: abs(c[0] - self.x) + abs(c[1] - self.y))
         v = self.cuerpo.v
+        causa = ("hambre" if v["energia"] < 0.05 else "sed" if v["agua"] < 0.05
+                 else "frio" if v["calor"] < 0.3 else "heridas")
+        self.desmayo_causas[causa] += 1
+        if C.DESMAYO_DONDE == "cueva":
+            self.x, self.y = min(m.cuevas, key=lambda c: abs(c[0] - self.x) + abs(c[1] - self.y))
+        elif C.DESMAYO_DONDE == "cueva_agua":
+            # la cueva que deja más cerca del agua, sumando lo que la alejaría de donde cayó
+            def costo(c):
+                ax, ay = m.agua_cerca.get(c, (c[0] + 99, c[1]))
+                return abs(c[0] - self.x) + abs(c[1] - self.y) + abs(ax - c[0]) + abs(ay - c[1])
+            self.x, self.y = min(m.cuevas, key=costo)
+        # "aqui": despierta donde cayó
         v["integridad"] = max(v["integridad"], C.DESMAYO_INTEGRIDAD)
         v["energia"] = max(v["energia"], C.DESMAYO_RESTO)
         v["agua"] = max(v["agua"], C.DESMAYO_RESTO)

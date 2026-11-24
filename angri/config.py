@@ -53,6 +53,7 @@ PREDADOR_HARTO = 1500         # ticks sin cazar después de atacar (tope ético:
 RASTRO_DECAE = 0.99           # por tick, el olor de Angri
 RASTRO_DURA = 400
 SUENO_NOCHE = 0.3             # proceso C: de noche el umbral para dormirse baja esto; de día el de despertar sube
+DESMAYO_DONDE = "cueva"       # dónde despierta: "cueva" (la más cercana), "cueva_agua" o "aqui"
 DESMAYO_INTEGRIDAD = 0.3      # integridad 0 -> se desmaya y despierta en una cueva con esto
 DESMAYO_RESTO = 0.35          # y con al menos esto de energía y agua (no muere: decisión del usuario)
 MALESTAR_ALTO = 0.4           # para medir el % del tiempo en malestar alto (ética)
