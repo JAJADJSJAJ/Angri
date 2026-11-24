@@ -904,6 +904,39 @@ Velocidad (un proceso, esta PC):
 `angri comparar 300000 24 "" "MUNDO=bosque" -j 12` tarda unos 5 s; 256 pares
 de 300.000 ticks, alrededor de un minuto.
 
+## Etapa 13b: objetos con física, sin recetas (probada; apagada: `OBJETOS = False`)
+
+En el bosque aparecen cosas sueltas (~90 al nacer, tope 160; cae una nueva con prob. 0,01 por tick). El mundo no sabe qué son: cada una tiene **largo, peso, dureza, flota, arde, flexible** (salen según dónde caen: en el bosque, ramas, lianas y hojas; en la llanura y junto a la roca, piedras, lajas y pasto seco). Todo vive en `mundo.rs` (`Objeto`, `Bosque::poner/agarrar/atar/golpear/frotar`), con un azar propio: con objetos el resto del mundo sigue igual.
+
+**Seis acciones** además de moverse: agarrar, soltar, apilar (hacia donde miró la última vez), atar, golpear y frotar. **La física** (no hay ninguna receta de "casa", "puerta" ni "fuego"):
+
+- Una **pila de 2** (o la roca) cierra el paso al predador; **de 3**, también a Angri. Un **hueco chico** (cerrado de los dos lados opuestos) frena al predador y deja pasar a Angri. Donde el predador no llega, Angri está **refugiada** (como en la cueva).
+- Algo pesado sobre algo blando o flexible **se cae** a un costado. Lo que no flota **se hunde** en el agua; lo que flota queda (balsa).
+- Una **viga** (largo ≥ 3) apilada sobre algo de altura 2 **tapa** las celdas que cubre: ahí no enfría la lluvia. Si sobresale más de una celda necesita **otro apoyo en la punta** o se vuelca; si después le sacan el apoyo, deja de tapar.
+- De noche o con lluvia, cada **pared al lado corta el viento** (+0,04 de calor) y el techo otro tanto.
+- **Atar** con algo flexible une las dos cosas de arriba de una pila en una sola, más larga (así se hace una viga con ramas cortas). **Golpear** abre la comida dura (nuez, raíz) más rápido si tiene algo duro en la mano, o parte en dos algo más blando. **Frotar** dos cosas que arden, sin lluvia encima, puede **prender fuego**: calienta +0,3 alrededor, espanta al predador, **quema** al pisarlo (dolor) y la lluvia lo apaga.
+- Llevar algo pesado cuesta energía al caminar; hacer algo con las manos, medio paso.
+
+**La mente**: con `OBJETOS` pasa de 5 a 11 acciones, con rasgos nuevos (índices 507–763) sobre lo que lleva, lo que hay acá, la altura, las paredes, el techo, el fuego y el clima; el crítico distingue si lleva algo y si está tapada. **Solo se le ofrecen las acciones posibles** (no se suelta lo que no se tiene): sin eso, la mitad de la exploración se iba en acciones vacías y empeoraba todo (malestar +0,111 ± 0,010, 77 % de vidas trabadas). El formato de la mente guardada pasa a `angri-rust-mente 2`.
+
+**Resultados** (256 pares de 200.000 ticks en el bosque, sin vs con objetos):
+
+| | sin | con | B−A (z) |
+|---|---|---|---|
+| malestar | 0,408 | 0,400 | −0,008 (−0,8) |
+| heridas | 57,7 | 49,6 | −8,1 (−2,6) |
+| mordidas | 7,1 | 6,0 | −1,2 (−2,2) |
+| enfermó | 46,6 | 55,0 | +8,4 (+3,0) |
+| % trabadas | 44 % | 39 % | −5 (−1,3) |
+
+- **Usa los objetos**: en vidas de 400.000 ticks lleva algo entre el 4 y el 67 % del tiempo, arma pilas de hasta 5, a veces pone una viga, **abre nueces a golpes** (hasta 202 veces en una vida: usa herramientas) y prendió fuego una o dos veces.
+- **No arma refugio**: duerme bajo techo el 0 % del tiempo y en un refugio propio menos del 4 %. La cadena (juntar, apilar dos paredes, poner una viga) es demasiado larga para los rasgos hechos a mano y el crédito de la dopamina. **Ese es el problema real contra el que se mide la etapa 14.**
+- **Velocidad**: ~179.000 ticks/s con objetos (~346.000 sin, en esta PC).
+- Con `OBJETOS = False` la vida es la de siempre bit a bit (`cargo test --release`: la referencia de las 7 configs viejas no cambió; se sumó `config-objetos` y la prueba `objetos_refugio`, que arma un refugio a mano y comprueba techo, viento, predador, hundirse, atar y romper).
+- **Visor**: dibuja las pilas (gris = duro, verde = flexible, marrón = madera; una raya si es larga), los techos, los fuegos y qué lleva.
+
+Para probar: `angri comparar 200000 256 "MUNDO=bosque" "MUNDO=bosque OBJETOS=True" -j 12`.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

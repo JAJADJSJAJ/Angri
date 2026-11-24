@@ -59,6 +59,23 @@ DESMAYO_INTEGRIDAD = 0.3      # integridad 0 -> se desmaya y despierta en una cu
 DESMAYO_RESTO = 0.35          # y con al menos esto de energía y agua (no muere: decisión del usuario)
 MALESTAR_ALTO = 0.4           # para medir el % del tiempo en malestar alto (ética)
 
+# --- Objetos con física (etapa 13b, solo en el bosque) ---
+# Cosas sueltas con propiedades (largo, peso, dureza, flota, arde, flexible) y seis acciones
+# (agarrar, soltar, apilar, atar, golpear, frotar). Sin recetas: el mundo no sabe qué es una casa.
+# Una pila de 2 frena al predador (de 3 frena a Angri); un hueco entre dos paredes también.
+# Una viga (largo >= 3) apilada sobre algo de altura 2 tapa la lluvia; si sobresale más de
+# una celda necesita otro apoyo en la punta o se cae. Las paredes al lado cortan el viento.
+# Frotar dos cosas que arden puede prender fuego: calienta y espanta al predador; quema al pisarlo.
+OBJETOS = False               # apagado: la vida de siempre, bit a bit
+OBJETOS_INICIALES = 90
+OBJETOS_MAXIMO = 160
+PROB_OBJETO = 0.01            # por tick: cae una rama, rueda una piedra (si hay lugar)
+FUERZA = 1.0                  # lo más pesado que puede levantar
+CALOR_FUEGO = 0.3             # cuánto calienta un fuego a distancia 1
+CORTA_VIENTO = 0.04           # de noche o con lluvia: calor por cada pared al lado
+PROB_PRENDER = 0.15           # por frote de dos cosas que arden (sin lluvia encima)
+FUEGO_TICKS = 120             # cuánto dura el fuego por cada unidad de largo que quema
+
 # --- Mente ---
 MENTE = 'aprende'             # "aprende" (etapa 2), o "azar" (vieja mente.py)
 REFLEJOS = False              # solo para MENTE="azar": False = azar puro (el piso)

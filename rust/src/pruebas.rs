@@ -21,7 +21,7 @@ use crate::azar::{splitmix64, Azar};
 use crate::config::Config;
 use crate::vida::{Angri, Evento};
 
-const CONFIGS: [&str; 7] = ["grilla", "bosque", "corteza-talamo", "corteza-talamo-bosque", "pide", "azar", "todo"];
+const CONFIGS: [&str; 8] = ["grilla", "bosque", "corteza-talamo", "corteza-talamo-bosque", "pide", "azar", "todo", "objetos"];
 
 fn carpeta() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("pruebas")
@@ -178,4 +178,72 @@ fn referencia() {
         .map(|(v, n)| format!("  antes: {v}\n  ahora: {n}")).collect();
     assert!(mal.is_empty(), "la vida cambió respecto de la referencia:\n{}\n\
             Si es a propósito: ANGRI_REGENERAR=1 cargo test --release referencia", mal.join("\n"));
+}
+
+// ------------------------------------------------------------------ objetos (13b)
+/// Física de los objetos: un refugio hecho a mano (dos paredes, una viga encima) tapa la
+/// lluvia, corta el viento y el predador no entra; una viga sin apoyo en la punta se cae.
+#[test]
+fn objetos_refugio() {
+    use crate::mundo::*;
+    let c = config("objetos");
+    let mut b = Bosque::new(9, &c);
+    for p in b.pilas.iter_mut() {
+        p.clear();
+    }
+    // un lugar de llanura abierto: 5x5 libre de roca, agua y comida
+    let libre = |b: &Bosque, x: i64, y: i64| b.en(x, y) == VACIO && b.zona_en(x, y) == b'l';
+    let (x, y) = (2..b.w - 3).flat_map(|x| (2..b.h - 3).map(move |y| (x, y)))
+        .find(|&(x, y)| (-2..=2).all(|dx| (-2..=2).all(|dy| libre(&b, x + dx, y + dy)))).expect("llanura");
+    let piedra = Objeto { largo: 1, peso: 0.5, dureza: 0.9, flota: false, arde: false, flexible: false, eje: 0 };
+    let rama = Objeto { largo: 3, peso: 0.2, dureza: 0.4, flota: true, arde: true, flexible: false, eje: 0 };
+    let hoja = Objeto { largo: 1, peso: 0.02, dureza: 0.05, flota: true, arde: true, flexible: true, eje: 0 };
+    assert!(b.puede_predador_pub(x, y));
+    // viga larga sin apoyo en la punta: se cae
+    for _ in 0..2 {
+        assert_eq!(b.poner(x - 1, y, piedra, 4), Hecho::Suelta);
+    }
+    assert_eq!(b.poner(x - 1, y, rama, 3), Hecho::Cae);
+    assert!(!b.cubierto(x, y));
+    // con otra pared enfrente, la misma viga queda de techo
+    for _ in 0..2 {
+        b.poner(x + 1, y, piedra, 4);
+    }
+    assert_eq!(b.pilas[(y * b.w + x) as usize].len(), 1, "la viga caída quedó acá");
+    b.pilas[(y * b.w + x) as usize].clear();
+    assert_eq!(b.poner(x - 1, y, rama, 3), Hecho::Viga);
+    assert!(b.cubierto(x - 1, y) && b.cubierto(x, y) && b.cubierto(x + 1, y));
+    // hueco chico entre dos paredes: el predador no entra, Angri sí
+    assert!(!b.puede_predador_pub(x, y));
+    assert!(b.refugio(x, y));
+    assert!(b.transitable(x, y));
+    // de noche y con lluvia, adentro está más templado que afuera
+    b.lluvia = 300;
+    b.tiempo = c.dia - 1;
+    assert!(b.noche(&c));
+    let afuera = b.temperatura(x, y + 2, &c);
+    let adentro = b.temperatura(x, y, &c);
+    assert!(adentro > afuera + 0.1, "adentro {adentro} afuera {afuera}");
+    // sacar la viga destapa
+    assert_eq!(b.agarrar(x - 1, y, &c).map(|o| o.largo), Some(3));
+    assert!(!b.cubierto(x, y));
+    // algo pesado sobre una hoja no se sostiene
+    let (hx, hy) = (x, y + 2);
+    b.poner(hx, hy, hoja, 4);
+    assert_eq!(b.poner(hx, hy, piedra, 4), Hecho::Cae);
+    // una piedra que no flota se hunde en el agua
+    let agua = (0..b.h).flat_map(|yy| (0..b.w).map(move |xx| (xx, yy))).find(|&(xx, yy)| b.en(xx, yy) == AGUA).unwrap();
+    assert_eq!(b.poner(agua.0, agua.1, piedra, 4), Hecho::Hunde);
+    assert_eq!(b.poner(agua.0, agua.1, rama, 4), Hecho::Suelta);
+    // atar dos ramas con una liana: una sola, más larga
+    let liana = Objeto { largo: 3, peso: 0.06, dureza: 0.1, flota: true, arde: false, flexible: true, eje: 0 };
+    let (ax, ay) = (x, y - 2);
+    let corta = Objeto { largo: 2, ..rama };
+    b.poner(ax, ay, corta, 4);
+    b.poner(ax, ay, corta, 4);
+    assert!(b.atar(ax, ay, &liana));
+    assert_eq!(b.pilas[(ay * b.w + ax) as usize].last().unwrap().largo, 4);
+    // golpear con piedra la parte en dos
+    assert_eq!(b.golpear(ax, ay, Some(&piedra), &c), Hecho::Rompe);
+    assert_eq!(b.pilas[(ay * b.w + ax) as usize].len(), 2);
 }

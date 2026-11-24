@@ -55,7 +55,17 @@ pub struct Config {
     pub ventana_habla: i64, pub escucha: bool, pub escucha_cuerpo: bool, pub escucha_pedidos: bool,
     pub aprende_escucha: f64, pub temperatura_escucha: f64, pub umbral_escucha: f64,
     pub escucha_oido: bool, pub escucha_alivio: bool, pub ventana_alivio: i64, pub umbral_alivio: f64,
+    // objetos con física (etapa 13b)
+    pub objetos: bool, pub objetos_iniciales: i64, pub objetos_maximo: i64, pub prob_objeto: f64,
+    pub fuerza: f64, pub calor_fuego: f64, pub corta_viento: f64, pub prob_prender: f64, pub fuego_ticks: i64,
 }
+
+/// Claves que pueden faltar (configs viejas): valen lo de por defecto.
+const OPCIONALES: [(&str, &str); 9] = [
+    ("OBJETOS", "False"), ("OBJETOS_INICIALES", "90"), ("OBJETOS_MAXIMO", "160"), ("PROB_OBJETO", "0.01"),
+    ("FUERZA", "1.0"), ("CALOR_FUEGO", "0.3"), ("CORTA_VIENTO", "0.04"), ("PROB_PRENDER", "0.15"),
+    ("FUEGO_TICKS", "120"),
+];
 
 pub const NOMBRES: [&str; 7] = ["energia", "cansancio", "curiosidad", "estres", "integridad", "agua", "calor"];
 
@@ -150,6 +160,9 @@ impl Config {
             if let Some((k, v)) = l.split_once('=') {
                 m.insert(k.trim().to_string(), sin_comentario(v).to_string());
             }
+        }
+        for (k, v) in OPCIONALES {
+            m.entry(k.to_string()).or_insert_with(|| v.to_string());
         }
         for a in ajustes {
             let Some((k, v)) = a.split_once('=') else {
@@ -252,6 +265,10 @@ impl Config {
             umbral_escucha: c.f("UMBRAL_ESCUCHA"), escucha_oido: c.b("ESCUCHA_OIDO"),
             escucha_alivio: c.b("ESCUCHA_ALIVIO"), ventana_alivio: c.i("VENTANA_ALIVIO"),
             umbral_alivio: c.f("UMBRAL_ALIVIO"),
+            objetos: c.b("OBJETOS") && c.txt("MUNDO") == "bosque", objetos_iniciales: c.i("OBJETOS_INICIALES"),
+            objetos_maximo: c.i("OBJETOS_MAXIMO"), prob_objeto: c.f("PROB_OBJETO"), fuerza: c.f("FUERZA"),
+            calor_fuego: c.f("CALOR_FUEGO"), corta_viento: c.f("CORTA_VIENTO"),
+            prob_prender: c.f("PROB_PRENDER"), fuego_ticks: c.i("FUEGO_TICKS"),
         }
     }
 }

@@ -54,6 +54,7 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     let bosque = c.bosque;
     let (mut sed, mut frio, mut mordidas, mut enfermo, mut bebidas, mut dormido, mut refugio) = (0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64);
     let (mut racha, mut racha_max) = (0i64, 0i64);
+    let (mut techo_dormido, mut lleva, mut pila_max, mut refugio_propio) = (0i64, 0i64, 0i64, 0i64);
     let mut plantada = 0i64;
     let (mut cerca_pred, mut huye) = (0i64, 0i64);
     let mut anio = 0.0f64;
@@ -134,6 +135,16 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
                 dormido += 1;
                 refugio += (b.zona_en(a.x, a.y) == Z_CUEVA) as i64;
             }
+            if c.objetos {
+                if !a.despierto {
+                    techo_dormido += b.cubierto(a.x, a.y) as i64;
+                    refugio_propio += (b.refugio(a.x, a.y) && b.zona_en(a.x, a.y) != Z_CUEVA) as i64;
+                }
+                lleva += a.lleva.is_some() as i64;
+                if t % 100 == 0 {
+                    pila_max = pila_max.max(b.pilas.iter().map(|p| p.len() as i64).max().unwrap_or(0));
+                }
+            }
         }
     }
     let tk = ticks as f64;
@@ -164,6 +175,16 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
         f("% huye", num(if cerca_pred != 0 { (100 * huye) as f64 / cerca_pred as f64 } else { 0.0 }));
         for (i, x) in por_anio.iter().enumerate() {
             f(&format!("mal. año {}", i + 1), num(*x));
+        }
+        if let (true, Mundo::B(b)) = (c.objetos, &a.mundo) {
+            for (i, k) in vida::HECHOS.iter().enumerate() {
+                f(k, a.hechos[i].to_string());
+            }
+            f("% lleva", num((100 * lleva) as f64 / tk));
+            f("pila max", pila_max.to_string());
+            f("techo final", b.techo.iter().filter(|&&t| t > 0).count().to_string());
+            f("% duerme techo", num((100 * techo_dormido) as f64 / dormido.max(1) as f64));
+            f("% duerme refugio propio", num((100 * refugio_propio) as f64 / dormido.max(1) as f64));
         }
     } else {
         f("encuentra", num(if tardanzas.is_empty() { 0.0 } else { media_int(&tardanzas) }));

@@ -28,6 +28,9 @@ pub fn evento_texto(e: Evento) -> &'static str {
         Despierta => "se despierta",
         Nace => "nace",
         Apagado => "despierta del apagado",
+        Hace => "hace algo con un objeto",
+        Prende => "prende fuego",
+        Quema => "se quema",
     }
 }
 
@@ -74,6 +77,32 @@ pub fn foto(a: &Angri, c: &Config) -> String {
                  \"lluvia\":{},\"crecida\":{},\"predador\":[{},{}],\"harto\":{},\"grilla\":{grilla},\"comida\":{}}}",
                 b.tiempo, redondo(hora, 3), b.noche(c), texto(ESTACIONES[b.estacion(c) as usize]),
                 b.lluvia != 0, b.crecida != 0, b.predador.0, b.predador.1, b.harto > 0, lista(&comida));
+            // (etapa 13b) solo con objetos, así las fotos de antes no cambian
+            let m = if b.objetos {
+                let mut pilas = vec![];
+                for y in 0..h {
+                    for x in 0..w {
+                        let i = (y * w + x) as usize;
+                        let p = &b.pilas[i];
+                        if !p.is_empty() || b.techo[i] > 0 {
+                            // [x, y, altura, techo, lo de arriba: largo y si es flexible/duro/arde]
+                            let (l, fl, du, ar) = p.last().map_or((0, false, false, false),
+                                |o| (o.largo, o.flexible, o.dureza > 0.6, o.arde));
+                            pilas.push(format!("[{x},{y},{},{},{l},{},{},{}]", p.len(), b.techo[i] > 0,
+                                               fl as u8, du as u8, ar as u8));
+                        }
+                    }
+                }
+                let fuegos: Vec<String> = b.fuegos.iter().map(|f| format!("[{},{}]", f.0 .0, f.0 .1)).collect();
+                let lleva = match a.lleva {
+                    None => "null".to_string(),
+                    Some(o) => format!("{{\"largo\":{},\"peso\":{},\"duro\":{},\"flota\":{},\"arde\":{},\"flexible\":{}}}",
+                                       o.largo, redondo(o.peso, 2), o.dureza > 0.6, o.flota, o.arde, o.flexible),
+                };
+                format!("{},\"pilas\":{},\"fuegos\":{},\"lleva\":{lleva}}}", &m[..m.len() - 1], lista(&pilas), lista(&fuegos))
+            } else {
+                m
+            };
             let t = filas(&b.zona, w, |z| (z as char).to_string());
             (m, lista(&t.iter().map(|s| texto(s)).collect::<Vec<_>>()))
         }

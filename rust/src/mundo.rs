@@ -207,6 +207,61 @@ fn da(tipo: u8, est: i64) -> bool {
     DA[tipo as usize].contains(&est)
 }
 
+/// Una cosa suelta del bosque (etapa 13b). El mundo no sabe qué es: solo sus propiedades.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Objeto {
+    pub largo: u8,
+    pub peso: f64,
+    pub dureza: f64,
+    pub flota: bool,
+    pub arde: bool,
+    pub flexible: bool,
+    /// 0 = suelta; 1..4 = viga acostada hacia MOVIMIENTOS[eje - 1]
+    pub eje: u8,
+}
+
+impl Objeto {
+    /// lo que la mente puede tocar: largo, pesado, duro, flota, arde, flexible
+    pub fn props(&self) -> [bool; 6] {
+        [self.largo >= 3, self.peso > 0.4, self.dureza > 0.6, self.flota, self.arde, self.flexible]
+    }
+}
+
+/// Lo que Angri siente de los objetos (lo arma el mundo para la mente).
+#[derive(Clone, Copy, Default)]
+pub struct Tacto {
+    pub lleva: Option<Objeto>,
+    pub aqui: Option<Objeto>,
+    pub h_aqui: i64,
+    pub h_dest: [i64; 5],
+    pub techo_dest: [bool; 5],
+    pub fuego_dest: [bool; 5],
+    pub paredes: i64,
+    pub cubierto: bool,
+    pub clima_malo: bool,
+    pub dura: bool, // comida dura acá (nuez o raíz): golpear sirve
+}
+
+/// Qué pasó al hacer algo con un objeto.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Hecho {
+    Nada,
+    Agarra,
+    Suelta,
+    Apila,
+    Viga,
+    Cae,
+    Hunde,
+    Ata,
+    Rompe,
+    Abre(u8),
+    Golpea,
+    Frota,
+    Prende,
+}
+
+const DIRS: [(i64, i64); 5] = [(0, -1), (0, 1), (-1, 0), (1, 0), (0, 0)];
+
 pub struct Bosque {
     pub rng: Azar,
     pub w: i64,
@@ -229,6 +284,12 @@ pub struct Bosque {
     cueva_predador: (i64, i64),
     pub inicio: (i64, i64),
     pub agua_cerca: Vec<(i64, i64)>, // (-1,-1) = no hay
+    // --- objetos (etapa 13b); vacíos si OBJETOS está apagado ---
+    pub objetos: bool,
+    pub orng: Azar, // azar propio: con objetos, el resto del mundo sigue igual
+    pub pilas: Vec<Vec<Objeto>>,
+    pub techo: Vec<u8>,
+    pub fuegos: Vec<((i64, i64), i64)>,
 }
 
 fn round_par(x: f64) -> i64 {
@@ -245,8 +306,16 @@ impl Bosque {
             zona: vec![Z_BOSQUE; n], g: vec![VACIO; n], rio_x: vec![], cuevas: vec![],
             claros: vec![], arboles: [vec![], vec![], vec![], vec![]], cueva_predador: (0, 0),
             inicio: (0, 0), agua_cerca: vec![],
+            objetos: c.objetos, orng: Azar::new(semilla ^ 0x0b7e_7051),
+            pilas: vec![vec![]; if c.objetos { n } else { 0 }],
+            techo: vec![0; if c.objetos { n } else { 0 }], fuegos: vec![],
         };
         b.generar(c);
+        if c.objetos {
+            for _ in 0..c.objetos_iniciales {
+                b.nuevo_objeto();
+            }
+        }
         b
     }
 
@@ -490,16 +559,28 @@ impl Bosque {
         if self.noche(c) {
             t -= c.frio_noche;
         }
-        if self.lluvia != 0 && z != Z_BOSQUE {
-            t -= c.frio_lluvia;
-        } else if self.lluvia != 0 {
-            t -= c.frio_lluvia / 2.0;
+        let tapado = self.objetos && self.techo[self.i(x, y)] > 0;
+        if !tapado {
+            if self.lluvia != 0 && z != Z_BOSQUE {
+                t -= c.frio_lluvia;
+            } else if self.lluvia != 0 {
+                t -= c.frio_lluvia / 2.0;
+            }
+        }
+        if self.objetos {
+            if self.noche(c) || self.lluvia != 0 {
+                t += c.corta_viento * (self.paredes(x, y) + tapado as i64) as f64;
+            }
+            if self.fuego_cerca(x, y, 1) {
+                t += c.calor_fuego;
+            }
         }
         t.min(1.0).max(0.0)
     }
 
     pub fn transitable(&self, x: i64, y: i64) -> bool {
         0 <= x && x < self.w && 0 <= y && y < self.h && self.en(x, y) != ROCA
+            && (!self.objetos || self.pilas[self.i(x, y)].len() < 3)
     }
 
     pub fn consumir(&mut self, x: i64, y: i64) {
@@ -608,6 +689,9 @@ impl Bosque {
                 }
             }
         }
+        if self.objetos {
+            self.avanzar_objetos(c);
+        }
         self.mover_predador(angri, refugiado, c);
     }
 
@@ -634,6 +718,14 @@ impl Bosque {
         let z = self.zona_en(x, y);
         let g = self.en(x, y);
         (z == Z_BOSQUE || z == Z_CLARO || z == Z_LLANURA) && g != AGUA && g != ROCA
+            && (!self.objetos
+                || (self.pilas[self.i(x, y)].len() < 2 && !self.hueco(x, y) && !self.fuego_cerca(x, y, 1)))
+    }
+
+    /// Donde el predador no llega: la cueva, o (con objetos) algo que Angri armó.
+    pub fn refugio(&self, x: i64, y: i64) -> bool {
+        self.zona_en(x, y) == Z_CUEVA
+            || (self.objetos && self.en(x, y) != AGUA && self.zona_en(x, y) != Z_RIO && !self.puede_predador(x, y))
     }
 
     fn olor(&self, x: i64, y: i64, c: &Config) -> f64 {
@@ -722,6 +814,313 @@ impl Bosque {
         }
     }
 
+    // ------------------------------------------------------------- objetos (13b)
+    #[inline]
+    fn dentro(&self, x: i64, y: i64) -> bool {
+        0 <= x && x < self.w && 0 <= y && y < self.h
+    }
+
+    /// altura de lo que hay: la roca cuenta como 2, afuera del mapa como muro alto
+    pub fn altura(&self, x: i64, y: i64) -> i64 {
+        if !self.dentro(x, y) {
+            return 9;
+        }
+        let base = if self.en(x, y) == ROCA { 2 } else { 0 };
+        base + self.pilas.get(self.i(x, y)).map_or(0, |p| p.len() as i64)
+    }
+
+    /// cierra el paso a algo grande (el predador): afuera, roca o pila de 2
+    fn cierra(&self, x: i64, y: i64) -> bool {
+        self.altura(x, y) >= 2
+    }
+
+    /// hueco chico: cerrado de los dos lados opuestos
+    fn hueco(&self, x: i64, y: i64) -> bool {
+        (self.cierra(x - 1, y) && self.cierra(x + 1, y)) || (self.cierra(x, y - 1) && self.cierra(x, y + 1))
+    }
+
+    pub fn paredes(&self, x: i64, y: i64) -> i64 {
+        DIRS[..4].iter().filter(|&&(dx, dy)| self.cierra(x + dx, y + dy)).count() as i64
+    }
+
+    pub fn fuego_en(&self, x: i64, y: i64) -> bool {
+        self.fuegos.iter().any(|f| f.0 == (x, y))
+    }
+
+    fn fuego_cerca(&self, x: i64, y: i64, r: i64) -> bool {
+        self.fuegos.iter().any(|f| (f.0 .0 - x).abs() + (f.0 .1 - y).abs() <= r)
+    }
+
+    pub fn cubierto(&self, x: i64, y: i64) -> bool {
+        self.objetos && self.dentro(x, y) && self.techo[self.i(x, y)] > 0
+    }
+
+    pub fn total_objetos(&self) -> i64 {
+        self.pilas.iter().map(|p| p.len() as i64).sum()
+    }
+
+    fn nuevo_objeto(&mut self) {
+        for _ in 0..30 {
+            let x = self.orng.randrange(0, self.w);
+            let y = self.orng.randrange(0, self.h);
+            let i = self.i(x, y);
+            let z = self.zona[i];
+            if self.g[i] != VACIO || z == Z_RIO || z == Z_CUEVA || !self.pilas[i].is_empty() {
+                continue;
+            }
+            let roca = DIRS[..4].iter()
+                .any(|&(dx, dy)| self.dentro(x + dx, y + dy) && self.zona_en(x + dx, y + dy) == Z_ROCA);
+            let r = &mut self.orng;
+            let u = r.random();
+            let o = if z == Z_LLANURA || roca {
+                if u < 0.6 {
+                    // piedra (a veces una laja de largo 2)
+                    let l: u8 = if r.random() < 0.2 { 2 } else { 1 };
+                    let peso = 0.35 * l as f64 + 0.3 * r.random();
+                    let dureza = 0.8 + 0.2 * r.random();
+                    Objeto { largo: l, peso, dureza, flota: false, arde: false, flexible: false, eje: 0 }
+                } else {
+                    // pasto seco
+                    Objeto { largo: 1, peso: 0.01, dureza: 0.02, flota: true, arde: true, flexible: true, eje: 0 }
+                }
+            } else if u < 0.6 {
+                // rama
+                let l = r.randint(1, 4) as u8;
+                let peso = 0.06 * l as f64 + 0.04 * r.random();
+                let dureza = 0.3 + 0.3 * r.random();
+                Objeto { largo: l, peso, dureza, flota: true, arde: true, flexible: false, eje: 0 }
+            } else if u < 0.85 {
+                // liana
+                let l = r.randint(2, 4) as u8;
+                let arde = r.random() < 0.3;
+                Objeto { largo: l, peso: 0.02 * l as f64, dureza: 0.1, flota: true, arde, flexible: true, eje: 0 }
+            } else {
+                // hoja grande
+                let l = r.randint(1, 2) as u8;
+                Objeto { largo: l, peso: 0.02, dureza: 0.05, flota: true, arde: true, flexible: true, eje: 0 }
+            };
+            self.pilas[i].push(o);
+            return;
+        }
+    }
+
+    fn avanzar_objetos(&mut self, c: &Config) {
+        if self.orng.random() < c.prob_objeto && self.total_objetos() < c.objetos_maximo {
+            self.nuevo_objeto();
+        }
+        if !self.fuegos.is_empty() {
+            let lluvia = self.lluvia != 0;
+            let w = self.w;
+            let techo = &self.techo;
+            for f in self.fuegos.iter_mut() {
+                f.1 -= 1;
+                if lluvia && techo[(f.0 .1 * w + f.0 .0) as usize] == 0 {
+                    f.1 -= 5;
+                }
+            }
+            self.fuegos.retain(|f| f.1 > 0);
+        }
+    }
+
+    /// ¿la viga de (x, y), a altura k de su pila, está bien apoyada?
+    fn apoyada(&self, x: i64, y: i64, k: i64, o: &Objeto) -> bool {
+        let (dx, dy) = DIRS[o.eje as usize - 1];
+        let l = o.largo as i64;
+        let (ex, ey) = (x + dx * (l - 1), y + dy * (l - 1));
+        let base = if self.en(x, y) == ROCA { 2 } else { 0 };
+        base + k >= 2 && (l - 1 <= 1 || (self.dentro(ex, ey) && self.altura(ex, ey) >= 2))
+    }
+
+    /// recalcula qué celdas tapa cada viga; la que perdió el apoyo de la punta queda suelta
+    fn recalcular_techo(&mut self) {
+        for t in self.techo.iter_mut() {
+            *t = 0;
+        }
+        for y in 0..self.h {
+            for x in 0..self.w {
+                let i = self.i(x, y);
+                for k in 0..self.pilas[i].len() {
+                    let o = self.pilas[i][k];
+                    if o.eje == 0 {
+                        continue;
+                    }
+                    if !self.apoyada(x, y, k as i64, &o) {
+                        self.pilas[i][k].eje = 0;
+                        continue;
+                    }
+                    let (dx, dy) = DIRS[o.eje as usize - 1];
+                    for j in 0..o.largo as i64 {
+                        let (cx, cy) = (x + dx * j, y + dy * j);
+                        if self.dentro(cx, cy) {
+                            let ci = self.i(cx, cy);
+                            self.techo[ci] = self.techo[ci].saturating_add(1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn tacto(&self, x: i64, y: i64, lleva: Option<Objeto>, c: &Config) -> Tacto {
+        let i = self.i(x, y);
+        let mut t = Tacto { lleva, aqui: self.pilas[i].last().copied(), h_aqui: self.pilas[i].len() as i64,
+                            ..Default::default() };
+        for a in 0..5 {
+            let (px, py) = (x + DIRS[a].0, y + DIRS[a].1);
+            t.h_dest[a] = self.altura(px, py).min(3);
+            t.techo_dest[a] = self.cubierto(px, py);
+            t.fuego_dest[a] = self.fuego_en(px, py);
+        }
+        t.paredes = self.paredes(x, y);
+        t.cubierto = self.techo[i] > 0;
+        t.clima_malo = self.noche(c) || self.lluvia != 0;
+        t.dura = self.comida.iter().any(|e| e.0 == (x, y) && (e.1 == NUEZ || e.1 == RAIZ));
+        t
+    }
+
+    /// agarra lo de arriba de la pila de acá, si puede levantarlo
+    pub fn agarrar(&mut self, x: i64, y: i64, c: &Config) -> Option<Objeto> {
+        let i = self.i(x, y);
+        let o = *self.pilas[i].last()?;
+        if o.peso > c.fuerza {
+            return None;
+        }
+        self.pilas[i].pop();
+        if o.eje != 0 {
+            self.recalcular_techo();
+        }
+        Some(Objeto { eje: 0, ..o })
+    }
+
+    /// pone `o` arriba de la pila de (x, y). Con `dir` < 4 lo apoya mirando hacia ahí
+    /// (si es largo y queda alto, es una viga).
+    pub fn poner(&mut self, x: i64, y: i64, o: Objeto, dir: usize) -> Hecho {
+        if !self.dentro(x, y) {
+            return self.caer(x - DIRS[dir].0, y - DIRS[dir].1, o);
+        }
+        let i = self.i(x, y);
+        if (self.g[i] == AGUA || self.zona[i] == Z_RIO) && !o.flota {
+            return Hecho::Hunde;
+        }
+        if let Some(t) = self.pilas[i].last() {
+            if o.peso > t.dureza + 0.3 || (t.flexible && o.peso > 0.1) {
+                return self.caer(x, y, o);
+            }
+        }
+        let mut o = Objeto { eje: 0, ..o };
+        let mut hecho = if dir < 4 { Hecho::Apila } else { Hecho::Suelta };
+        if dir < 4 && self.altura(x, y) >= 2 && o.largo >= 3 {
+            o.eje = dir as u8 + 1;
+            let k = self.pilas[i].len() as i64;
+            if self.apoyada(x, y, k, &o) {
+                hecho = Hecho::Viga;
+            } else {
+                // sobresale sin apoyo en la punta: se vuelca hacia ese lado
+                return self.caer(x + DIRS[dir].0, y + DIRS[dir].1, o);
+            }
+        }
+        self.pilas[i].push(o);
+        if hecho == Hecho::Viga {
+            self.recalcular_techo();
+        }
+        hecho
+    }
+
+    /// se cae: queda tirado en (x, y) si se puede, si no en un vecino al azar
+    fn caer(&mut self, x: i64, y: i64, o: Objeto) -> Hecho {
+        let o = Objeto { eje: 0, ..o };
+        let libre = |b: &Bosque, x: i64, y: i64| b.dentro(x, y) && b.en(x, y) != ROCA;
+        let (mut tx, mut ty) = (x, y);
+        if !libre(self, x, y) {
+            let ops: Vec<(i64, i64)> = DIRS[..4].iter().map(|&(dx, dy)| (x + dx, y + dy))
+                .filter(|&(a, b)| libre(self, a, b)).collect();
+            if ops.is_empty() {
+                return Hecho::Hunde;
+            }
+            (tx, ty) = self.orng.choice(&ops);
+        }
+        let i = self.i(tx, ty);
+        if (self.g[i] == AGUA || self.zona[i] == Z_RIO) && !o.flota {
+            return Hecho::Hunde;
+        }
+        self.pilas[i].push(o);
+        Hecho::Cae
+    }
+
+    /// atar: algo flexible une las dos cosas de arriba de la pila en una sola, más larga
+    pub fn atar(&mut self, x: i64, y: i64, cuerda: &Objeto) -> bool {
+        let i = self.i(x, y);
+        let p = &mut self.pilas[i];
+        if !cuerda.flexible || p.len() < 2 {
+            return false;
+        }
+        let a = p.pop().unwrap();
+        let b = p.pop().unwrap();
+        p.push(Objeto {
+            largo: (a.largo + b.largo).min(8), peso: a.peso + b.peso + cuerda.peso, dureza: a.dureza.min(b.dureza),
+            flota: a.flota && b.flota, arde: a.arde || b.arde, flexible: false, eje: 0,
+        });
+        if a.eje != 0 || b.eje != 0 {
+            self.recalcular_techo();
+        }
+        true
+    }
+
+    /// golpear: abre la comida dura (más rápido con algo duro en la mano);
+    /// si no hay, con algo más duro puede partir lo de arriba de la pila
+    pub fn golpear(&mut self, x: i64, y: i64, con: Option<&Objeto>, c: &Config) -> Hecho {
+        if let Some(k) = self.comida.iter().position(|e| e.0 == (x, y) && (e.1 == NUEZ || e.1 == RAIZ)) {
+            let tipo = self.comida[k].1;
+            let trabajo = if tipo == NUEZ { c.nuez_ticks } else { c.raiz_ticks };
+            self.comida[k].2 += 1 + con.map_or(0, |o| (o.dureza * trabajo as f64) as i64);
+            if self.comida[k].2 >= trabajo {
+                self.consumir(x, y);
+                return Hecho::Abre(tipo);
+            }
+            return Hecho::Golpea;
+        }
+        let i = self.i(x, y);
+        if let (Some(h), Some(&t)) = (con, self.pilas[i].last()) {
+            if t.largo >= 2 && !t.flexible && h.dureza > t.dureza + 0.2 {
+                self.pilas[i].pop();
+                let l1 = t.largo / 2;
+                let l2 = t.largo - l1;
+                let f = l1 as f64 / t.largo as f64;
+                self.pilas[i].push(Objeto { largo: l2, peso: t.peso * (1.0 - f), eje: 0, ..t });
+                self.pilas[i].push(Objeto { largo: l1, peso: t.peso * f, eje: 0, ..t });
+                if t.eje != 0 {
+                    self.recalcular_techo();
+                }
+                return Hecho::Rompe;
+            }
+        }
+        Hecho::Golpea
+    }
+
+    /// frotar lo que lleva contra lo de arriba: si los dos arden y no le llueve encima, puede prender
+    pub fn frotar(&mut self, x: i64, y: i64, con: Option<&Objeto>, c: &Config) -> Hecho {
+        let i = self.i(x, y);
+        let (Some(h), Some(t)) = (con, self.pilas[i].last()) else { return Hecho::Nada };
+        if !(h.arde && t.arde) || (self.lluvia != 0 && self.techo[i] == 0) || self.fuego_en(x, y)
+            || self.orng.random() >= c.prob_prender
+        {
+            return Hecho::Frota;
+        }
+        let quema: i64 = self.pilas[i].iter().filter(|o| o.arde).map(|o| o.largo as i64).sum();
+        let viga = self.pilas[i].iter().any(|o| o.arde && o.eje != 0);
+        self.pilas[i].retain(|o| !o.arde);
+        self.fuegos.push(((x, y), c.fuego_ticks * quema));
+        if viga {
+            self.recalcular_techo();
+        }
+        Hecho::Prende
+    }
+
+    /// deja caer lo que lleva (al desmayarse)
+    pub fn tirar(&mut self, x: i64, y: i64, o: Objeto) {
+        self.caer(x, y, o);
+    }
+
     /// trabajar() de bosque.py: devuelve el tipo cuando se la come.
     pub fn trabajar(&mut self, x: i64, y: i64, c: &Config) -> Option<u8> {
         let k = self.comida.iter().position(|e| e.0 == (x, y))?;
@@ -759,7 +1158,9 @@ impl Mundo {
 
 crate::pieza!(Grilla { rng, fuentes, tiempo, cambios, cambio, g, w, h });
 crate::pieza!(Bosque { rng, w, h, tiempo, lluvia, crecida, comida, predador, harto, rastro, atacando,
-                      zona, g, rio_x, cuevas, claros, arboles, cueva_predador, inicio, agua_cerca });
+                      zona, g, rio_x, cuevas, claros, arboles, cueva_predador, inicio, agua_cerca,
+                      objetos, orng, pilas, techo, fuegos });
+crate::pieza!(Objeto { largo, peso, dureza, flota, arde, flexible, eje });
 
 impl crate::guardar::Pieza for Mundo {
     fn guardar(&self, e: &mut crate::guardar::Escritor) {
@@ -773,5 +1174,12 @@ impl crate::guardar::Pieza for Mundo {
             "grilla" => Mundo::G(Grilla::cargar(l)),
             _ => Mundo::B(Bosque::cargar(l)),
         }
+    }
+}
+
+#[cfg(test)]
+impl Bosque {
+    pub fn puede_predador_pub(&self, x: i64, y: i64) -> bool {
+        self.puede_predador(x, y)
     }
 }

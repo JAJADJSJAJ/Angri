@@ -45,6 +45,12 @@ let comidaTipo={};
 function dibujar(f){const m=f.mundo;T=Math.max(4,Math.floor(640/Math.max(m.ancho,m.alto)));cv.width=m.ancho*T;cv.height=m.alto*T;
  comidaTipo={};for(const [x,y,t] of m.comida)comidaTipo[x+','+y]=t;
  for(let y=0;y<m.alto;y++)for(let x=0;x<m.ancho;x++){const z=f.terreno[y][x];g._z=z;celda(z,x,y);const c=m.grilla[y][x];if(c!=='·'&&c!=='#')obj(c,x,y,comidaTipo[x+','+y],m)}
+ // etapa 13b: pilas de objetos (más oscuras cuanto más altas), techos y fuegos
+ if(m.pilas)for(const [x,y,n,tc,l,fl,du,ar] of m.pilas){const X=x*T,Y=y*T;
+  if(n>0){g.fillStyle=du?'#9a9aa0':fl?'#6fa04a':'#8a5a2b';const s=Math.min(T-2,2+n*2);g.fillRect(X+(T-s)/2,Y+T-1-s,s,s);
+   if(l>=3){g.fillStyle='#5a3a1a';g.fillRect(X,Y+T-3,T,2)}}
+  if(tc){g.fillStyle='rgba(120,80,40,.55)';g.fillRect(X,Y,T,2)}}
+ if(m.fuegos)for(const [x,y] of m.fuegos){const X=x*T,Y=y*T;g.fillStyle='#ff8a20';g.fillRect(X+2,Y+3,6,6);g.fillStyle='#ffe060';g.fillRect(X+4,Y+2,2,4)}
  if(m.predador&&!m.harto)bicho(m.predador[0],m.predador[1],'#4a3a30','#ff3020',false);
  else if(m.predador)bicho(m.predador[0],m.predador[1],'#3a302a','#663',true);
  const [ax,ay]=f.pos;bicho(ax,ay,'#f0c8e0','#202020',!f.despierto);
@@ -56,7 +62,7 @@ function dibujar(f){const m=f.mundo;T=Math.max(4,Math.floor(640/Math.max(m.ancho
  if(m.lluvia){g.fillStyle='rgba(170,200,255,.5)';for(let i=0;i<500;i++){const x=h(i,m.tiempo%97,3)*cv.width,y=h(i,m.tiempo%89,5)*cv.height;g.fillRect(x,y,1,4)}}
  const dia=Math.floor(m.tiempo/1000),hh=Math.floor(hora*24);
  document.getElementById('reloj').textContent=`edad ${f.edad.toLocaleString('es')} ticks · día ${dia} · ${m.noche?'noche':'día'} (${hh}h) · ${m.estacion}${m.lluvia?' · llueve':''}${m.crecida?' · río crecido':''} · sueños ${f.suenos}`;
- document.getElementById('ev').textContent=(f.despierto?'':'duerme · ')+(f.evento||'');
+ document.getElementById('ev').textContent=(f.despierto?'':'duerme · ')+(f.evento||'')+(m.lleva?` · lleva algo de largo ${m.lleva.largo}${m.lleva.duro?', duro':''}${m.lleva.flexible?', flexible':''}`:'');
  document.getElementById('cuerpo').innerHTML=barra('malestar',f.malestar,null,'#e05050')+Object.entries(f.cuerpo).map(([k,v])=>barra(k,v,EQ[k],'#5aa0e0')).join('');
  document.getElementById('quimica').innerHTML=Object.entries(f.quimica).map(([k,v])=>barra(k,Math.abs(v),null,k==='dopamina'&&v<0?'#c06060':'#c0a040')).join('')+barra('error TD',Math.min(1,Math.abs(f.dopamina_td)/5),null,f.dopamina_td<0?'#c06060':'#60c080');
  document.getElementById('foco').innerHTML=`<b>${f.foco}</b> <span class="gris">· lugares recordados: ${Object.entries(f.lugares).filter(e=>e[1]).map(e=>e[0]+' '+e[1]).join(', ')||'ninguno'}</span>`}

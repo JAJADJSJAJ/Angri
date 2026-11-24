@@ -7,7 +7,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hash;
 
-pub const CABECERA: &str = "angri-rust-mente 1";
+pub const CABECERA: &str = "angri-rust-mente 2"; // 2: etapa 13b (objetos, 11 acciones)
 
 pub struct Escritor {
     pub s: String,

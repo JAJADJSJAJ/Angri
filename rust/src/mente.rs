@@ -194,12 +194,42 @@ impl Quimica {
 
 // ------------------------------------------------------------------ ganglios
 pub const MOVIMIENTOS: [(i64, i64); 5] = [(0, -1), (0, 1), (-1, 0), (1, 0), (0, 0)];
-const N_RASGOS: usize = 507;
+/// acciones: 5 movimientos y (con OBJETOS) agarrar, soltar, apilar, atar, golpear, frotar
+pub const NACC: usize = 11;
+pub const AGARRAR: usize = 5;
+pub const SOLTAR: usize = 6;
+pub const APILAR: usize = 7;
+pub const ATAR: usize = 8;
+pub const GOLPEAR: usize = 9;
+pub const FROTAR: usize = 10;
+const N_RASGOS: usize = 764;
 
 #[derive(Clone, Copy)]
 pub struct Rasgos {
-    pub idx: [[u16; MAXR]; 5],
-    pub n: [u8; 5],
+    pub idx: [[u16; MAXR]; NACC],
+    pub n: [u8; NACC],
+    pub na: u8, // cuántas acciones hay (5 o 11)
+    pub posibles: u16, // bit a: la acción a se puede hacer ahora (no se suelta lo que no se tiene)
+}
+
+impl Rasgos {
+    #[inline]
+    pub fn puede(&self, a: usize) -> bool {
+        self.posibles >> a & 1 == 1
+    }
+}
+
+/// (etapa 13b) qué acciones con objetos tienen sentido físico ahora
+fn posibles(t: &Tacto) -> u16 {
+    let mut p: u16 = 0b11111;
+    let lleva = t.lleva.is_some();
+    let hay = t.aqui.is_some();
+    if !lleva && hay { p |= 1 << AGARRAR; }
+    if lleva { p |= 1 << SOLTAR | 1 << APILAR; }
+    if lleva && t.h_aqui >= 2 { p |= 1 << ATAR; }
+    if t.dura || (lleva && hay) { p |= 1 << GOLPEAR; }
+    if lleva && hay { p |= 1 << FROTAR; }
+    p
 }
 
 /// rasgos por acción: 8 de siempre + 8 de PALABRA_SUELTA + 28 de FRASE
@@ -207,7 +237,7 @@ pub const MAXR: usize = 44;
 
 impl Default for Rasgos {
     fn default() -> Rasgos {
-        Rasgos { idx: [[0; MAXR]; 5], n: [0; 5] }
+        Rasgos { idx: [[0; MAXR]; NACC], n: [0; NACC], na: 5, posibles: 0b11111 }
     }
 }
 
@@ -228,7 +258,7 @@ pub struct Momento {
     pub pos: (i64, i64),
     pub necesidad: usize,
     pub p: f64,
-    pub temp: [f64; 5],
+    pub temp: [f64; NACC],
 }
 
 pub fn hacia(vista: &Vista, objetivo: u8) -> usize {
@@ -297,6 +327,50 @@ fn rasgos_de(vista: &Vista, n: usize, dc: usize, d_o: usize, dr: usize, a: usize
     k as u8
 }
 
+/// (etapa 13b) lo que siente de los objetos al moverse hacia `a`
+fn rasgos_mover(t: &Tacto, n: usize, a: usize, out: &mut [u16; MAXR], k0: u8) -> u8 {
+    let mut k = k0 as usize;
+    let mut push = |x: usize| {
+        out[k] = x as u16;
+        k += 1;
+    };
+    let h = t.h_dest[a];
+    if h == 1 { push(729 + n); }
+    if h >= 2 { push(736 + n); }
+    if t.techo_dest[a] { push(743 + n); }
+    if t.fuego_dest[a] { push(750 + n); }
+    if a < 4 && t.lleva.is_some() { push(757 + n); }
+    k as u8
+}
+
+/// (etapa 13b) rasgos de una acción con objetos (k = 0..6: agarrar..frotar)
+fn rasgos_objeto(t: &Tacto, n: usize, k: usize, out: &mut [u16; MAXR]) -> u8 {
+    let mut j = 0usize;
+    let mut push = |x: usize| {
+        out[j] = x as u16;
+        j += 1;
+    };
+    push(507 + k * 7 + n);
+    push(549 + k * 2 + t.lleva.is_some() as usize);
+    push(561 + k * 2 + t.aqui.is_some() as usize);
+    if let Some(o) = t.lleva {
+        for (p, &si) in o.props().iter().enumerate() {
+            if si { push(573 + k * 6 + p); }
+        }
+    }
+    if let Some(o) = t.aqui {
+        for (p, &si) in o.props().iter().enumerate() {
+            if si { push(609 + k * 6 + p); }
+        }
+    }
+    push(645 + k * 2 + t.clima_malo as usize);
+    push(657 + k * 3 + t.h_aqui.min(2) as usize);
+    push(675 + k * 5 + t.paredes.min(4) as usize);
+    push(705 + k * 2 + t.dura as usize);
+    push(717 + k * 2 + t.cubierto as usize);
+    j as u8
+}
+
 /// dict de Python {(x, y): fuerza} con su orden de inserción.
 #[derive(Default)]
 pub struct Lugares {
@@ -342,8 +416,8 @@ pub struct Ganglios {
     s: Option<u32>,
     a: usize,
     rasgos: Rasgos,
-    probs: [f64; 5],
-    temp: [f64; 5],
+    probs: [f64; NACC],
+    temp: [f64; NACC],
     necesidad: usize,
     pub dopamina: f64,
     pub ultimo: Option<Momento>,
@@ -356,7 +430,7 @@ impl Ganglios {
             w: vec![0.0; N_RASGOS], exp_w: vec![0; N_RASGOS], lugares: Default::default(),
             huella_v: vec![], huella_w: vec![0.0; N_RASGOS], activo: vec![false; N_RASGOS],
             activos: vec![], prediccion: None, s: None, a: 0, rasgos: Rasgos::default(),
-            probs: [0.0; 5], temp: [0.0; 5], necesidad: 0, dopamina: 0.0, ultimo: None,
+            probs: [0.0; NACC], temp: [0.0; NACC], necesidad: 0, dopamina: 0.0, ultimo: None,
         }
     }
 
@@ -364,10 +438,14 @@ impl Ganglios {
         ((x * c.franjas as f64) as i64).min(c.franjas - 1) as u32
     }
 
-    fn resumen(&self, vista: &Vista, cuerpo: &[f64; 7], n: usize, c: &Config) -> u32 {
+    fn resumen(&self, vista: &Vista, cuerpo: &[f64; 7], n: usize, tacto: Option<&Tacto>, c: &Config) -> u32 {
         let celda = vista.get((0, 0)).unwrap_or(7) as u32;
         let come = (hacia(vista, COMIDA) != 4) as u32;
-        (((n as u32 * 64 + Self::franja(cuerpo[ENERGIA], c)) * 64 + Self::franja(cuerpo[INTEGRIDAD], c)) * 8 + celda) * 2 + come
+        let s = (((n as u32 * 64 + Self::franja(cuerpo[ENERGIA], c)) * 64 + Self::franja(cuerpo[INTEGRIDAD], c)) * 8 + celda) * 2 + come;
+        match tacto {
+            None => s,
+            Some(t) => s * 4 + t.lleva.is_some() as u32 * 2 + t.cubierto as u32,
+        }
     }
 
     #[inline]
@@ -388,58 +466,74 @@ impl Ganglios {
         mejor
     }
 
+    /// Elige una acción: 0..5 son MOVIMIENTOS; con `tacto` (OBJETOS) también AGARRAR..FROTAR.
     pub fn elegir(&mut self, vista: &Vista, cuerpo: &[f64; 7], n: usize, pos: (i64, i64),
-                  noradrenalina: f64, malestar: f64, palabras: &[usize], dicha: usize, c: &Config) -> (i64, i64) {
+                  noradrenalina: f64, malestar: f64, palabras: &[usize], dicha: usize,
+                  tacto: Option<&Tacto>, c: &Config) -> usize {
         let dc = hacia(vista, COMIDA);
         let d_o = hacia(vista, alivia(n));
         let dr = self.recuerdo(n, pos);
-        let mut rasgos = Rasgos::default();
+        let na = if tacto.is_some() { NACC } else { 5 };
+        let mut rasgos = Rasgos { na: na as u8, ..Rasgos::default() };
+        if let Some(t) = tacto {
+            rasgos.posibles = posibles(t);
+        }
         for a in 0..5 {
             rasgos.n[a] = rasgos_de(vista, n, dc, d_o, dr, a, dicha, palabras, c, &mut rasgos.idx[a]);
+            if let Some(t) = tacto {
+                rasgos.n[a] = rasgos_mover(t, n, a, &mut rasgos.idx[a], rasgos.n[a]);
+            }
         }
-        let mut h = [0.0f64; 5];
-        for a in 0..5 {
+        if let Some(t) = tacto {
+            for a in 5..NACC {
+                rasgos.n[a] = rasgos_objeto(t, n, a - 5, &mut rasgos.idx[a]);
+            }
+        }
+        let mut h = [0.0f64; NACC];
+        for a in 0..na {
             h[a] = psum(rasgos.de(a).iter().map(|&i| self.w[i as usize]));
         }
         let t_todo = c.temperatura_base + c.temperatura_sorpresa * noradrenalina + c.temperatura_malestar * malestar;
         let mut m = h[0];
-        for &x in &h[1..] {
-            if x > m {
-                m = x;
+        for b in 1..na {
+            if rasgos.puede(b) && h[b] > m {
+                m = h[b];
             }
         }
-        let mut temp = [t_todo; 5];
+        let mut temp = [t_todo; NACC];
         if c.margen_explorar != 0.0 || c.peligro_sin_malestar {
             let t0 = c.temperatura_base + c.temperatura_sorpresa * noradrenalina;
-            for b in 0..5 {
+            for b in 0..na {
                 if (c.margen_explorar != 0.0 && h[b] < m - c.margen_explorar)
-                    || (c.peligro_sin_malestar && vista.get(MOVIMIENTOS[b]) == Some(PELIGRO))
+                    || (c.peligro_sin_malestar && b < 5 && vista.get(MOVIMIENTOS[b]) == Some(PELIGRO))
                 {
                     temp[b] = t0;
                 }
             }
         }
-        let mut e = [0.0f64; 5];
-        for b in 0..5 {
-            e[b] = crate::mate::exp((h[b] - m) / temp[b]);
+        let mut e = [0.0f64; NACC];
+        for b in 0..na {
+            if rasgos.puede(b) {
+                e[b] = crate::mate::exp((h[b] - m) / temp[b]);
+            }
         }
-        let z = psum(e.iter().copied());
-        let mut probs = [0.0f64; 5];
-        for b in 0..5 {
+        let z = psum(e[..na].iter().copied());
+        let mut probs = [0.0f64; NACC];
+        for b in 0..na {
             probs[b] = e[b] / z;
         }
-        let a = self.rng.choices_pesos(&probs, 1)[0];
-        self.s = Some(self.resumen(vista, cuerpo, n, c));
+        let a = self.rng.choices_pesos(&probs[..na], 1)[0];
+        self.s = Some(self.resumen(vista, cuerpo, n, tacto, c));
         self.a = a;
         self.rasgos = rasgos;
         self.probs = probs;
         self.temp = temp;
         self.necesidad = n;
-        MOVIMIENTOS[a]
+        a
     }
 
     pub fn aprender(&mut self, recompensa: f64, vista: &Vista, cuerpo: &[f64; 7], n: usize,
-                    pos: (i64, i64), c: &Config) {
+                    pos: (i64, i64), tacto: Option<&Tacto>, c: &Config) {
         let s = match self.s { None => return, Some(s) => s };
         for l in self.lugares.iter_mut() {
             l.decaer(c.recuerdo_decae);
@@ -447,7 +541,7 @@ impl Ganglios {
         if recompensa > c.umbral_recuerdo {
             self.lugares[self.necesidad].poner(pos, 1.0);
         }
-        let s2 = self.resumen(vista, cuerpo, n, c);
+        let s2 = self.resumen(vista, cuerpo, n, tacto, c);
         self.ultimo = Some(Momento { s, rasgos: self.rasgos, a: self.a, r: recompensa, s2, pos,
                                      necesidad: self.necesidad, p: self.probs[self.a], temp: self.temp });
         if c.borrar_lugar_vacio {
@@ -485,7 +579,7 @@ impl Ganglios {
             hw[i as usize] += 1.0;
             self.exp_w[i as usize] += 1;
         }
-        for b in 0..5 {
+        for b in 0..self.rasgos.na as usize {
             let p = self.probs[b];
             for &i in self.rasgos.de(b) {
                 let i = i as usize;
@@ -502,21 +596,24 @@ impl Ganglios {
     }
 
     pub fn repasar(&mut self, m: &Momento, fraccion: f64, c: &Config) -> f64 {
-        let mut h = [0.0f64; 5];
-        for b in 0..5 {
+        let na = m.rasgos.na as usize;
+        let mut h = [0.0f64; NACC];
+        for b in 0..na {
             h[b] = psum(m.rasgos.de(b).iter().map(|&i| self.w[i as usize]));
         }
         let mut mx = h[0];
-        for &x in &h[1..] {
-            if x > mx {
-                mx = x;
+        for b in 1..na {
+            if m.rasgos.puede(b) && h[b] > mx {
+                mx = h[b];
             }
         }
-        let mut e = [0.0f64; 5];
-        for b in 0..5 {
-            e[b] = crate::mate::exp((h[b] - mx) / m.temp[b]);
+        let mut e = [0.0f64; NACC];
+        for b in 0..na {
+            if m.rasgos.puede(b) {
+                e[b] = crate::mate::exp((h[b] - mx) / m.temp[b]);
+            }
         }
-        let z = psum(e.iter().copied());
+        let z = psum(e[..na].iter().copied());
         let rho = if c.importancia { c.tope_importancia.min((e[m.a] / z) / m.p) } else { 1.0 };
         let vs = *self.v.get(&m.s).unwrap_or(&0.0);
         let delta = m.r + c.serotonina * *self.v.get(&m.s2).unwrap_or(&0.0) - vs;
@@ -526,8 +623,8 @@ impl Ganglios {
             return delta;
         }
         // grad: dict en orden de inserción (cada índice se actualiza por su cuenta)
-        let mut gi: [u16; 5 * MAXR] = [0; 5 * MAXR];
-        let mut gv: [f64; 5 * MAXR] = [0.0; 5 * MAXR];
+        let mut gi: [u16; NACC * MAXR] = [0; NACC * MAXR];
+        let mut gv: [f64; NACC * MAXR] = [0.0; NACC * MAXR];
         let mut ng = 0usize;
         let mut sumar = |i: u16, x: f64, resta: bool| {
             let k = match gi[..ng].iter().position(|&j| j == i) {
@@ -544,7 +641,7 @@ impl Ganglios {
         for &i in m.rasgos.de(m.a) {
             sumar(i, 1.0, false);
         }
-        for b in 0..5 {
+        for b in 0..na {
             let q = e[b] / z;
             for &i in m.rasgos.de(b) {
                 sumar(i, q, true);
@@ -630,7 +727,9 @@ crate::pieza!(Hipocampo { dia });
 impl crate::guardar::Pieza for Rasgos {
     // (u8/u16 también son Pieza)
     fn guardar(&self, e: &mut crate::guardar::Escritor) {
-        for a in 0..5 {
+        self.na.guardar(e);
+        self.posibles.guardar(e);
+        for a in 0..self.na as usize {
             self.n[a].guardar(e);
             for &i in self.de(a) {
                 i.guardar(e);
@@ -639,7 +738,9 @@ impl crate::guardar::Pieza for Rasgos {
     }
     fn cargar(l: &mut crate::guardar::Lector) -> Self {
         let mut r = Rasgos::default();
-        for a in 0..5 {
+        r.na = u8::cargar(l);
+        r.posibles = u16::cargar(l);
+        for a in 0..r.na as usize {
             r.n[a] = u8::cargar(l);
             for k in 0..r.n[a] as usize {
                 r.idx[a][k] = u16::cargar(l);
