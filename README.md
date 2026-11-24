@@ -281,7 +281,7 @@ habla el maestro no cambiaron nada fuera del ruido.
 4. ✅ Hipocampo y sueño real: estaciones, replay corregido, poda de lugares y dolor (mejora modesta; el sueño consolida pero no acelera el reaprendizaje)
 5. 🔶 Tálamo y espacio global: necesidades compiten por el foco (hecho y medido; apagado porque no mejora)
 6. 🔶 Lenguaje: entiende frases (mejora) y compone palabras aprendidas por sorpresa (ajustado: mejor versión, hambre 29 → 13 %); ya en español (etapa 7)
-7. 🔶 Hablar: Angri pide con una palabra (hecho y medido; apagado: con dopamina sola no aprende qué pedir)
+7. 🔶 Hablar: Angri pide con una palabra. Por dopamina no aprende qué pedir (34–39 %); **escuchando sí (100 %)**, pero pedir todavía no mejora la vida (etapa 8, apagado)
 8. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
 
 ## Etapa 6d: cierre del lenguaje (composición, cambio de significado, barrido, memoria)
@@ -384,6 +384,68 @@ El panel muestra lo que dice Angri (`dice:`) y lo que oye (`oye:`). `guardar`/`c
 
 Config final (sin cambios de comportamiento): `MAESTRO=True, LEXICO=True, PROB_HABLA=0.1, PIDE=False,
 MAESTRO_SOLO_SI_PIDE=False` → malestar 0,137, hambre 12,6 %.
+
+## Etapa 8: aprende a pedir escuchando (pide bien 100 %; pedir sigue apagado)
+
+Comprensión antes que producción. `Habla.escuchar` (en `angri/maestro.py`): cada vez que el maestro dice algo,
+Angri asocia lo que siente con las palabras de cosa que oyó, por sorpresa (Rescorla-Wagner, igual que el
+léxico): `assoc[necesidad][palabra] += APRENDE_ESCUCHA · x · (oyó − esperaba)`. Al pedir elige con softmax
+(`TEMPERATURA_ESCUCHA`) la palabra más asociada a lo que siente; si ninguna pasa `UMBRAL_ESCUCHA`, se calla.
+Nadie le dice qué palabra va con qué necesidad: la correlación sale de que el maestro habla de lo que le hace
+falta. "Lo que siente": `ESCUCHA_CUERPO=False` = el foco (necesidad urgente); `True` = el déficit de cada
+necesidad del cuerpo. `ESCUCHA_PEDIDOS`: también aprende de lo que le contestan cuando pidió.
+Arranque con `MAESTRO_SOLO_SI_PIDE=True`: `MAESTRO_INICIO` (ticks del principio en que habla solo) o
+`PROB_ESPONTANEO` (fracción de las veces que igual habla por su cuenta). La dopamina ya no elige la palabra.
+
+**Corrección de medida:** `Habla` usaba el rng de la mente, así que pedir cambiaba toda la vida. Ahora tiene
+rng propio. Ese solo cambio movió el "pide por dopamina" de 0,181 a 0,148: **el ruido entre corridas de 32
+vidas es ~0,03** (desvío por vida ~0,07). Las tablas de la etapa 7 están afectadas por eso.
+
+Tanda 1 (rng compartido, 32 vidas):
+
+| variante | malestar | hambre % | pide bien % |
+|---|---|---|---|
+| actual, no pide | **0,137** | **12,6** | – |
+| dopamina / azar (maestro habla solo) | 0,181 / 0,187 | 27,9 / 30,4 | 33,9 / 33,3 |
+| escucha, cuerpo | 0,184 | 31,3 | 90,5 |
+| escucha, foco | 0,155 | 20,2 | 100,0 |
+| solo si pide: dopamina / azar | 0,179 / 0,187 | 28,3 / 33,5 | 39,1 / 32,8 |
+| solo si pide, escucha, sin arranque | 0,181 | 28,1 | – (nunca oye, nunca pide) |
+| solo si pide, escucha, `MAESTRO_INICIO=10000` | 0,176 | 27,5 | 62,1 |
+| ídem + `ESCUCHA_PEDIDOS` | 0,179 | 29,5 | 55,0 |
+| solo si pide, escucha, `PROB_ESPONTANEO=0.2` | 0,194 | 34,9 | 85,4 |
+
+Tanda 2 (rng propio, 32 vidas):
+
+| variante | malestar | hambre % | pide bien % |
+|---|---|---|---|
+| dopamina / azar (maestro habla solo) | 0,148 / 0,161 | 18,6 / 21,4 | 33,8 / 34,2 |
+| escucha, cuerpo / foco | 0,144 / 0,154 | 17,2 / 18,1 | 89,6 / 100,0 |
+| solo si pide: dopamina / azar | 0,181 / 0,173 | 29,5 / 29,3 | 36,4 / 33,8 |
+| solo si pide, escucha foco, sin arranque | 0,204 | 36,3 | – |
+| … `MAESTRO_INICIO=10000` (± `ESCUCHA_PEDIDOS`) | 0,160 / 0,159 | 20,2 / 20,1 | 99,8 / 100,0 |
+| … `PROB_ESPONTANEO=0.2` | 0,149 | 18,0 | 100,0 |
+
+Barrido (16 vidas, solo si pide + espontáneo 0,2, foco; referencia 0,161, no pide 0,142):
+`PROB_ESPONTANEO` 0,05 → 0,193 · 0,5 → 0,178; `APRENDE_ESCUCHA` 0,03 → 0,174 · **0,3 → 0,145**;
+`UMBRAL_ESCUCHA` 0,05 → 0,150 · 0,5 → 0,185; `TEMPERATURA_ESCUCHA=1` → 0,155 (pide bien 57 %).
+
+Confirmación (32 vidas, `APRENDE_ESCUCHA=0.3`): solo si pide + espontáneo 0,2 → **0,142 · hambre 14,8 % ·
+pide bien 100 %**; maestro habla solo → 0,156 · 19,6 % · 100 %. (`UMBRAL_ESCUCHA=0.05` da idéntico.)
+
+- **Funcionó**: aprender a pedir escuchando. Pide bien 100 % (foco) / 90 % (cuerpo) contra 34–39 % por
+  dopamina y 33 % al azar. Con el estado del cuerpo rinde menos porque estrés e integridad diluyen la señal.
+- Con el maestro que solo contesta, pedir bien también **vive mejor que pedir por dopamina o al azar**
+  (0,142–0,149 vs 0,173–0,181), y casi igual que la versión actual.
+- **No funcionó**: ninguna variante supera a no pedir (0,137 · 12,6 %); la diferencia está dentro del ruido
+  (~0,03). Sin arranque (`MAESTRO_SOLO_SI_PIDE` puro) nunca oye nada y nunca pide (0,18–0,20). Aprender de las
+  respuestas a sus propios pedidos no aporta. Pedir no agrega información: el maestro ya hablaba de lo que
+  Angri necesitaba.
+- Queda `PIDE=False`. Cuando se prende, `Habla` usa la escucha por defecto (`ESCUCHA=True, ESCUCHA_CUERPO=False,
+  APRENDE_ESCUCHA=0.3, PROB_ESPONTANEO=0.2`): le gana claramente a la dopamina. Para que pedir sirva, hace
+  falta un maestro que **no** sepa lo que Angri necesita (que solo se entere si le piden).
+
+Config final: igual que la etapa 7 (`PIDE=False`) → malestar 0,137, hambre 12,6 %.
 
 ## Reglas del proyecto
 

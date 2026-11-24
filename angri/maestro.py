@@ -72,8 +72,9 @@ class Maestro:
         cosa = {p: c for c, p in self.palabra_cosa.items()}.get(pedido)
         if cosa is not None:
             objetivo = cosa
-        elif C.MAESTRO_SOLO_SI_PIDE:
-            return []
+        elif C.MAESTRO_SOLO_SI_PIDE and not (
+                self.edad < C.MAESTRO_INICIO or self.rng.random() < C.PROB_ESPONTANEO):
+            return []  # (salvo al principio o de vez en cuando: así Angri oye antes de pedir)
         else:
             objetivo = ALIVIA.get(necesidad)
             if objetivo is None or self.rng.random() >= C.PROB_HABLA:
@@ -123,17 +124,44 @@ class Habla:
         self.opciones = [maestro.palabra_cosa[c] for c in COSAS] + [None]  # None = callarse
         self.w = {n: [0.0] * len(self.opciones) for n in NECESIDADES}
         self.huella = None  # [necesidad, opción, ticks que quedan]
+        # Etapa 8: lo que oyó. assoc[necesidad][opción]: cuánto espera oír esa
+        # palabra cuando siente eso (Rescorla-Wagner, como el léxico)
+        self.assoc = {n: [0.0] * 3 for n in NECESIDADES}
+        self.oidas = 0
         self.dicho = None
         self.pedidos = []  # (pidió lo correcto para su necesidad, edad)
 
     def estado(self):
-        return {"w": self.w}
+        return {"w": self.w, "assoc": self.assoc}
 
     def restaurar(self, d):
         if d:
             self.w = {k: list(v) for k, v in d["w"].items()}
+            if "assoc" in d:
+                self.assoc = {k: list(v) for k, v in d["assoc"].items()}
 
-    def decidir(self, necesidad, vista, edad):
+    @staticmethod
+    def _sentir(cuerpo, foco):
+        """Lo que siente: el foco (uno) o el estado del cuerpo (déficit de cada necesidad)."""
+        if not C.ESCUCHA_CUERPO or cuerpo is None:
+            return {foco: 1.0} if foco in NECESIDADES else {}
+        x = {k: C.PESO_NECESIDAD[k] * abs(cuerpo[k] - C.EQUILIBRIO[k]) for k in NECESIDADES}
+        z = sum(x.values()) or 1.0
+        return {k: v / z for k, v in x.items()}
+
+    def escuchar(self, frase, cuerpo, foco, pedido):
+        """El maestro habló: refuerza necesidad -> palabra de cosa que oyó (sorpresa)."""
+        if not C.ESCUCHA or not frase or (pedido is not None and not C.ESCUCHA_PEDIDOS):
+            return
+        x = self._sentir(cuerpo, foco)
+        oyo = [1.0 if p in frase else 0.0 for p in self.opciones[:3]]
+        for i in range(3):
+            err = oyo[i] - sum(v * self.assoc[n][i] for n, v in x.items())
+            for n, v in x.items():
+                self.assoc[n][i] += C.APRENDE_ESCUCHA * v * err
+        self.oidas += 1
+
+    def decidir(self, necesidad, vista, edad, cuerpo=None):
         """Devuelve el índice de la palabra que dice, o None."""
         objetivo = ALIVIA.get(necesidad)
         if (objetivo is None or self.huella is not None
@@ -143,6 +171,17 @@ class Habla:
         w = self.w[necesidad]
         if C.PIDE_AZAR:
             i = self.rng.randrange(len(self.opciones))
+        elif C.ESCUCHA:
+            x = self._sentir(cuerpo, necesidad)
+            a = [sum(v * self.assoc[n][j] for n, v in x.items()) for j in range(3)]
+            if max(a) < C.UMBRAL_ESCUCHA:
+                return None  # todavía no sabe cómo se dice: se calla
+            m = max(a)
+            ps = [math.exp((v - m) / C.TEMPERATURA_ESCUCHA) for v in a]
+            r, i = self.rng.random() * sum(ps), 0
+            while i < 2 and r > ps[i]:
+                r -= ps[i]
+                i += 1
         else:
             m = max(w)
             ps = [math.exp((x - m) / C.TEMPERATURA_HABLA) for x in w]
@@ -160,7 +199,7 @@ class Habla:
         if self.huella is None:
             return
         n, i, quedan = self.huella
-        if not C.PIDE_AZAR:
+        if not C.PIDE_AZAR and not C.ESCUCHA:
             self.w[n][i] += C.APRENDE_HABLA * dopamina
         self.huella = None if quedan <= 1 else [n, i, quedan - 1]
 

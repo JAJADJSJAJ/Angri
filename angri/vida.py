@@ -7,6 +7,7 @@ solo cuando se limpió. Nadie le dice cuándo.
 import csv
 import json
 import os
+import random
 import time
 
 from . import config as C
@@ -54,7 +55,7 @@ class Angri:
         self.oido.restaurar(guardado.get("oido"))
         if self.maestro:
             self.maestro.restaurar(guardado.get("maestro"))
-        self.habla = Habla(self.mente.rng, self.maestro) if self.maestro and C.PIDE else None
+        self.habla = Habla(random.Random(None if semilla is None else semilla + 11), self.maestro) if self.maestro and C.PIDE else None
         if self.habla:
             self.habla.restaurar(guardado.get("habla"))
 
@@ -76,12 +77,14 @@ class Angri:
                 if C.COMPOSICION and self.edad == C.COMPOSICION:
                     self.oido.indice_composicion = len(self.oido.aciertos)
                     self.oido.probar_composicion(self.maestro)
-                pedido = self.habla.decidir(necesidad, vista, self.edad) if self.habla else None
+                pedido = self.habla.decidir(necesidad, vista, self.edad, self.cuerpo.v) if self.habla else None
                 if self.habla and pedido is not None:
                     self.habla.dicho = self.maestro.palabras[pedido]
                 frase = self.maestro.hablar(self.mundo, self.x, self.y, necesidad, vista,
                                             self.edad, pedido)
                 self.oido.oir(frase, (self.x, self.y), self.maestro.objetivo)
+                if self.habla:
+                    self.habla.escuchar(frase, self.cuerpo.v, necesidad, pedido)
             dicha = self.oido.direccion_dicha() if C.LEXICO else 4
             if isinstance(self.mente, Ganglios):
                 dx, dy = self.mente.elegir(vista, self.cuerpo.v, necesidad, (self.x, self.y),

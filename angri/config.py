@@ -99,6 +99,15 @@ MAESTRO_SOLO_SI_PIDE = False  # el maestro solo habla cuando Angri le pide
 TEMPERATURA_HABLA = 1.0
 APRENDE_HABLA = 0.02
 VENTANA_HABLA = 30            # ticks de dopamina que se le acreditan a lo que dijo
+# --- Etapa 8: aprende a pedir escuchando ---
+ESCUCHA = True                # pide la palabra que más oyó cuando sentía lo mismo (no por dopamina)
+ESCUCHA_CUERPO = False        # "lo que siente" = estado del cuerpo (False: solo el foco)
+ESCUCHA_PEDIDOS = False       # también aprende de lo que le contestan cuando pidió
+APRENDE_ESCUCHA = 0.3
+TEMPERATURA_ESCUCHA = 0.1
+UMBRAL_ESCUCHA = 0.2          # si ninguna palabra llega a esto, todavía no pide
+MAESTRO_INICIO = 0            # con SOLO_SI_PIDE: ticks del principio en que igual habla solo
+PROB_ESPONTANEO = 0.2         # con SOLO_SI_PIDE: prob. de hablar solo (por la PROB_HABLA ya filtrada)
 FRASE = False                 # rasgo por (par de palabras oídas juntas, movimiento)
 
 # --- Cuerpo: puntos de equilibrio (setpoints), todo en 0..1 ---
