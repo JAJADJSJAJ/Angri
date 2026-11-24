@@ -742,9 +742,9 @@ Conclusión: la mente actual (rasgos hechos a mano sobre la celda de destino y "
 
 ### Hoja de ruta
 
-1. **Avatar del usuario** en el visor (moverse, darle comida, decirle palabras): el maestro pasa a ser una persona, sin modelos externos.
-2. **Etapa 14**: mente que arma sus propios rasgos (lo que mostró el bosque que falta).
-3. Después: 13b (objetos con física), mundo más grande (256×256, más animales), lenguaje aprendido del usuario y más tarde internet.
+Ver `docs/proxima-etapa.md`. Orden acordado: **13b** (objetos con física) → **14**
+(mente que arma sus propios rasgos) → **avatar de Fran en el visor** → imitación →
+chat. En el i5 Angri queda instalada en Rust pero **apagada** hasta que esté completa.
 
 ## Versión 2 del azar (PCG32 propio)
 
@@ -865,7 +865,9 @@ y no instala si fallan, instala el binario en `/opt/angri/angri`, borra el
 visor`. La primera vez, lo de Python (`mente.json`, `vida.csv`, respaldos,
 foto) se mueve a `/var/lib/angri/python-viejo/` y **Angri renace en Rust**: no
 hay conversor de mentes de Python. Antes de correrlo: `sudo apt install cargo`.
-No se probó en el i5 ni en Linux (todo lo de arriba corrió en Windows).
+Instalado en el i5 el 24/11/2026 (renació). Está **apagada a propósito** hasta que
+Angri esté completa; `instalar.sh` solo prende los servicios que ya estaban
+habilitados, así que actualizar no la despierta.
 
 Velocidad (un proceso, esta PC):
 

@@ -3,6 +3,7 @@
 # Espera: ~/despliegue/Angri/ (el repo entero, con rust/ y deploy/ adentro).
 # Necesita cargo: sudo apt install cargo (Debian 13 trae Rust 1.85, alcanza).
 # La mente (/var/lib/angri/mente.txt) no se toca: al arrancar, Angri retoma donde estaba.
+# La primera instalación la deja apagada; se prende a mano (ver abajo).
 # La primera vez después de la versión en Python, lo de Python (mente.json, vida.csv,
 # respaldos, foto.json) se mueve a /var/lib/angri/python-viejo/ y Angri renace en Rust
 # (Rust no lee las mentes de Python).
@@ -38,11 +39,16 @@ sudo install -m 644 "$D/deploy/angri.service" /etc/systemd/system/
 sudo install -m 644 "$D/deploy/angri-visor.service" /etc/systemd/system/
 sudo install -m 755 "$D/deploy/angri" /usr/local/bin/angri
 sudo systemctl daemon-reload
-sudo systemctl enable --now angri.service
-# visor web (etapa 13a): http://angri.local:8080 desde la red de casa.
-# angri.local lo anuncia avahi (mDNS) si el host se llama "angri"; si no, usar la IP.
-sudo systemctl enable --now angri-visor.service
-sleep 3
-sudo journalctl -u angri -n 3 --no-pager -o cat
+# La vida y el visor solo se prenden si ya estaban habilitados: si Angri está
+# apagada a propósito (sudo systemctl disable --now angri angri-visor), actualizar
+# no la despierta. Para prenderla: sudo systemctl enable --now angri angri-visor
+# visor web: http://angri.local:8080 (avahi anuncia angri.local si el host se llama "angri").
+for u in angri.service angri-visor.service; do
+  if systemctl is-enabled -q "$u" 2>/dev/null; then sudo systemctl start "$u"; else echo "$u queda apagado"; fi
+done
+if systemctl is-active -q angri.service; then
+  sleep 3
+  sudo journalctl -u angri -n 3 --no-pager -o cat
+fi
 systemctl is-active angri-visor.service >/dev/null && echo "Visor: http://$(hostname).local:8080"
 echo INSTALADO
