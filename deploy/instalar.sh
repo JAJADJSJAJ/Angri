@@ -26,11 +26,12 @@ sudo rm -rf /opt/angri/codigo          # (la versión en Python)
 sudo install -m 755 "$D/rust/target/release/angri" /opt/angri/angri
 
 sudo install -d -o angri -g angri -m 750 /var/lib/angri
-if [ -e /var/lib/angri/mente.json ] && [ ! -e /var/lib/angri/mente.txt ]; then
+# (con sudo test: fran no puede mirar adentro de /var/lib/angri)
+if sudo test -e /var/lib/angri/mente.json && ! sudo test -e /var/lib/angri/mente.txt; then
   V=/var/lib/angri/python-viejo
   sudo install -d -o angri -g angri -m 750 "$V"
   for f in mente.json mente.json.tmp vida.csv foto.json respaldos; do
-    if [ -e "/var/lib/angri/$f" ]; then sudo mv "/var/lib/angri/$f" "$V/"; fi
+    if sudo test -e "/var/lib/angri/$f"; then sudo mv "/var/lib/angri/$f" "$V/"; fi
   done
   echo "Lo de Python quedó en $V; Angri renace en Rust."
 fi
