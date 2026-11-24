@@ -284,7 +284,9 @@ habla el maestro no cambiaron nada fuera del ruido.
 7. 🔶 Hablar: Angri pide con una palabra. Por dopamina no aprende qué pedir (34–39 %); **escuchando sí (100 %)**, pero pedir todavía no mejora la vida (etapa 8, apagado)
 8. 🔶 Maestro ciego (etapa 9): no sabe qué necesita Angri; pedir no mejora (apagado)
 9. ✅ Vidas trabadas (etapa 10): explorar más cuando la pasa mal las saca (malestar 0,179 → 0,144)
-10. Mundo real: internet, sensores de la PC como "cuerpo" y vida continua
+10. ✅ Vida continua (etapa 12): guarda la mente entera y retoma bit a bit; vive 1.000.000 de ticks sin degradarse ni crecer en RAM
+11. Mundo más rico
+12. Mundo real: internet, sensores de la PC como "cuerpo"
 
 ## Etapa 6d: cierre del lenguaje (composición, cambio de significado, barrido, memoria)
 
@@ -593,6 +595,36 @@ Mejora el hambre, no solo las heridas: lastimarse sube el estrés y el malestar,
 - Con el peligro arreglado, ya no suman nada: recordar lugares, escuchar el cuerpo, que el maestro hable el doble, y bajar o subir TEMPERATURA_MALESTAR a 4 o a 12. Todo da |z| < 2, salvo 4, que empeora (z +2,7).
 
 Nueva base: **malestar 0,121, hambre 8 %, heridas 6,8, trabadas 0,4 %**.
+
+## Etapa 12: vida continua (prendida)
+
+Angri ya no vive vidas de 50.000 ticks que se pierden: vive sin fin en la PC.
+
+    python vivir.py                 # vive para siempre, guarda en datos/mente.json, log en datos/vida.csv
+    python vivir.py --panel         # lo mismo, mirándolo
+    python vivir.py --ticks 100000  # vive 100.000 ticks más y para
+    python probar_retomar.py 20000 0
+
+**Memoria completa (`angri/memoria.py`).** En vez de guardar a mano un resumen (antes se perdían las huellas, el hipocampo, el mundo y el random), recorre todo el grafo de objetos de Angri y lo escribe a JSON legible: tuplas, sets, diccionarios con claves raras, generadores al azar y **referencias compartidas** (ganglios, hipocampo y tálamo usan el mismo `random`; si al cargar fueran dos, la vida divergiría). Guardado atómico: escribe a `.tmp`, `fsync` y renombra. Cada 50.000 ticks y al cortar con Ctrl+C. Pesa ~360 KB.
+
+**Retomar es bit-idéntico.** `probar_retomar.py` corre N ticks de un tirón contra N/2 + guardar + cargar + N/2 y compara la mente entera serializada: idéntica con 20.000 (semillas 0 y 1) y 33.333 ticks (semilla 7), y también guardando en un proceso y cargando en otro.
+
+**Vida larga: 1.000.000 de ticks** (semilla 0, un hilo del i5, ~1 min 55 s):
+
+| ticks | malestar | % hambre | heridas | comidas | ticks/seg | RAM MB | `oido.aciertos` |
+|---|---|---|---|---|---|---|---|
+| 100k | 0,091 | 0,95 | 7 | 1672 | 9962 | 24,8 | 1192 |
+| 300k | 0,075 | 0 | 0 | 1881 | 9125 | 26,4 | 4410 |
+| 500k | 0,103 | 0,61 | 3 | 1503 | 8915 | 26,6 | 6664 |
+| 700k | 0,075 | 0,03 | 0 | 1795 | 8903 | 26,6 | 9245 |
+| 1M | 0,072 | 0,01 | 0 | 1949 | 8906 | 27,6 | 13360 |
+
+(ventanas de 100.000 ticks)
+
+- **El aprendizaje no se degrada**: el malestar baja de 0,091 a ~0,073 y queda; los repuntes (500k) son estaciones duras y se recupera solo.
+- **Velocidad estable**: ~8.900 ticks/seg desde los 200k (el primer tramo es 10 % más rápido).
+- **Fuga encontrada y arreglada**: la caché `_RITMOS` de los ganglios guardaba un renglón por cada valor de experiencia (≈1 por tick): la RAM subía de 27 a 177 MB en 1M ticks. Ahora solo cachea experiencias < 20.000 y calcula directo las otras: **mismo número exacto** (malestar y pesos idénticos a 200k ticks), RAM plana en ~27 MB. No es un tope a la mente: es una caché.
+- **Lo único que crece sin tope**: `oido.aciertos`, el registro de apuestas del léxico que usa `medir.py` para el % de acierto: ~13.400 tuplas por millón de ticks (≈1 MB de RAM por millón). No se toca sin preguntar.
 
 ## Reglas del proyecto
 

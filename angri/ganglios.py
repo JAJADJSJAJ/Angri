@@ -133,6 +133,8 @@ class Ganglios:
     def _ritmo(self, base, experiencia):
         """Cuánto aprende: mucho de lo nuevo, poco de lo que ya vivió mil veces
         (pero nunca cero: el mundo cambia)."""
+        if experiencia >= 20000:  # cuenta directa (mismo número): la caché no crece sin fin
+            return max(base * C.APRENDE_MINIMO, base / math.sqrt(1 + experiencia / C.CALMA))
         clave = (base, experiencia)
         r = _RITMOS.get(clave)
         if r is None:  # se calcula una vez por (ritmo, experiencia) y se guarda
