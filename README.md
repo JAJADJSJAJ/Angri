@@ -1120,6 +1120,28 @@ Empeora todo, y cuanto más se acota, peor (lo único que baja son las heridas: 
 mente aprendió no alcanza para salir sola de un mal momento; el ruido que trae el malestar es lo que la destraba (por
 eso en la etapa 10 se subió de 2 a 8). "Explora más cuanto peor está" no es la trampa: es su única salida. Lo que hay
 que arreglar es que la política aprendida sepa ir hacia la comida; recién ahí tendrá sentido bajar este ruido.
+
+**c) Desmayo como final de episodio (`DESMAYO_FINAL`) — apagado.** Antes el desmayo borraba el último paso sin
+aprenderlo (`olvidar_paso`), así que lo que la llevó a caer nunca recibía el golpe. Con la opción, ese paso se aprende
+con V(s2) = 0 y el malestar de cuando cayó (no el de después de despertar), y recién ahí se corta el episodio. Encima
+del 1a, 256 pares desde 4000, B − A (z):
+
+| | mano | propia |
+|---|---|---|
+| malestar | −0,011 (−1,6) | +0,014 (2,8) |
+| % hambre | −2,1 (−1,4) | +3,6 (3,0) |
+| % cruda < 0,15 | −2,1 (−1,6) | +2,7 (3,3) |
+| peor 10k hambre | +0,7 (0,6) | +0,6 (1,3) |
+| % trabadas | −5,5 (−2,1) | +9,8 (2,4) |
+| desmayos | −3,4 (−1,3) | +6,8 (2,4) |
+| heridas | +8,5 (1,7) | −23 (−8,4) |
+| comidas | −13 | −94 (−2,4) |
+
+En la mano, una mejora chica que no llega a ser clara; en la propia empeora claro. Por qué: un solo paso recibe un
+golpe enorme (el malestar en el tope y sin futuro que lo compense) y la propia, que reparte el error entre muchas
+unidades que también se prenden en situaciones normales, aprende a no moverse por lo que tenía alrededor (se lastima
+mucho menos pero come mucho menos). Apagado: con una mano y sin la otra no pasa la vara. Puede volver cuando el golpe
+se reparta mejor (traza más larga hacia atrás) o cuando la propia distinga mejor sus situaciones.
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

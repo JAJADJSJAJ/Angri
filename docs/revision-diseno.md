@@ -22,6 +22,7 @@ Regla para todo lo que sigue: de a un cambio, `angri comparar` con 256 pares y `
   **Medido (paso 1b), apagado**: sacarla o acotarla empeora todo (sin término: cruda<0,15 +45 puntos en la mano); el ruido es lo que la destraba hoy. Ver README.
 - **El desmayo es un borrón**: `olvidar_paso` antes de aprender (`vida.rs:459`), así lo que la llevó a caer nunca
   recibe el golpe. Hacerlo un final de episodio (V(s2) = 0 con el malestar de antes).
+  **Medido (paso 1c), apagado** (`DESMAYO_FINAL`): mano −2 puntos de cruda<0,15 (z −1,6), propia +2,7 (z 3,3). Ver README.
 
 ## 2. El cuerpo y lo que siente
 - **El crítico está partido por el foco** (la clave `s` lleva la necesidad del foco): cada salto de foco cambia de
