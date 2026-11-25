@@ -19,6 +19,7 @@ Regla para todo lo que sigue: de a un cambio, `angri comparar` con 256 pares y `
   **Hecho (paso 1a)**: `FOCO_CIEGO = 'neutro_todo'` (sin alivio, o sin alivio a la vista, el rasgo no empuja); mano: cruda<0,15 −4 puntos (z −3,6), ver README.
 - **Explora más cuanto peor está**: la temperatura es `0,3 + 0,5·nora + 8·malestar` (`mente.rs:508`); con malestar
   0,3 elige casi al azar. Cuanta más hambre, menos va derecho a la comida.
+  **Medido (paso 1b), apagado**: sacarla o acotarla empeora todo (sin término: cruda<0,15 +45 puntos en la mano); el ruido es lo que la destraba hoy. Ver README.
 - **El desmayo es un borrón**: `olvidar_paso` antes de aprender (`vida.rs:459`), así lo que la llevó a caer nunca
   recibe el golpe. Hacerlo un final de episodio (V(s2) = 0 con el malestar de antes).
 

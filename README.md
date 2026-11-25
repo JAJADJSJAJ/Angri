@@ -1102,6 +1102,24 @@ Baja el hambre en todas las estaciones y bajan desmayos y heridas. `'neutro'` so
 "el foco no tiene alivio" sino "el alivio no está a la vista" (sobre todo la comida), y ahí "quedarse" era la peor
 respuesta. Con `RASGOS=propios` no cambia nada (bit a bit: la propia no usa los rasgos hechos a mano). Las configs de
 `rust/pruebas` no lo nombran y quedan con `'quedarse'` (el default si falta la línea): la referencia no cambia.
+
+**b) Temperatura por malestar (`TEMPERATURA_MALESTAR_TOPE`) — apagado (0 = sin tope).** La exploración es
+`0,3 + 0,5·nora + 8·malestar`; probamos sacar el término (`TEMPERATURA_MALESTAR=0`) y acotarlo (tope 0,5 y 2), encima
+del 1a. 256 pares desde 3000, B − A (z):
+
+| | mano: sin término | mano: tope 0,5 | mano: tope 2 | propia: sin término | propia: tope 0,5 |
+|---|---|---|---|---|---|
+| malestar | +0,270 (40) | +0,196 (23) | +0,069 (7,6) | +0,134 (28) | +0,078 (12) |
+| % hambre | +56 | +43 | +16 | +33 | +19 |
+| % cruda < 0,15 | +45 (35) | +34 (21) | +13 (7,2) | +19 (25) | +11 (10) |
+| peor 10k hambre | +11,9 | +11,0 | +7,2 | +2,6 | +1,9 |
+| % trabadas | +84 | +68 | +26 | +58 | +37 |
+| desmayos | +107 | +81 | +31 | +46 | +29 |
+
+Empeora todo, y cuanto más se acota, peor (lo único que baja son las heridas: se mueve menos). Por qué: hoy lo que la
+mente aprendió no alcanza para salir sola de un mal momento; el ruido que trae el malestar es lo que la destraba (por
+eso en la etapa 10 se subió de 2 a 8). "Explora más cuanto peor está" no es la trampa: es su única salida. Lo que hay
+que arreglar es que la política aprendida sepa ir hacia la comida; recién ahí tendrá sentido bajar este ruido.
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
