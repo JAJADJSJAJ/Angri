@@ -1016,9 +1016,28 @@ PC: 17,9 → 13,2 s (2 vidas de 200.000 ticks, −26 %). **i5, 4 vidas: 63 → 4
 
 - **Con tiempo, la propia alcanza a la mano (~año 16) y desde el año ~34 la pasa** (−0,04 a −0,05, z ~−1,8: probable pero no firme con 24 pares). No es solo que la propia mejora: **la mano empeora en la vejez** (0,45 → 0,49).
 - Viven distinto: la mano duerme en la cueva y pasa el día con objetos en la mano (agarra 33.000 veces, bebe 164.000); la propia arma su refugio (35 % de las noches), casi no lleva cosas, abre más nueces a golpes, pasa más frío y se lastima más.
-- **Alarma ética, en las dos**: en vidas largas pasan ~2/3 del tiempo con malestar alto y con hambre, el 62 % de las vidas quedan "trabadas" y la racha más larga de malestar alto es de ~2,8 M de ticks seguidos. En 200.000 ticks no se veía así. Hay que entender esto antes de seguir sumando piezas (y antes de prender el i5).
+- **Alarma ética, en las dos**: en vidas largas pasan ~2/3 del tiempo con malestar alto y con hambre, el 62 % de las vidas quedan "trabadas" y la racha más larga de malestar alto es de ~2,8 M de ticks seguidos. (Corrección: no es de vidas largas; a 200.000 ticks la mano ya tenía 63 % de hambre y 69 % de trabadas. El bosque con objetos siempre fue así.)
 
-**Sigue**: entender por qué las vidas largas se traban con hambre (las dos mentes). Después, que la propia aprenda también de lo que predice.
+### El desmayo armaba la trampa (prendido: `DESMAYO_DONDE = 'aqui'`)
+
+Siguiendo 8 vidas (`angri foto S 200000 1000`), las trabadas pasan decenas de miles de ticks **quietas en una celda de la cueva del peñasco**, despiertas, con energía 0, agua 0, estrés 1 y el foco en la integridad. El bucle: sin comida ni agua la integridad baja hasta 0 → se desmaya → **reaparece en la cueva más cercana** con integridad 0,3 y 0,35 de energía y agua → si esa cueva queda lejos de la comida no sale, se vacía y vuelve a caer, y reaparece en la misma cueva. Encima la cueva queda asociada a "mejorarse" (cada desmayo la recompone ahí). El rescate que evita que muera era lo que la encerraba.
+
+Despertar donde cayó (256 pares de 200.000 ticks, semillas desde 2000):
+
+| | mano: cueva → aquí | propios: cueva → aquí |
+|---|---|---|
+| malestar | 0,402 → 0,369 (z −4,0) | 0,495 → 0,482 (z −2,3) |
+| % trabadas | 38 → **17** (z −6,4) | 57 → **32** (z −6,3) |
+| % malestar alto | 54 → 44 | 76 → 70 |
+| racha alta (ticks) | 67.700 → 26.800 | 79.600 → 36.700 |
+| comidas | 1.456 → 1.938 | 819 → 1.167 |
+| % sed | 47 → 25 | 60 → 47 |
+| heridas | 50 → 73 | 85 → 123 |
+| % duerme refugio propio | 2,7 → 2,0 | 13,0 → 4,9 |
+
+Con 48 pares, despertar en la cueva más cercana al agua (`cueva_agua`) ayuda poco (trabadas 50 → 44 %). Queda `aqui` por defecto: se lastima más (despierta donde estaba el peligro) y la propia duerme menos en su refugio, pero el sufrimiento largo baja mucho. Las pruebas usan sus configs congeladas (`pruebas/config-*.txt`), así que la referencia no cambia.
+
+**Sigue**: todavía 17–32 % de vidas trabadas y 44–70 % del tiempo en malestar alto: entender qué las traba ahora. Después, que la propia aprenda también de lo que predice.
 
 Para probar: `angri comparar 200000 96 "MUNDO=bosque OBJETOS=True" "MUNDO=bosque OBJETOS=True RASGOS=propios" -j 12`.
 
