@@ -31,7 +31,10 @@ Regla para todo lo que sigue: de a un cambio, `angri comparar` con 256 pares y `
   **Hecho (paso 2a)**: `CRITICO_CUERPO = 2` (cada necesidad bien/lejos, sin foco), solo con la mano: cruda<0,15 −5,4
   (z −5,4), hambre −7, trabadas a la mitad (512 pares). Con la propia empeora (+2,2, z 3,5): se ignora. Ver README.
 - **El estrés cobra doble**: sube con hambre, sed, frío y heridas, y además pesa por su cuenta; nada lo alivia directo.
-- (latente) el tálamo solo mira 5 necesidades, no agua ni calor.
+  **Hecho (paso 2b)**: `ESTRES_COBRA = 'sin_peso'` (sigue moviendo el cortisol, no pesa en el malestar): cruda<0,15
+  −4,2 mano / −4,3 propia (z −4,9 / −6,5, 512 pares); a cambio, algo más de mordidas (mano) y heridas (propia).
+  `'solo_golpes'` no cambia nada. Ver README.
+- (latente) el tálamo solo mira 5 necesidades, no agua ni calor. Anotado: está apagado (`TALAMO = False`), no afecta hoy.
 
 ## 3. El mundo
 - **Invierno**: no brotan fruta ni baya y lo que había se borra en ~2.000 ticks; quedan nueces (hay que golpearlas)

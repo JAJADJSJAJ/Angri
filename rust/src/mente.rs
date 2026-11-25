@@ -81,10 +81,10 @@ impl Cuerpo {
         if v[ENERGIA] < 0.05 {
             v[INTEGRIDAD] -= c.dano_inanicion;
         }
-        if v[ENERGIA] < 0.3 {
+        if v[ENERGIA] < 0.3 && c.estres_cobra != 2 {
             v[ESTRES] += 0.002;
         }
-        if v[INTEGRIDAD] < 0.7 {
+        if v[INTEGRIDAD] < 0.7 && c.estres_cobra != 2 {
             v[ESTRES] += 0.003;
         }
         self.clip_todo();
@@ -96,12 +96,12 @@ impl Cuerpo {
         v[CALOR] += c.templa * (aire + if se_movio { 0.1 } else { 0.0 } - v[CALOR]);
         if v[CALOR] < 0.3 {
             v[INTEGRIDAD] -= c.dano_frio;
-            v[ESTRES] += 0.002;
+            if c.estres_cobra != 2 { v[ESTRES] += 0.002; }
         }
         if v[AGUA_N] < 0.05 || v[ENERGIA] < 0.05 {
             v[INTEGRIDAD] -= c.recupera_integridad + c.dano_sed;
         }
-        if v[AGUA_N] < 0.3 {
+        if v[AGUA_N] < 0.3 && c.estres_cobra != 2 {
             v[ESTRES] += 0.002;
         }
         self.clip_todo();

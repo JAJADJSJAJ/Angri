@@ -1172,6 +1172,36 @@ en sed). En la propia empeora: la propia ya tiene un crítico que ve el cuerpo e
 necesidad) y la tabla con foco le daba algo que no tenía; con la tabla de cuerpo los dos persiguen lo mismo (ver
 revisión, sección 4: "un solo crítico"). Por eso la opción solo vale con la mano; con la propia queda la clave vieja
 (bit a bit igual). Las configs de `rust/pruebas` no la nombran (0 = vieja): la referencia no cambia.
+
+**b) El estrés cobra doble (`ESTRES_COBRA`) — prendido (`'sin_peso'`).** El estrés sube con hambre, sed, frío y
+heridas (que ya pesan en el malestar por su cuenta) y además pesaba 1,2 en el malestar: el mismo dolor contado dos
+veces, y encima nada lo alivia directo (baja solo, de a poco), así que era malestar "sin salida" que ensuciaba el error
+TD. Opciones: `'doble'` (viejo), `'sin_peso'` (el estrés sigue existiendo, mueve el cortisol, pero no pesa en el
+malestar: `PESO_NECESIDAD.estres = 0`) y `'solo_golpes'` (pesa, pero solo sube con golpes, raspones, mordidas y
+enfermedad). Como cambia los pesos, se juzga con métricas crudas, no con el malestar. Encima del 2a, B − A (z):
+
+| | mano sin_peso, 256 (desde 7000) | mano solo_golpes, 256 | mano sin_peso, 512 (desde 8000) | propia sin_peso, 256 | propia solo_golpes, 256 | propia sin_peso, 512 |
+|---|---|---|---|---|---|---|
+| % hambre despierta | −3,8 (−2,9) | −0,2 | −4,4 (−4,9) | −6,1 (−4,9) | +1,9 (1,4) | −5,2 (−5,7) |
+| peor 10k hambre | −3,5 (−2,1) | −0,8 | −5,0 (−4,3) | −1,7 (−3,1) | 0,0 | −1,6 (−4,2) |
+| % cruda < 0,15 | −3,8 (−3,1) | −0,8 (−0,6) | −4,2 (−4,9) | −5,1 (−5,5) | +0,5 | −4,3 (−6,5) |
+| % trabadas | −2,3 | −0,8 | −3,9 (−2,9) | −14,5 (−3,6) | +4,3 | −11,7 (−4,0) |
+| desmayos | −4,8 (−2,1) | +0,7 | −5,6 (−3,8) | −13,2 (−4,7) | +4,4 | −10,2 (−4,8) |
+| % sed | −1,2 | −0,6 | −1,8 (−2,5) | −4,8 (−4,2) | +1,3 | −2,9 (−3,5) |
+| % hambre prim/ver/oto/inv (512) | | | −4,2 / −5,8 / −4,0 / −3,9 | | | −4,4 / −5,1 / −5,8 / −5,2 |
+| heridas | −16 (−2,7) | −12 | +0,5 | +15 (5,1) | −8 | +13 (5,5) |
+| mordidas | +0,9 (2,2) | +0,6 | +1,1 (4,3) | +0,2 | +0,2 | +0,5 (1,2) |
+
+`'sin_peso'` mejora las dos mentes en todas las estaciones (lo primero de la revisión que también ayuda a la propia).
+`'solo_golpes'` no cambia nada claro: el problema no era cuánto sube el estrés sino que pese aparte. El precio: algo
+más de mordidas en la mano y de heridas en la propia (se arriesga más porque el susto ya no "duele" dos veces; las
+heridas igual pesan, por integridad). Por qué mejora: el estrés tarda cientos de ticks en bajar y nada de lo que hace
+lo baja rápido, así que su parte del malestar era un ruido que ninguna acción explicaba; sin él, la dopamina refleja
+lo que sí puede arreglar (comer, beber, abrigarse). Las configs de `rust/pruebas` no lo nombran (`'doble'`): la
+referencia no cambia.
+
+**(latente) El tálamo mira 5 necesidades** (`extra.rs`, `urg` de 0..5: no ve agua ni calor). Está apagado
+(`TALAMO = False`, medido en la etapa 5), así que hoy no afecta nada; anotado para cuando se lo vuelva a probar.
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
