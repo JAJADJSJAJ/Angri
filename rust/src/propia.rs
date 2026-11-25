@@ -275,12 +275,32 @@ impl Propia {
     }
 
     /// al elegir: guarda s y suma a cada acción lo que dicen sus unidades
-    pub fn preferencias(&mut self, s: Sentir, h: &mut [f64; NACC], na: usize) {
+    pub fn preferencias(&mut self, s: Sentir, h: &mut [f64; NACC], na: usize, cuerpo: &[f64; 7], c: &Config) {
         let act = match self.previa.take() {
             Some((ps, pa)) if ps == s => pa,
             _ => self.activas_de(&s),
         };
         self.sumar(&act, h, na);
+        if c.predice_actor > 0.0 {
+            // cuánto vale cada suba/baja predicha: lo que acercaría esa necesidad a su equilibrio
+            let mut gusto = [0.0; NPRED];
+            for (j, &k) in PREDICE.iter().enumerate() {
+                let falta = c.peso[k] * (c.equilibrio[k] - cuerpo[k]);
+                gusto[2 * j] = falta;
+                gusto[2 * j + 1] = -falta;
+            }
+            for &(u, m) in &act {
+                if m != DEL_ESTADO {
+                    let un = &self.unidades[u as usize];
+                    let x: f64 = (0..NPRED).map(|i| gusto[i] * un.q[i]).sum::<f64>() * c.predice_actor;
+                    for a in 0..5 {
+                        if m >> a & 1 == 1 {
+                            h[a] += x;
+                        }
+                    }
+                }
+            }
+        }
         self.vs = self.valor(&act);
         self.ahora = s;
         self.activas = act;
@@ -344,7 +364,7 @@ impl Propia {
     pub fn valor_de(&mut self, s: &Sentir, c: &Config) -> f64 {
         let act = self.activas_de(s);
         let v = self.valor(&act);
-        if c.predice_propio > 0.0 {
+        if c.predice_propio > 0.0 || c.predice_actor > 0.0 {
             self.activas2 = act.clone();
         }
         self.previa = Some((s.clone(), act));
@@ -390,6 +410,36 @@ impl Propia {
                 let un = &mut self.unidades[u];
                 for i in 0..NPRED {
                     un.q[i] += d[i] * e;
+                }
+            }
+        }
+        if c.predice_actor > 0.0 && self.elegida < 5 {
+            // (PREDICE_ACTOR) las de movimiento del elegido aprenden lo que ese movimiento agrega
+            let a = self.elegida;
+            let mut qa = q1;
+            let mut na = 0.0;
+            for &(u, m) in &self.activas {
+                if m != DEL_ESTADO && m >> a & 1 == 1 {
+                    na += 1.0;
+                    for i in 0..NPRED {
+                        qa[i] += self.unidades[u as usize].q[i];
+                    }
+                }
+            }
+            if na > 0.0 {
+                let r = c.aprende_propio_critico / na;
+                let mut e = [0.0; NPRED];
+                for i in 0..NPRED {
+                    e[i] = r * (cum[i] + GAMMA_PRED * q2[i] - qa[i]);
+                }
+                for k in 0..self.activas.len() {
+                    let (u, m) = self.activas[k];
+                    if m != DEL_ESTADO && m >> a & 1 == 1 {
+                        let un = &mut self.unidades[u as usize];
+                        for i in 0..NPRED {
+                            un.q[i] += e[i];
+                        }
+                    }
                 }
             }
         }
@@ -487,7 +537,7 @@ impl Propia {
                 }
             }
         }
-        if c.predice_propio > 0.0 {
+        if c.predice_propio > 0.0 || c.predice_actor > 0.0 {
             self.predecir(cuerpo, n, c);
         }
         // utilidad: cuánto pesan cuando están activas

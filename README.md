@@ -1498,6 +1498,43 @@ solo reparte el crédito entre más pesos (con `'foco_cerca'`, el doble de átom
 es la conjunción: es que la mano ya sabe hacia dónde mirar. Sacado: el código no queda. Sigue la otra mitad de la idea: que las unidades aprendan de lo que predicen (`PREDICE_PROPIO`) y el
 crítico con el cuerpo entero.
 
+## Aprender las recetas, paso 2: las unidades de movimiento predicen el cuerpo (2026-11-25) — sirve, prendido
+
+Idea: en vez de darle la receta "la comida alivia el hambre", que cada unidad de movimiento de la propia aprenda de lo
+vivido **qué le pasa al cuerpo cuando hace ese movimiento**: cuánto suben o bajan la energía, la integridad y el calor
+en los pasos que siguen (TD con γ 0,9, el mismo predictor que ya tenían las unidades del estado con `PREDICE_PROPIO`,
+ahora también para las de movimiento del elegido). Al elegir, a cada movimiento se le suma `PREDICE_ACTOR` × "cuánto
+acercaría eso cada necesidad a su equilibrio" (la falta de cada una, con su peso en el malestar, por la suba o baja
+predicha). Nada le dice qué alivia qué: lo que predice sale de lo que le pasó; lo único armado es que el cuerpo quiere
+volver a su equilibrio, que es la misma cuenta del malestar. Solo la propia (la mano no cambia: 25,7 % hambre / 29,2 %
+crudas). `angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... PREDICE_ACTOR=<w>"`, B − A (z):
+
+| | w=1 (40000) | w=1 (50000) | w=4 (40000) | w=4 (50000) | **w=16 (40000)** | **w=16 (50000)** | w=64 (40000) |
+|---|---|---|---|---|---|---|---|
+| base: % hambre / % cruda<0,15 | 41,6 / 45,8 | 41,7 / 45,8 | 41,6 / 45,8 | 41,7 / 45,8 | 41,6 / 45,8 | 41,7 / 45,8 | 41,6 / 45,8 |
+| malestar | −0,005 (−0,7) | −0,006 (−0,9) | −0,010 (−1,5) | −0,013 (−2,2) | **−0,017 (−2,5)** | **−0,024 (−3,9)** | +0,003 (0,5) |
+| % hambre | −1,2 (−0,9) | −1,3 (−0,9) | −1,7 (−1,1) | −2,4 (−1,7) | **−3,3 (−2,1)** | **−4,7 (−3,1)** | +2,8 (1,8) |
+| % cruda < 0,15 | −1,4 (−1,1) | −1,3 (−1,0) | −2,1 (−1,6) | −2,4 (−1,9) | **−3,2 (−2,4)** | **−4,2 (−3,5)** | +2,4 (1,9) |
+| peor 10k hambre | +0,7 (0,7) | −1,6 (−1,6) | −1,0 (−0,9) | −1,5 (−1,5) | −1,6 (−1,4) | −3,5 (−3,2) | +3,2 (3,3) |
+| % trabadas | 14 → 14 | 14 → 13 | 14 → 14 | 14 → 12 | 14 → 12 | 14 → 9 (−1,7) | 14 → 14 |
+| heridas | −10 (−3,1) | −8 (−3,1) | −25 (−7,7) | −25 (−11) | −44 (−15) | −45 (−20) | −51 (−17) |
+| enfermó | −0,1 | +1,3 | −6,3 (−2,6) | +0,2 | −11 (−5,6) | −10 (−4,3) | −24 (−12) |
+| comidas | +10 | −9 | −63 (−2,0) | −69 (−2,4) | −279 (−9,6) | −301 (−11) | −545 (−20) |
+| desmayos | −3,6 (−1,2) | −2,5 (−0,8) | −5,0 (−1,6) | −7,4 (−2,7) | −8,5 (−2,8) | −12,2 (−4,4) | −0,2 |
+| % mal alto | −1,7 | −1,5 | −2,9 (−1,7) | −3,6 (−2,2) | −4,9 (−2,8) | −6,4 (−4,0) | +0,8 |
+| % frío | −0,1 | 0,0 | −0,3 | +0,2 | +0,6 (3,0) | +0,5 (2,1) | +0,7 (3,5) |
+| % mal tope | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+Mejora más cuanto más pesa, hasta 16, y en las dos semillas: con 16, malestar −0,02, hambre −3 a −5 puntos, crudas
+−3 a −4, heridas casi a la mitad, se enferma un 18 % menos y se desmaya menos; el malestar nunca toca el tope. Por
+qué: lo que más aprende a predecir es lo que baja (morder a un animal grande, comer algo podrido, el frío): con eso
+evita las heridas y las enfermedades, y come **menos veces** (−23 %) pero mejor, así que pasa menos tiempo con hambre.
+Con 64 la predicción tapa al actor: evita tanto que casi no come (−43 % de comidas) y vuelve a tener más hambre;
+también pasa algo más de frío con 16 (+0,5 puntos). **Queda prendido con `PREDICE_ACTOR = 16`** (solo afecta a la
+propia: la vida por defecto, con la mano, no cambia y `rust/pruebas/referencia.txt` no se regenera; guardar y retomar
+siguen dando la misma vida con la propia). La propia sigue atrás de la mano (~37–38 % de hambre contra 25,7 %), pero
+ahora con algo propio que se parece a "qué alivia qué": lo que falta es lo de "hay salida a la vista" (el crítico).
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

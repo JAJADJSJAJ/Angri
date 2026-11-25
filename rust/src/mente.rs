@@ -521,7 +521,7 @@ impl Ganglios {
         }
         if let Some(p) = &mut self.propia {
             let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, dicha, tacto, clima, c.distancia_fina);
-            p.preferencias(at, &mut h, na);
+            p.preferencias(at, &mut h, na, cuerpo, c);
         }
         let mut tm = c.temperatura_malestar * malestar;
         if c.temperatura_malestar_tope > 0.0 {

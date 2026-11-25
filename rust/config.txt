@@ -94,6 +94,7 @@ TOPE_ACTIVA = 0.2             # una unidad activa más que esto no distingue nad
 REPASO_PROPIO = True          # el sueño también repasa las unidades propias (medido: ayuda)
 REPASO_PROPIO_CADA = 1        # el sueño repasa las unidades en uno de cada N recuerdos (es lo más caro)
 PREDICE_PROPIO = 0            # las unidades también predicen los cambios del cuerpo; cuánto pesa eso para no ser reemplazadas (0 = no)
+PREDICE_ACTOR = 16            # (aprender las recetas, paso 2; solo propia; prendido: 1 y 4 ayudan poco, 16 mejor, 64 come de menos) las unidades de movimiento predicen cómo cambian energía, integridad y calor si hace ese movimiento; a cada movimiento se le suma este peso × cuánto acercaría eso cada necesidad a su equilibrio (0 = no)
 NACER_SORPRESA = False        # las unidades nuevas nacen del momento más sorpresivo (mayor error TD) desde el último reinicio
 RITMO_RARO = 1                # ritmo por unidad: una rara aprende hasta esto veces más rápido (3 y 10 probados: no cambia el malestar)
 
