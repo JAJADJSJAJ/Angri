@@ -477,7 +477,11 @@ impl Ganglios {
                   noradrenalina: f64, malestar: f64, palabras: &[usize], dicha: usize,
                   tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, c: &Config) -> usize {
         let dc = hacia(vista, COMIDA);
-        let d_o = hacia(vista, alivia(n));
+        let d_o = match (c.foco_ciego, alivia(n)) {
+            (1, 255) => 99,
+            (2, o) if o == 255 || hacia(vista, o) == 4 => 99,
+            (_, o) => hacia(vista, o),
+        };
         let dr = self.recuerdo(n, pos);
         let na = if tacto.is_some() { NACC } else { 5 };
         let mut rasgos = Rasgos { na: na as u8, ..Rasgos::default() };
@@ -505,7 +509,11 @@ impl Ganglios {
             let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, dicha, tacto, clima);
             p.preferencias(at, &mut h, na);
         }
-        let t_todo = c.temperatura_base + c.temperatura_sorpresa * noradrenalina + c.temperatura_malestar * malestar;
+        let mut tm = c.temperatura_malestar * malestar;
+        if c.temperatura_malestar_tope > 0.0 {
+            tm = tm.min(c.temperatura_malestar_tope);
+        }
+        let t_todo = c.temperatura_base + c.temperatura_sorpresa * noradrenalina + tm;
         let mut m = h[0];
         for b in 1..na {
             if rasgos.puede(b) && h[b] > m {
@@ -545,7 +553,7 @@ impl Ganglios {
     }
 
     pub fn aprender(&mut self, recompensa: f64, vista: &Vista, cuerpo: &[f64; 7], n: usize,
-                    pos: (i64, i64), tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, c: &Config) {
+                    pos: (i64, i64), tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, fin: bool, c: &Config) {
         let s = match self.s { None => return, Some(s) => s };
         for l in self.lugares.iter_mut() {
             l.decaer(c.recuerdo_decae);
@@ -567,12 +575,14 @@ impl Ganglios {
         let v = *self.v.get(&s).unwrap_or(&0.0);
         let dr = if self.propia.is_some() { self.recuerdo(n, pos) } else { 0 };
         let v2_tabla = *self.v.get(&s2).unwrap_or(&0.0);
+        // desmayo como final de episodio: no hay "después" que valga
+        let g2 = if fin { 0.0 } else { c.serotonina };
         let delta = match &mut self.propia {
-            None => recompensa + c.serotonina * v2_tabla - v,
+            None => recompensa + g2 * v2_tabla - v,
             Some(p) => {
                 let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, 4, tacto, clima);
                 let v2 = v2_tabla + p.valor_de(&at, c);
-                let d = recompensa + c.serotonina * v2 - (v + p.vs);
+                let d = recompensa + g2 * v2 - (v + p.vs);
                 if c.repaso_propio {
                     self.ultimo_sentir = Some((p.ahora().clone(), at));
                 }

@@ -1075,6 +1075,33 @@ hambre dormida es igual a la despierta, así que el sueño no la explica. El inv
 menos de lo esperado. El malestar **nunca** llega al tope: el promedio pesado no pasa de 0,85 aunque el 40–60 % del
 tiempo alguna necesidad cruda esté por debajo de 0,15; el tope no está protegiendo nada y `% cruda<0.15` es la vara
 honesta del sufrimiento.
+
+### Paso 1: trampas de la mente
+
+Cada cambio con su opción en `rust/config.txt`, medido en pares (bosque con objetos, 200.000 ticks) con la mano y
+con `RASGOS=propios`; si mejora las crudas sin empeorar otra cosa, queda prendido y el siguiente se mide encima.
+
+**a) Foco ciego (`FOCO_CIEGO`) — prendido (`'neutro_todo'`).** El rasgo "voy hacia lo que alivia mi foco" usaba
+`hacia(objetivo)`, que devuelve "quedarse" cuando no ve el objetivo (o cuando el foco es integridad o estrés, que no
+tienen alivio). Así, justo cuando no ve comida, el rasgo empujaba a no moverse. Opciones: `'quedarse'` (viejo),
+`'neutro'` (solo sin alivio: integridad/estrés) y `'neutro_todo'` (también cuando el alivio no se ve): en esos casos el
+rasgo no empuja a ninguna acción. Mano (B − A, z):
+
+| | 256 pares (desde 2000) neutro | 256 pares neutro_todo | 512 pares (desde 6000) neutro_todo |
+|---|---|---|---|
+| malestar | +0,004 (0,5) | −0,018 (−2,5) | −0,020 (−3,4) |
+| % hambre | +0,4 (0,2) | −3,2 (−2,1) | −3,3 (−2,7) |
+| % hambre despierta | +0,4 | −3,3 (−2,1) | −3,4 (−2,7) |
+| peor 10k hambre | +0,3 | −0,4 | −3,1 (−3,1) |
+| racha hambre | +4 | −17 | −37 (−1,2) |
+| % cruda < 0,15 | +0,9 (0,6) | −3,7 (−2,6) | −4,1 (−3,6) |
+| % trabadas | +1,6 | −5,5 (−2,0) | −3,5 (−1,5) |
+| desmayos | +1,3 | −5,2 (−1,9) | −6,0 (−2,7) |
+
+Baja el hambre en todas las estaciones y bajan desmayos y heridas. `'neutro'` solo no alcanza: el caso que traba no es
+"el foco no tiene alivio" sino "el alivio no está a la vista" (sobre todo la comida), y ahí "quedarse" era la peor
+respuesta. Con `RASGOS=propios` no cambia nada (bit a bit: la propia no usa los rasgos hechos a mano). Las configs de
+`rust/pruebas` no lo nombran y quedan con `'quedarse'` (el default si falta la línea): la referencia no cambia.
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
