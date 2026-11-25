@@ -1224,6 +1224,20 @@ Neutro: come más (la mano) pero no pasa menos hambre, ni siquiera en invierno. 
 la de verano (mano 27,7 contra 29,6): lo que falta no es comida en el mundo sino ir a buscarla. Como solo agrega
 comida sin arreglar nada medible, queda apagado (el mundo más simple).
 
+**b) La crecida corta el mapa (`CRECIDA`) — apagado (`'vieja'`).** Con lluvia el río puede crecer 300–900 ticks: el
+río y sus orillas pasan a peligro de punta a punta. `'vado'`: 3 filas en el medio quedan como estaban. Desde 11000:
+
+| | mano | propia |
+|---|---|---|
+| % hambre despierta | +0,1 (0,0) | −0,2 (−0,2) |
+| peor 10k hambre | +0,1 (0,0) | +0,3 (0,7) |
+| % cruda < 0,15 | −0,7 (−0,7) | −0,5 (−0,8) |
+| % sed | −1,1 (−1,3) | −0,8 (−1,0) |
+| heridas | −9,9 (−1,8) | −1,3 (−0,5) |
+| % mal tope | 0 | 0 |
+
+Neutro: la crecida es rara (pocas veces por vida) y cruzar el peligro raspa pero no traba. Queda apagado.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

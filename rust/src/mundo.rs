@@ -650,7 +650,7 @@ impl Bosque {
         if self.lluvia != 0 {
             self.lluvia -= 1;
             if self.lluvia > 0 && self.crecida == 0 && self.rng.random() < c.prob_crecida {
-                self.crecer(true);
+                self.crecer(true, c);
             }
         } else if self.rng.random() < c.prob_lluvia {
             self.lluvia = self.rng.randint(200, 700);
@@ -658,7 +658,7 @@ impl Bosque {
         if self.crecida != 0 {
             self.crecida -= 1;
             if self.crecida == 0 {
-                self.crecer(false);
+                self.crecer(false, c);
             }
         }
         if self.rng.random() < c.prob_brote {
@@ -699,9 +699,14 @@ impl Bosque {
         self.mover_predador(angri, refugiado, c);
     }
 
-    fn crecer(&mut self, si: bool) {
+    fn crecer(&mut self, si: bool, c: &Config) {
         self.crecida = if si { self.rng.randint(300, 900) } else { 0 };
+        let medio = self.h / 2;
         for y in 0..self.h {
+            // (revisión, paso 3b) un vado de 3 filas en el medio que la crecida no tapa
+            if c.vado && (y - medio).abs() <= 1 {
+                continue;
+            }
             let rx = self.rio_x[y as usize];
             for x in (rx - 2).max(0)..(rx + 3).min(self.w) {
                 let i = self.i(x, y);
