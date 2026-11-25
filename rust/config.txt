@@ -130,7 +130,7 @@ ATAJO_COMIDA = True           # (revisión, paso 4b; mano) el rasgo fijo "voy ha
 ATAJO_VEO_COMIDA = True       # (revisión, paso 4c) el crítico (la tabla V) tiene un bit "veo comida"; False = no lo tiene
 ATAJO_LUGARES = False         # (revisión, paso 4d; sacado: no regala nada) los lugares recordados por necesidad ("lo que alivia esto está para allá": rasgo de la mano y átomo de la propia); False = no se usan
 CRITICO_PROPIO = 'ambos'      # (revisión, paso 4e; solo propia) el valor V suma la tabla y las unidades, que persiguen el mismo error: "ambos" (viejo), "tabla" o "unidades" (solo uno)
-DISTANCIA_PROPIA = 'vieja'    # (revisión, paso 4f; solo propia) "vieja": cada cosa vista da un átomo al movimiento de su eje principal, con su distancia en 4 franjas (1, 2, 3-4, 5+); "fina": a cada movimiento que la acerca, "me acerco a X a distancia d" (1..5, 6+), y a cada uno que la aleja, "me alejo de X"
+DISTANCIA_PROPIA = 'fina'     # (revisión, paso 4f; solo propia; prendido) "vieja": cada cosa vista da un átomo al movimiento de su eje principal, con su distancia en 4 franjas (1, 2, 3-4, 5+); "fina": a cada movimiento que la acerca, "me acerco a X a distancia d" (1..5, 6+), y a cada uno que la aleja, "me alejo de X"
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
 DOLOR = 6.0                   # (etapa 11: 3 -> 6) castigo directo por lastimarse (no pasa por el malestar: no se satura)
 RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)

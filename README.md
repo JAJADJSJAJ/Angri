@@ -1396,6 +1396,31 @@ Sin la tabla se traban dos de cada tres vidas: las unidades solas no alcanzan a 
 con un pedazo, y aprenden de a poco). Sin el V de las unidades bebe mejor pero come peor y se lastima más: no mejora.
 Juntas se complementan (la tabla es gruesa y rápida, las unidades finas y lentas); quedan las dos.
 
+**f) Distancia más fina y "me acerco / me alejo" (`DISTANCIA_PROPIA`) — prendido (`'fina'`).** Antes cada cosa vista
+daba un átomo solo al movimiento de su eje principal ("comida para el norte, a 3-4"), en 4 franjas de distancia. Una
+comida en diagonal le hablaba a un solo paso aunque dos la acercan, y ningún paso sabía que la alejaba. Con `'fina'`,
+a cada paso que acerca a una cosa le toca "me acerco a X, que está a d" (d = 1..5, 6+) y a cada paso que la aleja,
+"me alejo de X" (49 átomos de movimiento nuevos). Desde 28000:
+
+| | propia fina |
+|---|---|
+| malestar | −0,069 (−11,2) |
+| % hambre despierta | −13,7 (−9,3) |
+| peor 10k hambre | −3,3 (−3,8) |
+| % cruda < 0,15 | −13,8 (−11,9) |
+| % sed | −13,1 (−9,9) |
+| % hambre inv | −14,8 (−8,4) |
+| % trabadas | 30 → 13 (−4,5) |
+| desmayos | 76 → 50 (−8,8) |
+| heridas | −35 (−11,5) |
+| % mal tope | 0 |
+
+La mejora más grande de toda la revisión para la propia, y en todo a la vez. Por qué: lo que aprende de "me acerco a
+la comida" vale igual para cualquier paso que acerque, y el "me alejo" le da un peso en contra que antes no existía
+(antes alejarse era lo mismo que no saber nada). Es justo lo que la mano tenía hecho a mano con `hacia()`, pero sin
+decirle hacia qué ir: solo ve qué pasos acercan a cada cosa, y aprende de su malestar cuáles le sirven. Con la mano
+no cambia nada (no usa los átomos). Las configs de `rust/pruebas` no lo nombran (`'vieja'`): la referencia no cambia.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
