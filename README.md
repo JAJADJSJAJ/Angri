@@ -1565,6 +1565,34 @@ gana ahí (pasar de ver solo el foco a ver todo) la propia ya lo tenía por las 
 se ve el cuerpo sino en "hay salida a la vista". **Queda `CRITICO_CUERPO_PROPIO = 0` (apagado)**; la vida por defecto
 no cambia y `rust/pruebas/referencia.txt` no se regenera.
 
+### Aprender las recetas, cierre: mano contra propia
+
+Igual que el cierre de la revisión (A = mano, B = propia, `angri comparar 200000 512 "MUNDO=bosque OBJETOS=True"
+"... RASGOS=propios" -j 12`), con lo que quedó prendido de esta etapa (`PREDICE_ACTOR=16`; `ACERCO_FOCO` sacado,
+`CRITICO_CUERPO_PROPIO` apagado). Dos tandas de 512 pares: `--desde 31000` (las mismas semillas del cierre: la mano
+da 25,7 exacto, así que los números se comparan directo) y `--desde 1000`.
+
+| | mano cierre rev. | propia cierre rev. | mano 31000 | propia 31000 | z | mano 1000 | propia 1000 | z |
+|---|---|---|---|---|---|---|---|---|
+| % hambre | 25,7 | 42,0 | 25,7 | 39,4 | 11,9 | 25,9 | 37,7 | 11,6 |
+| % cruda < 0,15 | 29,2 | 45,7 | 29,2 | 43,2 | 14,0 | 29,7 | 42,4 | 14,4 |
+| peor 10k hambre | 75,9 | 89,0 | 75,9 | 87,4 | 10,4 | 77,7 | 86,5 | 8,3 |
+| % trabadas | 6,3 | 15,0 | 6,3 | 11,9 | 3,1 | 5,5 | 11,3 | 3,4 |
+| % sed | 23,7 | 34,0 | 23,7 | 32,9 | 9,8 | 23,1 | 32,7 | 11,7 |
+| desmayos | 31 | 52 | 30,7 | 43,9 | 6,4 | 31,3 | 40,9 | 5,2 |
+| % malestar alto | | | 26,3 | 39,2 | 10,0 | 26,7 | 37,7 | 9,7 |
+| % duerme refugio propio | 1,7 | 6,3 | 1,7 | 5,7 | 8,3 | 1,6 | 5,7 | 9,1 |
+| % mal tope | 0 | 0 | 0 | 0 | | 0 | 0 | |
+
+La distancia en crudas contra la vara bajó de 16,5 a 14,0 puntos (y 12,7 con las otras semillas); en hambre, de 16,3 a
+13,7 / 11,7. Es decir, de los ~16 puntos que regalan `alivia()` y "veo comida", la propia ganó sola unos 2,5–4: casi
+todo por el paso 2 (predecir el cuerpo es su versión aprendida de "qué alivia qué"). Se desmaya bastante menos (52 → 41–44)
+y se traba menos, el malestar nunca tocó el tope. Los ~12–14 puntos que quedan son, sobre todo, "hay salida a la vista":
+el paso 3 mostró que no se arregla mirando el cuerpo de otra forma.
+
+Qué sigue: vidas largas (1–5 M de ticks) mano contra propia con todo esto, para ver si con tiempo la propia alcanza a
+la mano (la mano aprende rápido por las recetas; la propia tiene que descubrirlas).
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
