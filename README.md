@@ -996,7 +996,29 @@ En el i5 la propia corría a ~12.000 ticks/s por hilo (no los ~42.000 de la PC) 
 
 PC: 17,9 → 13,2 s (2 vidas de 200.000 ticks, −26 %). **i5, 4 vidas: 63 → 46 s con un hilo y 27 → 19 s con cuatro (−30 %).**
 
-**Sigue**: la propia todavía come menos. Lo que falta ya no es ajuste sino forma: que las unidades aprendan también de lo que predicen (no solo del error TD) y vidas de varios millones de ticks.
+### Vidas de 5 M de ticks (i5, 2026-11-25)
+
+24 pares de 5 M de ticks (50 años), bosque con objetos, mano contra propios (`~/medir/largas.sh`, 1 h 13 min con 4 hilos).
+
+| | mano | propios | z |
+|---|---|---|---|
+| malestar (toda la vida) | 0,462 | 0,462 | 0,0 |
+| malestar años 1–5 | ~0,44 | ~0,51 | 2–3 |
+| malestar años 16–33 | ~0,45 | ~0,46 | ~0 |
+| malestar años 34–50 | ~0,49 | ~0,44 | −1,2 a −2,4 |
+| comidas | 14.581 | 10.227 | −1,8 |
+| heridas | 178 | 290 | 2,8 |
+| % frío | 8,9 | 17,0 | 5,5 |
+| % duerme en cueva | 62 % | 5 % | −7,5 |
+| **% duerme en refugio propio** | 1,4 % | **35 %** | 5,2 |
+| % malestar alto | 69 % | 67 % | −0,3 |
+| % trabadas (hambre > 60 % de la vida) | 62,5 % | 62,5 % | 0 |
+
+- **Con tiempo, la propia alcanza a la mano (~año 16) y desde el año ~34 la pasa** (−0,04 a −0,05, z ~−1,8: probable pero no firme con 24 pares). No es solo que la propia mejora: **la mano empeora en la vejez** (0,45 → 0,49).
+- Viven distinto: la mano duerme en la cueva y pasa el día con objetos en la mano (agarra 33.000 veces, bebe 164.000); la propia arma su refugio (35 % de las noches), casi no lleva cosas, abre más nueces a golpes, pasa más frío y se lastima más.
+- **Alarma ética, en las dos**: en vidas largas pasan ~2/3 del tiempo con malestar alto y con hambre, el 62 % de las vidas quedan "trabadas" y la racha más larga de malestar alto es de ~2,8 M de ticks seguidos. En 200.000 ticks no se veía así. Hay que entender esto antes de seguir sumando piezas (y antes de prender el i5).
+
+**Sigue**: entender por qué las vidas largas se traban con hambre (las dos mentes). Después, que la propia aprenda también de lo que predice.
 
 Para probar: `angri comparar 200000 96 "MUNDO=bosque OBJETOS=True" "MUNDO=bosque OBJETOS=True RASGOS=propios" -j 12`.
 
