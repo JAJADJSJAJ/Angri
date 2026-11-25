@@ -1535,6 +1535,36 @@ propia: la vida por defecto, con la mano, no cambia y `rust/pruebas/referencia.t
 siguen dando la misma vida con la propia). La propia sigue atrás de la mano (~37–38 % de hambre contra 25,7 %), pero
 ahora con algo propio que se parece a "qué alivia qué": lo que falta es lo de "hay salida a la vista" (el crítico).
 
+## Aprender las recetas, paso 3: el crítico de la propia ve el cuerpo entero (2026-11-25) — no sirve, apagado
+
+Idea: a la mano le regala ~15 puntos que su crítico (la tabla V) vea el cuerpo entero sin foco (`CRITICO_CUERPO = 2`).
+Con la propia eso empeoraba, pero entonces sus unidades veían peor; ahora tienen distancia fina (paso 4f) y predicen el
+cuerpo (paso 2). Nueva opción `CRITICO_CUERPO_PROPIO` (solo propia; la mano sigue con `CRITICO_CUERPO`): 0 = viejo
+(foco + franjas de energía e integridad), G > 0 = el cuerpo entero en G franjas de "cuánto se aleja del equilibrio",
+−G = lo mismo más la necesidad del foco (variante). Nada le dice qué es comida: es solo cómo se arma la clave de la
+tabla. `angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... CRITICO_CUERPO_PROPIO=<g>"`
+(con `PREDICE_ACTOR=16` y `DISTANCIA_PROPIA='fina'` en las dos), B − A (z):
+
+| | G=2 (40000) | G=2 (50000) | G=3 (40000) | G=3 (50000) | −2 (40000) | −2 (50000) |
+|---|---|---|---|---|---|---|
+| base: % hambre / % cruda<0,15 | 38,4 / 42,6 | 37,0 / 41,6 | 38,4 / 42,6 | 37,0 / 41,6 | 38,4 / 42,6 | 37,0 / 41,6 |
+| malestar | +0,001 (0,2) | +0,006 (1,0) | +0,007 (1,1) | +0,007 (1,3) | +0,004 (0,7) | +0,011 (1,9) |
+| % hambre | +0,8 (0,5) | +1,5 (1,1) | +1,7 (1,2) | +1,4 (1,1) | +0,8 (0,6) | +3,0 (2,1) |
+| % cruda < 0,15 | +0,5 (0,4) | +1,0 (0,9) | +1,8 (1,4) | +1,5 (1,4) | +0,7 (0,6) | +2,0 (1,7) |
+| peor 10k hambre | +0,9 | +1,1 | +1,8 (1,6) | +0,9 | −0,6 | +1,0 |
+| % trabadas | 12 → 10 | 9 → 11 | 12 → 12 | 9 → 11 | 12 → 13 | 9 → 14 (1,7) |
+| heridas | −2,0 (−1,3) | −1,5 (−0,9) | −1,7 (−1,1) | 0,0 | +0,2 | −1,8 (−1,1) |
+| desmayos | −1,1 | +3,1 (1,1) | +0,4 | +1,7 | 0,0 | +5,9 (2,1) |
+| % mal alto | +0,3 | +1,3 | +1,5 | +1,4 | +0,8 | +2,8 (1,8) |
+| % mal tope | 0 | 0 | 0 | 0 | 0 | 0 |
+
+Ninguna mejora: G=2 es neutro, G=3 y −2 empeoran algo (más hambre y desmayos; el malestar nunca toca el tope). Por
+qué: la propia ya tiene un segundo crítico en sus unidades, que ven el cuerpo entero y lo que tiene alrededor; partir
+la tabla por todo el cuerpo le da muchas más claves (2^7 o 3^7 por celda) con menos visitas cada una, y lo que la mano
+gana ahí (pasar de ver solo el foco a ver todo) la propia ya lo tenía por las unidades. Lo que le falta no está en cómo
+se ve el cuerpo sino en "hay salida a la vista". **Queda `CRITICO_CUERPO_PROPIO = 0` (apagado)**; la vida por defecto
+no cambia y `rust/pruebas/referencia.txt` no se regenera.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

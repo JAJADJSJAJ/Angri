@@ -447,17 +447,18 @@ impl Ganglios {
     fn resumen(&self, vista: &Vista, cuerpo: &[f64; 7], n: usize, ncuerpo: usize, tacto: Option<&Tacto>, c: &Config) -> u32 {
         let celda = vista.get((0, 0)).unwrap_or(7) as u32;
         let come = (c.atajo_veo_comida && hacia(vista, COMIDA) != 4) as u32;
-        let s = if c.critico_cuerpo > 0 && self.propia.is_none() {
+        let g = if self.propia.is_none() { c.critico_cuerpo } else { c.critico_cuerpo_propio };
+        let (g, foco) = if g < 0 { (-g, n as u32 + 1) } else { (g, 0) };
+        let s = if g > 0 {
             // (paso 2a) el cuerpo entero, sin foco: cuánto se aleja cada necesidad de su equilibrio
-            // (solo la mano: con la propia empeora, sus unidades ya ven el cuerpo)
-            let g = c.critico_cuerpo;
+            // (la mano con CRITICO_CUERPO, la propia con CRITICO_CUERPO_PROPIO)
             let mut k: u32 = 0;
             for i in 0..ncuerpo {
                 let eq = c.equilibrio[i];
                 let lejos = (cuerpo[i] - eq).abs() / eq.max(1.0 - eq);
                 k = k * g as u32 + ((lejos * g as f64) as i64).min(g - 1) as u32;
             }
-            (k * 8 + celda) * 2 + come
+            ((foco * (g as u32).pow(ncuerpo as u32) + k) * 8 + celda) * 2 + come
         } else {
             (((n as u32 * 64 + Self::franja(cuerpo[ENERGIA], c)) * 64 + Self::franja(cuerpo[INTEGRIDAD], c)) * 8 + celda) * 2 + come
         };

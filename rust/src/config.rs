@@ -63,12 +63,12 @@ pub struct Config {
     pub propia: bool, pub rasgos_mano: bool, pub propios: i64, pub nuevos_por_tick: i64,
     pub reemplazo_cada: i64, pub reemplazo_fraccion: f64, pub madurez_propio: i64,
     pub aprende_propio_actor: f64, pub aprende_propio_critico: f64, pub tope_activa: f64, pub ritmo_raro: f64,
-    pub repaso_propio: bool, pub nacer_sorpresa: bool, pub repaso_propio_cada: i64, pub predice_propio: f64, pub predice_actor: f64,
+    pub repaso_propio: bool, pub nacer_sorpresa: bool, pub repaso_propio_cada: i64, pub predice_propio: f64, pub predice_actor: f64, pub critico_cuerpo_propio: i64,
 }
 
 /// Claves que pueden faltar (configs viejas): valen lo de por defecto.
-const OPCIONALES: [(&str, &str); 39] = [
-    ("RITMO_RARO", "1"), ("REPASO_PROPIO", "True"), ("NACER_SORPRESA", "False"), ("REPASO_PROPIO_CADA", "1"), ("PREDICE_PROPIO", "0"), ("PREDICE_ACTOR", "0"),
+const OPCIONALES: [(&str, &str); 40] = [
+    ("RITMO_RARO", "1"), ("REPASO_PROPIO", "True"), ("NACER_SORPRESA", "False"), ("REPASO_PROPIO_CADA", "1"), ("PREDICE_PROPIO", "0"), ("PREDICE_ACTOR", "0"), ("CRITICO_CUERPO_PROPIO", "0"),
     ("TOPE_ACTIVA", "0.2"),
     ("RASGOS", "'mano'"), ("PROPIOS", "4096"), ("NUEVOS_POR_TICK", "4"), ("REEMPLAZO_CADA", "100"),
     ("REEMPLAZO_FRACCION", "0.01"), ("MADUREZ_PROPIO", "3000"), ("APRENDE_PROPIO_ACTOR", "0.2"),
@@ -297,7 +297,7 @@ impl Config {
             madurez_propio: c.i("MADUREZ_PROPIO"), aprende_propio_actor: c.f("APRENDE_PROPIO_ACTOR"),
             aprende_propio_critico: c.f("APRENDE_PROPIO_CRITICO"), tope_activa: c.f("TOPE_ACTIVA"), ritmo_raro: c.f("RITMO_RARO"),
             repaso_propio: c.b("REPASO_PROPIO") && c.b("HIPOCAMPO"), nacer_sorpresa: c.b("NACER_SORPRESA"),
-            repaso_propio_cada: c.i("REPASO_PROPIO_CADA"), predice_propio: c.f("PREDICE_PROPIO"), predice_actor: c.f("PREDICE_ACTOR"),
+            repaso_propio_cada: c.i("REPASO_PROPIO_CADA"), predice_propio: c.f("PREDICE_PROPIO"), predice_actor: c.f("PREDICE_ACTOR"), critico_cuerpo_propio: c.f("CRITICO_CUERPO_PROPIO") as i64,
         }
     }
 }
