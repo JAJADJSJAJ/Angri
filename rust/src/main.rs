@@ -57,6 +57,12 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     let (mut racha, mut racha_max) = (0i64, 0i64);
     let (mut techo_dormido, mut lleva, mut pila_max, mut refugio_propio) = (0i64, 0i64, 0i64, 0i64);
     let mut plantada = 0i64;
+    // Paso 0 (métricas que no mienten): ventana de hambre, racha, despierta/dormida, crudas, estación, tope
+    const VENT: usize = 10_000;
+    let mut anillo = vec![false; VENT];
+    let (mut en_vent, mut peor_vent, mut racha_h, mut racha_h_max) = (0i64, 0i64, 0i64, 0i64);
+    let (mut desp, mut h_desp, mut h_dorm, mut cruda, mut tope) = (0i64, 0i64, 0i64, 0i64, 0i64);
+    let (mut h_est, mut t_est) = ([0i64; 4], [0i64; 4]);
     let (mut cerca_pred, mut huye) = (0i64, 0i64);
     let mut anio = 0.0f64;
     let mut por_anio: Vec<f64> = vec![];
@@ -108,13 +114,35 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
         heridas += (a.evento == Evento::Lastima) as i64;
         comidas += (a.evento == Evento::Come) as i64;
         novedades += (a.evento == Evento::Descubre) as i64;
-        hambre += (a.cuerpo.v[ENERGIA] < 0.3) as i64;
+        let con_hambre = a.cuerpo.v[ENERGIA] < 0.3;
+        hambre += con_hambre as i64;
+        let i = (t as usize) % VENT;
+        en_vent += con_hambre as i64 - anillo[i] as i64;
+        anillo[i] = con_hambre;
+        if t as usize + 1 >= VENT.min(ticks as usize) {
+            peor_vent = peor_vent.max(en_vent);
+        }
+        racha_h = if con_hambre { racha_h + 1 } else { 0 };
+        racha_h_max = racha_h_max.max(racha_h);
+        if a.despierto {
+            desp += 1;
+            h_desp += con_hambre as i64;
+        } else {
+            h_dorm += con_hambre as i64;
+        }
+        // necesidades "de más es mejor" (equilibrio alto): energía, integridad, agua, calor
+        let v = &a.cuerpo.v;
+        cruda += (0..a.cuerpo.n).any(|k| c.equilibrio[k] >= 0.5 && v[k] < 0.15) as i64;
+        tope += (m >= c.malestar_maximo - 1e-9) as i64;
         alto += (m > c.malestar_alto) as i64;
         racha = if m > c.malestar_alto { racha + 1 } else { 0 };
         racha_max = racha_max.max(racha);
         if let Mundo::B(b) = &a.mundo {
             let v = &a.cuerpo.v;
             anio += m;
+            let e = b.estacion(c) as usize;
+            t_est[e] += 1;
+            h_est[e] += con_hambre as i64;
             if (t + 1) % largo_anio == 0 {
                 por_anio.push(anio / largo_anio as f64);
                 anio = 0.0;
@@ -159,7 +187,13 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     f("suenos", a.suenos.to_string());
     f("% hambre", num((100 * hambre) as f64 / tk));
     f("% trabadas", num(100.0 * if hambre as f64 / tk > 0.6 { 1.0 } else { 0.0 }));
+    f("peor 10k hambre", num((100 * peor_vent) as f64 / VENT.min(ticks as usize) as f64));
+    f("racha hambre", racha_h_max.to_string());
+    f("% hambre desp", num((100 * h_desp) as f64 / desp.max(1) as f64));
+    f("% hambre dorm", num((100 * h_dorm) as f64 / (ticks - desp).max(1) as f64));
     f("% mal alto", num((100 * alto) as f64 / tk));
+    f("% cruda<0.15", num((100 * cruda) as f64 / tk));
+    f("% mal tope", num((100 * tope) as f64 / tk));
     f("racha alta", racha_max.to_string());
     if bosque {
         f("% sed", num((100 * sed) as f64 / tk));
@@ -173,6 +207,11 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
             f(&format!("desm. {k}"), a.causas[i].to_string());
         }
         f("% plantada", num((100 * plantada) as f64 / tk));
+        for (e, k) in ["prim", "ver", "oto", "inv"].iter().enumerate() {
+            if t_est[e] > 0 {
+                f(&format!("% hambre {k}"), num((100 * h_est[e]) as f64 / t_est[e] as f64));
+            }
+        }
         f("% huye", num(if cerca_pred != 0 { (100 * huye) as f64 / cerca_pred as f64 } else { 0.0 }));
         for (i, x) in por_anio.iter().enumerate() {
             f(&format!("mal. año {}", i + 1), num(*x));
@@ -238,7 +277,11 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
 
 /// Las métricas en JSON, una línea (el formato de siempre: lo usa la referencia).
 fn una_vida(semilla: u64, ticks: i64, c: &Config) -> String {
-    let partes: Vec<String> = metricas(semilla, ticks, c).iter().map(|(k, v)| format!("\"{}\": {}", k, v)).collect();
+    // Las métricas del paso 0 (revisión del diseño) solo miran la vida: quedan fuera de la referencia
+    // para que la huella de la vida siga siendo la misma.
+    const PASO0: [&str; 10] = ["peor 10k hambre", "racha hambre", "% hambre desp", "% hambre dorm", "% cruda<0.15",
+        "% mal tope", "% hambre prim", "% hambre ver", "% hambre oto", "% hambre inv"];
+    let partes: Vec<String> = metricas(semilla, ticks, c).iter().filter(|(k, _)| !PASO0.contains(&k.as_str())).map(|(k, v)| format!("\"{}\": {}", k, v)).collect();
     format!("{{{}}}", partes.join(", "))
 }
 

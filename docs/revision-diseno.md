@@ -6,7 +6,7 @@ Antes de seguir con la etapa 14 revisamos cómo está armada Angri por dentro. L
 
 Regla para todo lo que sigue: de a un cambio, `angri comparar` con 256 pares y `--desde` distinto, y si no mejora se apaga.
 
-## 0. Métricas que no mientan (no cambian la vida)
+## 0. Métricas que no mientan (no cambian la vida) — HECHO (ver README, «Paso 0: métricas»)
 - `% trabadas` es todo o nada (más del 60 % de la vida con hambre): una vida con 59 % no cuenta. Reemplazar por la
   peor ventana de 10.000 ticks y la racha de hambre más larga.
 - `% hambre` cuenta también el sueño: separar despierta y dormida.

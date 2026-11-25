@@ -1041,6 +1041,40 @@ Con 48 pares, despertar en la cueva más cercana al agua (`cueva_agua`) ayuda po
 
 Para probar: `angri comparar 200000 96 "MUNDO=bosque OBJETOS=True" "MUNDO=bosque OBJETOS=True RASGOS=propios" -j 12`.
 
+## Revisión del diseño (2026-11-25, ver `docs/revision-diseno.md`)
+
+### Paso 0: métricas (no cambian la vida)
+
+`% trabadas` es todo o nada (más del 60 % de la vida con hambre) y otras métricas mezclan cosas. Agregamos a
+`angri medir` / `angri comparar` (en `metricas`, `main.rs`), sin tocar la vida (la referencia no cambia: las
+nuevas quedan fuera de `una_vida`):
+
+- `peor 10k hambre`: % de hambre en la peor ventana de 10.000 ticks seguidos. `racha hambre`: la racha más larga.
+- `% hambre desp` / `% hambre dorm`: hambre despierta y dormida por separado.
+- `% cruda<0.15`: % del tiempo con alguna necesidad "de más es mejor" (energía, integridad, agua, calor) por debajo
+  de 0,15, sin pesos de por medio.
+- `% hambre prim/ver/oto/inv`: hambre por estación del bosque.
+- `% mal tope`: % del tiempo con el malestar clavado en `MALESTAR_MAXIMO` (0,85).
+
+Base (256 pares de 200.000 ticks, bosque con objetos, semillas desde 1000; A = mano, B = propios):
+
+| | mano | propia | z |
+|---|---|---|---|
+| % hambre | 38,6 | 58,2 | 12,6 |
+| % trabadas | 16,8 | 39,8 | 5,9 |
+| peor 10k hambre | 87,4 | 94,8 | 7,1 |
+| racha hambre (ticks) | 2.409 | 2.461 | 1,4 |
+| % hambre despierta / dormida | 38,2 / 40,2 | 58,2 / 58,4 | |
+| % cruda < 0,15 | 40,4 | 62,4 | 16,3 |
+| % hambre prim / ver / oto / inv | 36 / 42 / 34 / 42 | 55 / 60 / 54 / 64 | |
+| % mal tope | 0 | 0 | |
+
+Qué dicen: casi todas las vidas tienen algún tramo de 10.000 ticks con hambre casi todo el tiempo (87–95 %), aunque
+la racha más larga sea de ~2.400 ticks: no es una sola hambruna sino un ir y venir (come algo, vuelve a caer). El
+hambre dormida es igual a la despierta, así que el sueño no la explica. El invierno pesa (y el verano también), pero
+menos de lo esperado. El malestar **nunca** llega al tope: el promedio pesado no pasa de 0,85 aunque el 40–60 % del
+tiempo alguna necesidad cruda esté por debajo de 0,15; el tope no está protegiendo nada y `% cruda<0.15` es la vara
+honesta del sufrimiento.
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
