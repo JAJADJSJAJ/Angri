@@ -1374,6 +1374,28 @@ No regala nada: con la mano no cambia (se lastima menos), con la propia nada cla
 (decae por tick) y en un bosque donde la comida brota y se acaba, "allá comí ayer" casi nunca sirve. Menos receta:
 queda sacado (las configs de `rust/pruebas` no lo nombran y lo dejan puesto: la referencia no cambia).
 
+Parte propia (`RASGOS=propios`): mejoras de cómo aprende, medidas igual, encima de lo anterior.
+
+**e) Un solo crítico (`CRITICO_PROPIO`) — apagado (`'ambos'`).** El V de la propia suma la tabla (cuerpo en franjas,
+celda, "veo comida") y las unidades, y los dos persiguen el mismo error. `'unidades'` deja solo las unidades (la
+tabla ni se usa ni aprende); `'tabla'` solo la tabla (las unidades no aprenden V, solo el actor). Desde 26000 y 27000:
+
+| | propia, solo unidades | propia, solo tabla |
+|---|---|---|
+| malestar | +0,047 (8,0) | +0,002 (0,3) |
+| % hambre despierta | +12,9 (9,1) | +2,6 (1,8) |
+| peor 10k hambre | +2,3 (5,0) | +0,9 (1,5) |
+| % cruda < 0,15 | +10,0 (10,1) | +0,6 (0,5) |
+| % sed | +5,9 (3,9) | −6,3 (−4,7) |
+| % trabadas | 32 → 67 (8,3) | 30 → 39 (2,1) |
+| desmayos | +26 (8,0) | +5 (1,7) |
+| heridas | −37 (−10,8) | +30 (7,4) |
+| % mal tope | 0 | 0 |
+
+Sin la tabla se traban dos de cada tres vidas: las unidades solas no alcanzan a dar un V útil (son muchas, cada una
+con un pedazo, y aprenden de a poco). Sin el V de las unidades bebe mejor pero come peor y se lastima más: no mejora.
+Juntas se complementan (la tabla es gruesa y rápida, las unidades finas y lentas); quedan las dos.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
