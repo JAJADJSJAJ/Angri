@@ -119,6 +119,7 @@ MARGEN_EXPLORAR = 0.0         # (0 = apagado; 1, 2 y 4 probados: traban casi tod
 PELIGRO_SIN_MALESTAR = True   # (etapa 11) la temperatura por malestar no se aplica a moverse sobre un peligro visible
 FOCO_CIEGO = 'neutro_todo'    # (revisión, paso 1a) qué hace el rasgo "voy hacia lo que alivia" cuando el foco no tiene a qué ir: "quedarse" (viejo: empuja a no moverse, aunque el foco sea integridad o estrés, que no tienen alivio), "neutro" (si no hay alivio no empuja nada) o "neutro_todo" (tampoco cuando el alivio no se ve)
 DESMAYO_FINAL = False         # (revisión, paso 1c) el desmayo como final de episodio: aprende el último paso con V(s2) = 0 y el malestar de antes de despertar (False: lo borra sin aprender)
+CRITICO_CUERPO = 2            # (revisión, paso 2a; solo con RASGOS=mano: con la propia empeora y se ignora) cómo ve el cuerpo el crítico (la tabla V): 0 = viejo (la necesidad del foco más franjas de energía e integridad: cada salto de foco cambia de tabla y no ve agua, calor, cansancio ni estrés); G > 0 = el cuerpo entero sin foco, cada necesidad en G franjas de "cuánto se aleja de su equilibrio" (G^7 claves por celda: pocas franjas para que la tabla aprenda)
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
 DOLOR = 6.0                   # (etapa 11: 3 -> 6) castigo directo por lastimarse (no pasa por el malestar: no se satura)
 RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)

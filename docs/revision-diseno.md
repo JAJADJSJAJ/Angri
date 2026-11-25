@@ -28,6 +28,8 @@ Regla para todo lo que sigue: de a un cambio, `angri comparar` con 256 pares y `
 - **El crítico está partido por el foco** (la clave `s` lleva la necesidad del foco): cada salto de foco cambia de
   tabla y ensucia el crédito. Y **no ve agua, calor, cansancio ni estrés**. Que vea el cuerpo entero (franjas) y no
   el foco: V = "cuánto malestar total viene" (la idea de Fran: estar bien es que no duela nada).
+  **Hecho (paso 2a)**: `CRITICO_CUERPO = 2` (cada necesidad bien/lejos, sin foco), solo con la mano: cruda<0,15 −5,4
+  (z −5,4), hambre −7, trabadas a la mitad (512 pares). Con la propia empeora (+2,2, z 3,5): se ignora. Ver README.
 - **El estrés cobra doble**: sube con hambre, sed, frío y heridas, y además pesa por su cuenta; nada lo alivia directo.
 - (latente) el tálamo solo mira 5 necesidades, no agua ni calor.
 

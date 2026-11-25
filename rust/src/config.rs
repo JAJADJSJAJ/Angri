@@ -20,7 +20,7 @@ pub struct Config {
     pub serotonina: f64, pub aprende_critico: f64, pub aprende_actor: f64, pub huella: f64,
     pub franjas: i64, pub calma: f64, pub aprende_minimo: f64, pub umbral_recuerdo: f64,
     pub recuerdo_decae: f64, pub temperatura_base: f64, pub temperatura_sorpresa: f64,
-    pub temperatura_malestar: f64, pub margen_explorar: f64, pub peligro_sin_malestar: bool, pub foco_ciego: u8, pub temperatura_malestar_tope: f64, pub desmayo_final: bool,
+    pub temperatura_malestar: f64, pub margen_explorar: f64, pub peligro_sin_malestar: bool, pub foco_ciego: u8, pub temperatura_malestar_tope: f64, pub desmayo_final: bool, pub critico_cuerpo: i64,
     pub recompensa_alivio: f64, pub dolor: f64, pub recompensa_estado: f64,
     pub hipocampo: bool, pub capacidad_dia: i64, pub repasos: i64, pub repaso_actor: bool,
     pub aprende_repaso: f64, pub umbral_lugar: f64, pub poda_lugares: f64, pub importancia: bool,
@@ -66,7 +66,7 @@ pub struct Config {
 }
 
 /// Claves que pueden faltar (configs viejas): valen lo de por defecto.
-const OPCIONALES: [(&str, &str); 26] = [
+const OPCIONALES: [(&str, &str); 27] = [
     ("RITMO_RARO", "1"), ("REPASO_PROPIO", "True"), ("NACER_SORPRESA", "False"), ("REPASO_PROPIO_CADA", "1"), ("PREDICE_PROPIO", "0"),
     ("TOPE_ACTIVA", "0.2"),
     ("RASGOS", "'mano'"), ("PROPIOS", "4096"), ("NUEVOS_POR_TICK", "4"), ("REEMPLAZO_CADA", "100"),
@@ -74,7 +74,7 @@ const OPCIONALES: [(&str, &str); 26] = [
     ("APRENDE_PROPIO_CRITICO", "0.5"),
     ("OBJETOS", "False"), ("OBJETOS_INICIALES", "90"), ("OBJETOS_MAXIMO", "160"), ("PROB_OBJETO", "0.01"),
     ("FUERZA", "1.0"), ("CALOR_FUEGO", "0.3"), ("CORTA_VIENTO", "0.04"), ("PROB_PRENDER", "0.15"),
-    ("FUEGO_TICKS", "120"), ("FOCO_CIEGO", "'quedarse'"), ("DESMAYO_FINAL", "False"), ("TEMPERATURA_MALESTAR_TOPE", "0"),
+    ("FUEGO_TICKS", "120"), ("FOCO_CIEGO", "'quedarse'"), ("DESMAYO_FINAL", "False"), ("TEMPERATURA_MALESTAR_TOPE", "0"), ("CRITICO_CUERPO", "0"),
 ];
 
 pub const NOMBRES: [&str; 7] = ["energia", "cansancio", "curiosidad", "estres", "integridad", "agua", "calor"];
@@ -236,7 +236,7 @@ impl Config {
             umbral_recuerdo: c.f("UMBRAL_RECUERDO"), recuerdo_decae: c.f("RECUERDO_DECAE"),
             temperatura_base: c.f("TEMPERATURA_BASE"), temperatura_sorpresa: c.f("TEMPERATURA_SORPRESA"),
             temperatura_malestar: c.f("TEMPERATURA_MALESTAR"), margen_explorar: c.f("MARGEN_EXPLORAR"),
-            peligro_sin_malestar: c.b("PELIGRO_SIN_MALESTAR"), temperatura_malestar_tope: c.f("TEMPERATURA_MALESTAR_TOPE"), foco_ciego: match c.txt("FOCO_CIEGO").as_str() { "quedarse" => 0, "neutro" => 1, "neutro_todo" => 2, x => { eprintln!("angri (rust): FOCO_CIEGO={x} no existe"); std::process::exit(2) } }, desmayo_final: c.b("DESMAYO_FINAL"),
+            peligro_sin_malestar: c.b("PELIGRO_SIN_MALESTAR"), temperatura_malestar_tope: c.f("TEMPERATURA_MALESTAR_TOPE"), foco_ciego: match c.txt("FOCO_CIEGO").as_str() { "quedarse" => 0, "neutro" => 1, "neutro_todo" => 2, x => { eprintln!("angri (rust): FOCO_CIEGO={x} no existe"); std::process::exit(2) } }, desmayo_final: c.b("DESMAYO_FINAL"), critico_cuerpo: c.f("CRITICO_CUERPO") as i64,
             recompensa_alivio: c.f("RECOMPENSA_ALIVIO"), dolor: c.f("DOLOR"),
             recompensa_estado: c.f("RECOMPENSA_ESTADO"),
             hipocampo: c.b("HIPOCAMPO"), capacidad_dia: c.i("CAPACIDAD_DIA"), repasos: c.i("REPASOS"),

@@ -444,10 +444,23 @@ impl Ganglios {
         ((x * c.franjas as f64) as i64).min(c.franjas - 1) as u32
     }
 
-    fn resumen(&self, vista: &Vista, cuerpo: &[f64; 7], n: usize, tacto: Option<&Tacto>, c: &Config) -> u32 {
+    fn resumen(&self, vista: &Vista, cuerpo: &[f64; 7], n: usize, ncuerpo: usize, tacto: Option<&Tacto>, c: &Config) -> u32 {
         let celda = vista.get((0, 0)).unwrap_or(7) as u32;
         let come = (hacia(vista, COMIDA) != 4) as u32;
-        let s = (((n as u32 * 64 + Self::franja(cuerpo[ENERGIA], c)) * 64 + Self::franja(cuerpo[INTEGRIDAD], c)) * 8 + celda) * 2 + come;
+        let s = if c.critico_cuerpo > 0 && self.propia.is_none() {
+            // (paso 2a) el cuerpo entero, sin foco: cuánto se aleja cada necesidad de su equilibrio
+            // (solo la mano: con la propia empeora, sus unidades ya ven el cuerpo)
+            let g = c.critico_cuerpo;
+            let mut k: u32 = 0;
+            for i in 0..ncuerpo {
+                let eq = c.equilibrio[i];
+                let lejos = (cuerpo[i] - eq).abs() / eq.max(1.0 - eq);
+                k = k * g as u32 + ((lejos * g as f64) as i64).min(g - 1) as u32;
+            }
+            (k * 8 + celda) * 2 + come
+        } else {
+            (((n as u32 * 64 + Self::franja(cuerpo[ENERGIA], c)) * 64 + Self::franja(cuerpo[INTEGRIDAD], c)) * 8 + celda) * 2 + come
+        };
         match tacto {
             None => s,
             Some(t) => s * 4 + t.lleva.is_some() as u32 * 2 + t.cubierto as u32,
@@ -543,7 +556,7 @@ impl Ganglios {
             probs[b] = e[b] / z;
         }
         let a = self.rng.choices_pesos(&probs[..na], 1)[0];
-        self.s = Some(self.resumen(vista, cuerpo, n, tacto, c));
+        self.s = Some(self.resumen(vista, cuerpo, n, ncuerpo, tacto, c));
         self.a = a;
         self.rasgos = rasgos;
         self.probs = probs;
@@ -561,7 +574,7 @@ impl Ganglios {
         if recompensa > c.umbral_recuerdo {
             self.lugares[self.necesidad].poner(pos, 1.0);
         }
-        let s2 = self.resumen(vista, cuerpo, n, tacto, c);
+        let s2 = self.resumen(vista, cuerpo, n, ncuerpo, tacto, c);
         self.ultimo = Some(Momento { s, rasgos: self.rasgos, a: self.a, r: recompensa, s2, pos,
                                      necesidad: self.necesidad, p: self.probs[self.a], temp: self.temp });
         if c.borrar_lugar_vacio {

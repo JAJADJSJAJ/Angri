@@ -1142,6 +1142,36 @@ golpe enorme (el malestar en el tope y sin futuro que lo compense) y la propia, 
 unidades que también se prenden en situaciones normales, aprende a no moverse por lo que tenía alrededor (se lastima
 mucho menos pero come mucho menos). Apagado: con una mano y sin la otra no pasa la vara. Puede volver cuando el golpe
 se reparta mejor (traza más larga hacia atrás) o cuando la propia distinga mejor sus situaciones.
+
+### Paso 2: el cuerpo y lo que siente
+
+**a) El crítico ve el cuerpo entero (`CRITICO_CUERPO`) — prendido (2) con la mano; con la propia se ignora.** La
+tabla V del crítico tenía como clave la necesidad del foco más 4 franjas de energía y de integridad (y la celda, si ve
+comida y el tacto). Dos problemas: cada salto de foco la mandaba a otra fila de la tabla (el mismo cuerpo con otro foco
+era "otro lugar" y el crédito se partía), y no veía agua, calor, cansancio ni estrés. Ahora (G > 0) la clave es el
+cuerpo entero sin foco: cada necesidad en G franjas de "cuánto se aleja de su equilibrio" (0 = está bien). La
+recompensa ya era malestar, así que V pasa a ser "cuánto malestar total viene desde este cuerpo": estar bien es que no
+duela nada (la idea de Fran). Encima del paso 1, B − A (z):
+
+| | mano G=2, 256 (desde 5000) | mano G=3, 256 | mano G=2, 512 (desde 6000) | propia G=2, 256 | propia G=3, 256 | propia G=2, 512 |
+|---|---|---|---|---|---|---|
+| malestar | −0,023 (−3,2) | +0,005 (0,7) | −0,023 (−4,4) | +0,007 (1,2) | −0,002 (−0,3) | +0,014 (3,9) |
+| % hambre despierta | −6,7 (−4,5) | −1,6 (−1,0) | −7,3 (−6,6) | +1,3 (1,1) | −1,3 (−1,2) | +3,3 (3,8) |
+| peor 10k hambre | −6,1 (−3,6) | −0,5 | −7,6 (−6,8) | +0,5 | +0,4 | +0,4 (1,2) |
+| % cruda < 0,15 | −5,0 (−3,5) | +0,7 (0,4) | −5,4 (−5,4) | +0,7 (0,8) | −0,6 (−0,7) | +2,2 (3,5) |
+| % trabadas | −9,0 (−3,6) | −6,3 (−2,5) | −8,2 (−4,6) | +7,4 (1,8) | −3,9 (−1,0) | +10,0 (3,4) |
+| desmayos | −11,5 (−4,6) | −1,7 | −11,8 (−6,5) | +4,5 | −2,0 | +7,7 (3,8) |
+| % sed | +0,3 | +5,8 (5,9) | +1,5 (2,1) | +2,5 | +0,8 | +3,3 (4,0) |
+| % hambre prim/ver/oto/inv (512) | | | −5,5 / −6,2 / −8,2 / −9,1 | | | +3,8 / +2,4 / +3,6 / +2,9 |
+| % plantada | −8,1 | −9,7 | −8,8 (−16,6) | −1,1 | −0,9 | −1,0 |
+
+En la mano es la mejora más grande de la revisión: −5 puntos de crudas, −7 de hambre en todas las estaciones,
+la mitad de vidas trabadas y menos tiempo plantada en el agua. Con 2 franjas (bien / lejos) alcanza; con 3 la tabla
+tiene 2.187 cuerpos por celda y no llega a aprenderlos en 200.000 ticks (solo mejora lo de trabarse y se pierde
+en sed). En la propia empeora: la propia ya tiene un crítico que ve el cuerpo entero (sus unidades, con 4 franjas por
+necesidad) y la tabla con foco le daba algo que no tenía; con la tabla de cuerpo los dos persiguen lo mismo (ver
+revisión, sección 4: "un solo crítico"). Por eso la opción solo vale con la mano; con la propia queda la clave vieja
+(bit a bit igual). Las configs de `rust/pruebas` no la nombran (0 = vieja): la referencia no cambia.
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
