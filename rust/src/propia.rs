@@ -26,7 +26,8 @@ use crate::mundo::*;
 
 /// átomos del estado: 0..N_ESTADO; de un movimiento: N_ESTADO..N_ATOMOS
 pub const N_ESTADO: usize = 68;
-pub const N_MOVER: usize = 44;
+/// (44 de siempre + 49 de DISTANCIA_PROPIA='fina': 42 de "me acerco" y 7 de "me alejo")
+pub const N_MOVER: usize = 93;
 pub const N_ATOMOS: usize = N_ESTADO + N_MOVER;
 const SIN_ATOMO: u16 = u16::MAX;
 /// marca de una unidad del estado en la lista de activas (las de movimiento llevan
@@ -121,7 +122,7 @@ fn dir_de(dx: i64, dy: i64) -> usize {
 
 /// Los átomos de este momento (sin orden de importancia, sin "hacia dónde ir").
 pub fn sentir(vista: &Vista, cuerpo: &[f64; 7], ncuerpo: usize, n: usize, dr: usize, dicha: usize,
-              tacto: Option<&Tacto>, clima: u8) -> Sentir {
+              tacto: Option<&Tacto>, clima: u8, fina: bool) -> Sentir {
     let mut s = Sentir::default();
     let e = &mut s.estado;
     e.push(0); // siempre (solo para el crítico)
@@ -159,8 +160,21 @@ pub fn sentir(vista: &Vista, cuerpo: &[f64; 7], ncuerpo: usize, n: usize, dr: us
         if let Some(a) = MOVIMIENTOS[..4].iter().position(|&x| x == (dx, dy)) {
             s.mover[a].push((m + cod) as u16);
         }
-        let dist = match dx.abs() + dy.abs() { 1 => 0, 2 => 1, 3 | 4 => 2, _ => 3 };
-        s.mover[dir_de(dx, dy)].push((m + 7 + cod * 4 + dist) as u16);
+        let d = dx.abs() + dy.abs();
+        if fina {
+            // (paso 4f) a cada movimiento que la acerca, "me acerco a esto a distancia d"; al que la aleja, "me alejo"
+            for (a, &(mx, my)) in MOVIMIENTOS[..4].iter().enumerate() {
+                let d2 = (dx - mx).abs() + (dy - my).abs();
+                if d2 < d {
+                    s.mover[a].push((m + 44 + cod * 6 + (d as usize - 1).min(5)) as u16);
+                } else {
+                    s.mover[a].push((m + 86 + cod) as u16);
+                }
+            }
+        } else {
+            let dist = match d { 1 => 0, 2 => 1, 3 | 4 => 2, _ => 3 };
+            s.mover[dir_de(dx, dy)].push((m + 7 + cod * 4 + dist) as u16);
+        }
     }
     for a in 0..5 {
         if let Some(t) = tacto {
@@ -303,7 +317,7 @@ impl Propia {
             return;
         }
         let n = act.len() as f64;
-        let ac = c.aprende_propio_critico / n * d;
+        let ac = if c.critico_propio == 1 { 0.0 } else { c.aprende_propio_critico / n * d };
         let aa = c.aprende_propio_actor / n * d;
         for &(u, m) in act {
             let un = &mut self.unidades[u as usize];
@@ -448,7 +462,7 @@ impl Propia {
                 self.huella.push(u as u32);
             }
         }
-        let ac = c.aprende_propio_critico / n * delta;
+        let ac = if c.critico_propio == 1 { 0.0 } else { c.aprende_propio_critico / n * delta };
         let aa = c.aprende_propio_actor / n * delta;
         let t = self.t;
         for &u in &self.huella {

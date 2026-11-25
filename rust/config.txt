@@ -125,6 +125,12 @@ INVIERNO = 'viejo'            # (revisión, paso 3a) en invierno no brotan fruta
 CRECIDA = 'vieja'             # (revisión, paso 3b) la crecida pone en peligro el río y sus orillas de punta a punta (300-900 ticks): "vieja" o "vado" (3 filas en el medio del mapa quedan como estaban: siempre hay por dónde cruzar)
 AGUA_FRIA = 0                 # (revisión, paso 3c) cuánto baja la temperatura del aire estando parada en el agua (0 = viejo: plantarse a beber es gratis)
 CUEVA = 'vieja'               # (revisión, paso 3d) "vieja" (TEMP_CUEVA, menos que el día; descansar solo baja el cansancio) o "abriga" (la cueva está a EQUILIBRIO_BOSQUE.calor + 0,1 todo el año, y descansar despierta ahí baja la adenosina a la mitad de lo que la baja dormir)
+ATAJO_ALIVIA = True           # (revisión, paso 4a; mano) el rasgo "voy hacia lo que alivia mi foco" usa la receta alivia() (hambre->comida, sed->agua, frío->descanso); False = no existe (y llegar a un lugar recordado no se borra por "no ver su alivio")
+ATAJO_COMIDA = True           # (revisión, paso 4b; mano) el rasgo fijo "voy hacia la comida que veo" (dc); False = no existe
+ATAJO_VEO_COMIDA = True       # (revisión, paso 4c) el crítico (la tabla V) tiene un bit "veo comida"; False = no lo tiene
+ATAJO_LUGARES = True          # (revisión, paso 4d) los lugares recordados por necesidad ("lo que alivia esto está para allá": rasgo de la mano y átomo de la propia); False = no se usan
+CRITICO_PROPIO = 'ambos'      # (revisión, paso 4e; solo propia) el valor V suma la tabla y las unidades, que persiguen el mismo error: "ambos" (viejo), "tabla" o "unidades" (solo uno)
+DISTANCIA_PROPIA = 'vieja'    # (revisión, paso 4f; solo propia) "vieja": cada cosa vista da un átomo al movimiento de su eje principal, con su distancia en 4 franjas (1, 2, 3-4, 5+); "fina": a cada movimiento que la acerca, "me acerco a X a distancia d" (1..5, 6+), y a cada uno que la aleja, "me alejo de X"
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
 DOLOR = 6.0                   # (etapa 11: 3 -> 6) castigo directo por lastimarse (no pasa por el malestar: no se satura)
 RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)

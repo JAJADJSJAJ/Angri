@@ -21,6 +21,7 @@ pub struct Config {
     pub franjas: i64, pub calma: f64, pub aprende_minimo: f64, pub umbral_recuerdo: f64,
     pub recuerdo_decae: f64, pub temperatura_base: f64, pub temperatura_sorpresa: f64,
     pub temperatura_malestar: f64, pub margen_explorar: f64, pub peligro_sin_malestar: bool, pub foco_ciego: u8, pub temperatura_malestar_tope: f64, pub desmayo_final: bool, pub critico_cuerpo: i64, pub estres_cobra: u8, pub invierno: u8, pub vado: bool, pub agua_fria: f64, pub cueva_abriga: bool,
+    pub atajo_alivia: bool, pub atajo_comida: bool, pub atajo_veo_comida: bool, pub atajo_lugares: bool, pub critico_propio: u8, pub distancia_fina: bool,
     pub recompensa_alivio: f64, pub dolor: f64, pub recompensa_estado: f64,
     pub hipocampo: bool, pub capacidad_dia: i64, pub repasos: i64, pub repaso_actor: bool,
     pub aprende_repaso: f64, pub umbral_lugar: f64, pub poda_lugares: f64, pub importancia: bool,
@@ -66,7 +67,7 @@ pub struct Config {
 }
 
 /// Claves que pueden faltar (configs viejas): valen lo de por defecto.
-const OPCIONALES: [(&str, &str); 32] = [
+const OPCIONALES: [(&str, &str); 38] = [
     ("RITMO_RARO", "1"), ("REPASO_PROPIO", "True"), ("NACER_SORPRESA", "False"), ("REPASO_PROPIO_CADA", "1"), ("PREDICE_PROPIO", "0"),
     ("TOPE_ACTIVA", "0.2"),
     ("RASGOS", "'mano'"), ("PROPIOS", "4096"), ("NUEVOS_POR_TICK", "4"), ("REEMPLAZO_CADA", "100"),
@@ -75,6 +76,7 @@ const OPCIONALES: [(&str, &str); 32] = [
     ("OBJETOS", "False"), ("OBJETOS_INICIALES", "90"), ("OBJETOS_MAXIMO", "160"), ("PROB_OBJETO", "0.01"),
     ("FUERZA", "1.0"), ("CALOR_FUEGO", "0.3"), ("CORTA_VIENTO", "0.04"), ("PROB_PRENDER", "0.15"),
     ("FUEGO_TICKS", "120"), ("FOCO_CIEGO", "'quedarse'"), ("DESMAYO_FINAL", "False"), ("TEMPERATURA_MALESTAR_TOPE", "0"), ("CRITICO_CUERPO", "0"), ("ESTRES_COBRA", "'doble'"), ("INVIERNO", "'viejo'"), ("CRECIDA", "'vieja'"), ("AGUA_FRIA", "0"), ("CUEVA", "'vieja'"),
+    ("ATAJO_ALIVIA", "True"), ("ATAJO_COMIDA", "True"), ("ATAJO_VEO_COMIDA", "True"), ("ATAJO_LUGARES", "True"), ("CRITICO_PROPIO", "'ambos'"), ("DISTANCIA_PROPIA", "'vieja'"),
 ];
 
 pub const NOMBRES: [&str; 7] = ["energia", "cansancio", "curiosidad", "estres", "integridad", "agua", "calor"];
@@ -239,6 +241,9 @@ impl Config {
             temperatura_base: c.f("TEMPERATURA_BASE"), temperatura_sorpresa: c.f("TEMPERATURA_SORPRESA"),
             temperatura_malestar: c.f("TEMPERATURA_MALESTAR"), margen_explorar: c.f("MARGEN_EXPLORAR"),
             peligro_sin_malestar: c.b("PELIGRO_SIN_MALESTAR"), temperatura_malestar_tope: c.f("TEMPERATURA_MALESTAR_TOPE"), foco_ciego: match c.txt("FOCO_CIEGO").as_str() { "quedarse" => 0, "neutro" => 1, "neutro_todo" => 2, x => { eprintln!("angri (rust): FOCO_CIEGO={x} no existe"); std::process::exit(2) } }, desmayo_final: c.b("DESMAYO_FINAL"), critico_cuerpo: c.f("CRITICO_CUERPO") as i64, estres_cobra, invierno: match c.txt("INVIERNO").as_str() { "viejo" => 0, "repartido" => 1, x => { eprintln!("angri (rust): INVIERNO={x} no existe"); std::process::exit(2) } }, agua_fria: c.f("AGUA_FRIA"), cueva_abriga: match c.txt("CUEVA").as_str() { "vieja" => false, "abriga" => true, x => { eprintln!("angri (rust): CUEVA={x} no existe"); std::process::exit(2) } }, vado: match c.txt("CRECIDA").as_str() { "vieja" => false, "vado" => true, x => { eprintln!("angri (rust): CRECIDA={x} no existe"); std::process::exit(2) } },
+            atajo_alivia: c.b("ATAJO_ALIVIA"), atajo_comida: c.b("ATAJO_COMIDA"), atajo_veo_comida: c.b("ATAJO_VEO_COMIDA"), atajo_lugares: c.b("ATAJO_LUGARES"),
+            critico_propio: match c.txt("CRITICO_PROPIO").as_str() { "ambos" => 0, "tabla" => 1, "unidades" => 2, x => { eprintln!("angri (rust): CRITICO_PROPIO={x} no existe"); std::process::exit(2) } },
+            distancia_fina: match c.txt("DISTANCIA_PROPIA").as_str() { "vieja" => false, "fina" => true, x => { eprintln!("angri (rust): DISTANCIA_PROPIA={x} no existe"); std::process::exit(2) } },
             recompensa_alivio: c.f("RECOMPENSA_ALIVIO"), dolor: c.f("DOLOR"),
             recompensa_estado: c.f("RECOMPENSA_ESTADO"),
             hipocampo: c.b("HIPOCAMPO"), capacidad_dia: c.i("CAPACIDAD_DIA"), repasos: c.i("REPASOS"),

@@ -1296,6 +1296,29 @@ aprendizaje: es lo que corta el bucle (decisión del usuario: no muere). Queda e
 traba a Angri no es el mundo (en invierno no pasa más hambre que en verano, plantarse no le quita comida, el frío no
 la traba): es la mente. Sigue el paso 4 (los atajos hechos a mano).
 
+### Paso 4: los atajos hechos a mano
+
+Parte mano: sacar de a uno las recetas que le regalan a la mano lo que la propia tiene que aprender, y medir cuánto
+empeora. Es la vara: lo que una receta regala es lo que la propia tiene que ganar sola. Si sacarla no empeora, queda
+sacada (menos receta). Encima del paso 3, `angri comparar 200000 256 "MUNDO=bosque OBJETOS=True" "... <OPCION>"`,
+B − A (z). Las configs de `rust/pruebas` no nombran las opciones nuevas (default = viejo): la referencia no cambia.
+
+**a) `alivia()` (`ATAJO_ALIVIA`) — queda puesto; regala ~15 puntos de crudas.** Sin la receta "hambre→comida,
+sed→agua, frío→descanso" no existe el rasgo "voy hacia lo que alivia mi foco". Desde 20000:
+
+| | mano sin alivia |
+|---|---|
+| malestar | +0,055 (10,7) |
+| % hambre despierta | +8,1 (6,7) |
+| peor 10k hambre | +6,0 (3,8) |
+| % cruda < 0,15 | +14,6 (13,0) |
+| % sed | +13,0 (13,3) |
+| desmayos | 29 → 46 (8,0) |
+| % trabadas | +4,3 (2,2) |
+| % mal tope | 0 |
+
+Es la receta que más regala, sobre todo agua: la sed es la que más sube (la comida tiene además su propio rasgo, el b).
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

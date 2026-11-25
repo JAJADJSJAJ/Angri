@@ -446,7 +446,7 @@ impl Ganglios {
 
     fn resumen(&self, vista: &Vista, cuerpo: &[f64; 7], n: usize, ncuerpo: usize, tacto: Option<&Tacto>, c: &Config) -> u32 {
         let celda = vista.get((0, 0)).unwrap_or(7) as u32;
-        let come = (hacia(vista, COMIDA) != 4) as u32;
+        let come = (c.atajo_veo_comida && hacia(vista, COMIDA) != 4) as u32;
         let s = if c.critico_cuerpo > 0 && self.propia.is_none() {
             // (paso 2a) el cuerpo entero, sin foco: cuánto se aleja cada necesidad de su equilibrio
             // (solo la mano: con la propia empeora, sus unidades ya ven el cuerpo)
@@ -489,13 +489,14 @@ impl Ganglios {
     pub fn elegir(&mut self, vista: &Vista, cuerpo: &[f64; 7], n: usize, pos: (i64, i64),
                   noradrenalina: f64, malestar: f64, palabras: &[usize], dicha: usize,
                   tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, c: &Config) -> usize {
-        let dc = hacia(vista, COMIDA);
-        let d_o = match (c.foco_ciego, alivia(n)) {
+        let dc = if c.atajo_comida { hacia(vista, COMIDA) } else { 99 };
+        let d_o = match (c.foco_ciego, if c.atajo_alivia { alivia(n) } else { 255 }) {
+            (_, 255) if !c.atajo_alivia => 99,
             (1, 255) => 99,
             (2, o) if o == 255 || hacia(vista, o) == 4 => 99,
             (_, o) => hacia(vista, o),
         };
-        let dr = self.recuerdo(n, pos);
+        let dr = if c.atajo_lugares { self.recuerdo(n, pos) } else { 99 };
         let na = if tacto.is_some() { NACC } else { 5 };
         let mut rasgos = Rasgos { na: na as u8, ..Rasgos::default() };
         if let Some(t) = tacto {
@@ -519,7 +520,7 @@ impl Ganglios {
             h[a] = psum(rasgos.de(a).iter().map(|&i| self.w[i as usize]));
         }
         if let Some(p) = &mut self.propia {
-            let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, dicha, tacto, clima);
+            let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, dicha, tacto, clima, c.distancia_fina);
             p.preferencias(at, &mut h, na);
         }
         let mut tm = c.temperatura_malestar * malestar;
@@ -577,7 +578,7 @@ impl Ganglios {
         let s2 = self.resumen(vista, cuerpo, n, ncuerpo, tacto, c);
         self.ultimo = Some(Momento { s, rasgos: self.rasgos, a: self.a, r: recompensa, s2, pos,
                                      necesidad: self.necesidad, p: self.probs[self.a], temp: self.temp });
-        if c.borrar_lugar_vacio {
+        if c.borrar_lugar_vacio && c.atajo_alivia {
             let objetivo = alivia(n);
             if objetivo != 255 && self.lugares[n].get(pos).is_some()
                 && vista.get((0, 0)) != Some(objetivo) && hacia(vista, objetivo) == 4
@@ -585,17 +586,20 @@ impl Ganglios {
                 self.lugares[n].borrar(pos);
             }
         }
-        let v = *self.v.get(&s).unwrap_or(&0.0);
-        let dr = if self.propia.is_some() { self.recuerdo(n, pos) } else { 0 };
-        let v2_tabla = *self.v.get(&s2).unwrap_or(&0.0);
+        // (paso 4e) con la propia, CRITICO_PROPIO = 'unidades' deja solo el V de las unidades
+        let tabla = !(self.propia.is_some() && c.critico_propio == 2);
+        let v = if tabla { *self.v.get(&s).unwrap_or(&0.0) } else { 0.0 };
+        let dr = if self.propia.is_some() && c.atajo_lugares { self.recuerdo(n, pos) } else if self.propia.is_some() { 99 } else { 0 };
+        let v2_tabla = if tabla { *self.v.get(&s2).unwrap_or(&0.0) } else { 0.0 };
         // desmayo como final de episodio: no hay "después" que valga
         let g2 = if fin { 0.0 } else { c.serotonina };
         let delta = match &mut self.propia {
             None => recompensa + g2 * v2_tabla - v,
             Some(p) => {
-                let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, 4, tacto, clima);
-                let v2 = v2_tabla + p.valor_de(&at, c);
-                let d = recompensa + g2 * v2 - (v + p.vs);
+                let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, 4, tacto, clima, c.distancia_fina);
+                let vp2 = p.valor_de(&at, c);
+                let (vp, vp2) = if c.critico_propio == 1 { (0.0, 0.0) } else { (p.vs, vp2) };
+                let d = recompensa + g2 * (v2_tabla + vp2) - (v + vp);
                 if c.repaso_propio {
                     self.ultimo_sentir = Some((p.ahora().clone(), at));
                 }
@@ -614,7 +618,7 @@ impl Ganglios {
             self.huella_v.push((s, 1.0));
         }
         *self.exp_v.entry(s).or_insert(0) += 1;
-        for &(k, e) in &self.huella_v {
+        for &(k, e) in self.huella_v.iter().filter(|_| tabla) {
             let ritmo = Self::ritmo(c.aprende_critico, *self.exp_v.get(&k).unwrap_or(&0), c);
             let x = self.v.entry(k).or_insert(0.0);
             *x = *x + ritmo * delta * e;
@@ -675,13 +679,18 @@ impl Ganglios {
         }
         let z = psum(e[..na].iter().copied());
         let rho = if c.importancia { c.tope_importancia.min((e[m.a] / z) / m.p) } else { 1.0 };
-        let vs = *self.v.get(&m.s).unwrap_or(&0.0);
+        let tabla = !(self.propia.is_some() && c.critico_propio == 2);
+        let vs = if tabla { *self.v.get(&m.s).unwrap_or(&0.0) } else { 0.0 };
+        let vs2 = if tabla { *self.v.get(&m.s2).unwrap_or(&0.0) } else { 0.0 };
         let delta = match &propio {
-            None => m.r + c.serotonina * *self.v.get(&m.s2).unwrap_or(&0.0) - vs,
-            Some((_, vp, vp2)) => m.r + c.serotonina * (*self.v.get(&m.s2).unwrap_or(&0.0) + vp2) - (vs + vp),
+            None => m.r + c.serotonina * vs2 - vs,
+            Some((_, vp, vp2)) if c.critico_propio == 1 => { let _ = (vp, vp2); m.r + c.serotonina * vs2 - vs }
+            Some((_, vp, vp2)) => m.r + c.serotonina * (vs2 + vp2) - (vs + vp),
         };
-        let ritmo = Self::ritmo(c.aprende_critico, *self.exp_v.get(&m.s).unwrap_or(&0), c);
-        self.v.insert(m.s, vs + fraccion * rho * ritmo * delta);
+        if tabla {
+            let ritmo = Self::ritmo(c.aprende_critico, *self.exp_v.get(&m.s).unwrap_or(&0), c);
+            self.v.insert(m.s, vs + fraccion * rho * ritmo * delta);
+        }
         if let (Some((act, _, _)), Some(p)) = (&propio, &mut self.propia) {
             let mut probs = [0.0f64; NACC];
             for b in 0..na {
