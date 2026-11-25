@@ -44,11 +44,17 @@ pub struct Unidad {
     pub util: f64,  // promedio de cuánto pesa cuando está activa
     pub veces: i64, // cuántas veces estuvo activa
     pub nace: i64,  // paso en que nació
+    pub q: [f64; NPRED], // (PREDICE_PROPIO) lo que predice de los cambios del cuerpo
 }
+
+/// lo que predicen las unidades: suba y baja de energía, integridad y calor
+pub const NPRED: usize = 6;
+const PREDICE: [usize; 3] = [crate::mente::ENERGIA, crate::mente::INTEGRIDAD, crate::mente::CALOR];
+const GAMMA_PRED: f64 = 0.9;
 
 impl Unidad {
     fn vacia() -> Unidad {
-        Unidad { atomos: [SIN_ATOMO; 3], k: 0, clave: SIN_ATOMO, mover: false, v: 0.0, w: [0.0; NACC], util: 0.0, veces: 0, nace: 0 }
+        Unidad { atomos: [SIN_ATOMO; 3], k: 0, clave: SIN_ATOMO, mover: false, v: 0.0, w: [0.0; NACC], util: 0.0, veces: 0, nace: 0, q: [0.0; NPRED] }
     }
 }
 
@@ -80,6 +86,9 @@ pub struct Propia {
     molde: Sentir,
     molde_a: usize,
     molde_d: f64,
+    // (PREDICE_PROPIO) las activas de s2 y el cuerpo del paso anterior
+    activas2: Vec<(u32, u8)>,
+    cuerpo_antes: [f64; 7],
 }
 
 #[inline]
@@ -170,6 +179,7 @@ impl Propia {
             ev: vec![0.0; n], ew: vec![[0.0; NACC]; n], marca: vec![false; n], huella: vec![],
             cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0,
             t: 0, nacidas: 0, reiniciadas: 0, molde: Sentir::default(), molde_a: 4, molde_d: 0.0,
+            activas2: vec![], cuerpo_antes: [f64::NAN; 7],
         }
     }
 
@@ -295,12 +305,61 @@ impl Propia {
     }
 
     /// V propio de s2 (para el error TD)
-    pub fn valor_de(&self, s: &Sentir) -> f64 {
-        self.valor(&self.activas_de(s))
+    pub fn valor_de(&mut self, s: &Sentir, c: &Config) -> f64 {
+        let act = self.activas_de(s);
+        let v = self.valor(&act);
+        if c.predice_propio > 0.0 {
+            self.activas2 = act;
+        }
+        v
+    }
+
+    fn predicho(&self, act: &[(u32, u8)]) -> [f64; NPRED] {
+        let mut q = [0.0; NPRED];
+        for &(u, m) in act {
+            if m == DEL_ESTADO {
+                let un = &self.unidades[u as usize];
+                for i in 0..NPRED {
+                    q[i] += un.q[i];
+                }
+            }
+        }
+        q
+    }
+
+    /// las unidades aprenden a predecir los cambios del cuerpo (TD con sus propias huellas de estado)
+    fn predecir(&mut self, cuerpo: &[f64; 7], n: f64, c: &Config) {
+        let antes = self.cuerpo_antes;
+        self.cuerpo_antes = *cuerpo;
+        if antes[0].is_nan() {
+            return;
+        }
+        let mut cum = [0.0; NPRED];
+        for (j, &k) in PREDICE.iter().enumerate() {
+            let d = (cuerpo[k] - antes[k]) * 10.0;
+            cum[2 * j] = d.max(0.0).min(1.0);
+            cum[2 * j + 1] = (-d).max(0.0).min(1.0);
+        }
+        let q1 = self.predicho(&self.activas);
+        let q2 = self.predicho(&self.activas2);
+        let mut d = [0.0; NPRED];
+        for i in 0..NPRED {
+            d[i] = c.aprende_propio_critico / n * (cum[i] + GAMMA_PRED * q2[i] - q1[i]);
+        }
+        for &u in &self.huella {
+            let u = u as usize;
+            let e = self.ev[u];
+            if e != 0.0 {
+                let un = &mut self.unidades[u];
+                for i in 0..NPRED {
+                    un.q[i] += d[i] * e;
+                }
+            }
+        }
     }
 
     /// aprende de un paso: `delta` es el error TD de toda la mente; `probs` las de s
-    pub fn aprender(&mut self, delta: f64, probs: &[f64; NACC], a: usize, na: usize, c: &Config) {
+    pub fn aprender(&mut self, delta: f64, probs: &[f64; NACC], a: usize, na: usize, cuerpo: &[f64; 7], c: &Config) {
         if self.activas.is_empty() {
             return;
         }
@@ -389,14 +448,20 @@ impl Propia {
                 }
             }
         }
+        if c.predice_propio > 0.0 {
+            self.predecir(cuerpo, n, c);
+        }
         // utilidad: cuánto pesan cuando están activas
         for &(u, _) in &self.activas {
             let un = &mut self.unidades[u as usize];
-            let peso = if un.mover {
+            let mut peso = if un.mover {
                 un.w[0].abs()
             } else {
                 un.v.abs() + un.w[..na].iter().map(|x| x.abs()).sum::<f64>() / na as f64
             };
+            if c.predice_propio > 0.0 {
+                peso += c.predice_propio * un.q.iter().map(|x| x.abs()).sum::<f64>();
+            }
             un.util += 0.02 * (peso - un.util);
             un.veces += 1;
         }
@@ -527,6 +592,8 @@ impl Propia {
         }
         self.huella.clear();
         self.activas.clear();
+        self.activas2.clear();
+        self.cuerpo_antes = [f64::NAN; 7];
     }
 
     /// cuántas unidades del banco viven y cuántas mezclan estado y movimiento
@@ -540,7 +607,7 @@ impl Propia {
     }
 }
 
-crate::pieza!(Unidad { atomos, k, clave, mover, v, w, util, veces, nace });
+crate::pieza!(Unidad { atomos, k, clave, mover, v, w, util, veces, nace, q });
 crate::pieza!(Sentir { estado, mover });
 crate::pieza!(Propia { rng, unidades, indice, ev, ew, marca, huella, cuenta, ahora, activas, elegida, vs, t,
-                      nacidas, reiniciadas, molde, molde_a, molde_d });
+                      nacidas, reiniciadas, molde, molde_a, molde_d, activas2, cuerpo_antes });

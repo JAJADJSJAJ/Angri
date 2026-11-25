@@ -562,12 +562,13 @@ impl Ganglios {
             }
         }
         let v = *self.v.get(&s).unwrap_or(&0.0);
-        let delta = match &self.propia {
-            None => recompensa + c.serotonina * *self.v.get(&s2).unwrap_or(&0.0) - v,
+        let dr = if self.propia.is_some() { self.recuerdo(n, pos) } else { 0 };
+        let v2_tabla = *self.v.get(&s2).unwrap_or(&0.0);
+        let delta = match &mut self.propia {
+            None => recompensa + c.serotonina * v2_tabla - v,
             Some(p) => {
-                let dr = self.recuerdo(n, pos);
                 let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, 4, tacto, clima);
-                let v2 = *self.v.get(&s2).unwrap_or(&0.0) + p.valor_de(&at);
+                let v2 = v2_tabla + p.valor_de(&at, c);
                 let d = recompensa + c.serotonina * v2 - (v + p.vs);
                 if c.repaso_propio {
                     self.ultimo_sentir = Some((p.ahora().clone(), at));
@@ -615,7 +616,7 @@ impl Ganglios {
             self.w[i] += Self::ritmo(c.aprende_actor, self.exp_w[i], c) * delta * hw[i];
         }
         if let Some(p) = &mut self.propia {
-            p.aprender(delta, &self.probs, self.a, self.rasgos.na as usize, c);
+            p.aprender(delta, &self.probs, self.a, self.rasgos.na as usize, cuerpo, c);
         }
     }
 
@@ -631,7 +632,7 @@ impl Ganglios {
             (Some(p), Some((s, s2))) => {
                 let act = p.activas_de(s);
                 p.sumar(&act, &mut h, na);
-                let (vp, vp2) = (p.valor(&act), p.valor_de(s2));
+                let (vp, vp2) = (p.valor(&act), p.valor(&p.activas_de(s2)));
                 Some((act, vp, vp2))
             }
             _ => None,
