@@ -1319,6 +1319,61 @@ sed→agua, frío→descanso" no existe el rasgo "voy hacia lo que alivia mi foc
 
 Es la receta que más regala, sobre todo agua: la sed es la que más sube (la comida tiene además su propio rasgo, el b).
 
+**b) "voy hacia la comida" (`ATAJO_COMIDA`) — queda puesto; regala ~3 puntos.** Sin el rasgo fijo `dc` (que no
+depende del foco). 256 pares desde 21000 (dudoso), y 512 desde 24000 ya sin lugares (ver d):
+
+| | mano, 256 | mano, 512 |
+|---|---|---|
+| malestar | +0,007 (1,1) | +0,008 (1,9) |
+| % hambre despierta | +3,0 (2,1) | +3,6 (3,7) |
+| peor 10k hambre | +4,2 (2,5) | +2,8 (2,3) |
+| % cruda < 0,15 | +1,7 (1,3) | +2,5 (2,8) |
+| % hambre inv | +4,8 (2,8) | +5,7 (4,9) |
+| desmayos | +6,7 (3,1) | +6,5 (4,1) |
+| comidas | −709 (−12) | −668 (−16) |
+| % mal tope | 0 | 0 |
+
+Regala poco: con `alivia()` la mano igual va a la comida cuando el foco es hambre. Lo que suma es ir a comer de paso
+(cuando el foco es otro), así come un cuarto menos de veces sin él y pasa un poco más de hambre, sobre todo en invierno.
+
+**c) El bit "veo comida" del crítico (`ATAJO_VEO_COMIDA`) — queda puesto; regala ~15 puntos.** Sin él, la tabla V
+no distingue "tengo hambre y veo comida" de "tengo hambre y no veo nada". Desde 22000:
+
+| | mano sin el bit |
+|---|---|
+| malestar | +0,062 (9,7) |
+| % hambre despierta | +16,7 (10,6) |
+| peor 10k hambre | +11,2 (7,5) |
+| racha de hambre | +263 (5,8) |
+| % cruda < 0,15 | +15,1 (10,6) |
+| % hambre inv | +23,7 (12,2) |
+| desmayos | 32 → 55 (8,6) |
+| % trabadas | 7 → 19 (4,1) |
+| % mal tope | 0 |
+
+Es el regalo más grande en hambre. Por qué: sin ese bit, el crítico no puede decir "acá cerca hay salida" y la
+dopamina de acercarse a la comida (antes de comer) desaparece: solo premia el bocado, que llega tarde. La propia tiene
+lo mismo hecho a su modo (átomos de "qué hay hacia dónde"), así que esto es lo que la propia tiene que ganar.
+
+**d) Los lugares por necesidad (`ATAJO_LUGARES`) — sacado (`False`).** Al dormir guarda dónde se alivió cada
+necesidad y al otro día el rasgo "lo que alivia esto está para allá" (y en la propia, un átomo). Desde 23000 (mano) y
+25000 (propia):
+
+| | mano | propia |
+|---|---|---|
+| malestar | −0,002 (−0,3) | +0,004 (0,8) |
+| % hambre despierta | −0,4 (−0,3) | +1,5 (1,1) |
+| peor 10k hambre | −1,2 (−0,7) | +1,0 (1,5) |
+| % cruda < 0,15 | +0,2 (0,1) | +0,8 (0,8) |
+| desmayos | −0,1 | +1,1 (0,4) |
+| heridas | −17 (−2,2) | +1,3 |
+| % duerme refugio propio | | +1,7 (2,1) |
+| % mal tope | 0 | 0 |
+
+No regala nada: con la mano no cambia (se lastima menos), con la propia nada claro. La memoria de lugares olvida rápido
+(decae por tick) y en un bosque donde la comida brota y se acaba, "allá comí ayer" casi nunca sirve. Menos receta:
+queda sacado (las configs de `rust/pruebas` no lo nombran y lo dejan puesto: la referencia no cambia).
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
