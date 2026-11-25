@@ -1469,6 +1469,35 @@ La propia sigue ~16 puntos atrás en 200.000 ticks, más o menos lo que regalan 
 (`alivia()` y "veo comida"): la vara dice que lo que le falta a la propia es aprender sola esas dos cosas, qué alivia
 qué y "hay salida a la vista". Sigue durmiendo en refugio propio 4 veces más que la mano.
 
+## Aprender las recetas, paso 1: "me acerco a X" cruzado con el foco (2026-11-25) — no sirve, sacado
+
+Idea: darle a la propia, ya hechos, átomos de movimiento "me acerco a X con el foco en la necesidad n" (7 focos × 7
+cosas, en los pasos que acercan según la distancia fina), sin decirle qué alivia qué: el peso de "me acerco a comida
+con hambre" lo tendría que poner su malestar. Es la conjunción que `alivia()` le regala a la mano. Dos variantes:
+`'foco'` (49 átomos, cualquier distancia) y `'foco_cerca'` (98: aparte cerca, d ≤ 2, y lejos). Solo la propia (la mano
+no usa estos átomos: no cambia). `angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... ACERCO_FOCO=<v>"`,
+B − A (z), 256 pares desde 40000 y desde 50000:
+
+| | foco (40000) | foco (50000) | foco_cerca (40000) | foco_cerca (50000) |
+|---|---|---|---|---|
+| base: % hambre / % cruda<0,15 | 41,6 / 45,8 | 41,7 / 45,8 | 41,6 / 45,8 | 41,7 / 45,8 |
+| malestar | +0,002 (0,3) | −0,007 (−1,0) | +0,014 (2,1) | +0,010 (1,7) |
+| % hambre | −0,1 (0,0) | −0,6 (−0,4) | +2,6 (1,6) | +2,1 (1,5) |
+| % cruda < 0,15 | −0,5 (−0,4) | −1,4 (−1,1) | +2,4 (1,8) | +1,8 (1,5) |
+| peor 10k hambre | +1,7 (1,7) | −0,1 (−0,1) | +2,5 (2,5) | +1,1 (1,2) |
+| % trabadas | 14 → 16 (0,6) | 14 → 15 (0,4) | 14 → 19 (1,5) | 14 → 16 (0,8) |
+| desmayos | +1,4 (0,4) | +0,6 (0,2) | +6,7 (2,1) | +6,1 (2,1) |
+| % mal alto | +0,3 | −1,0 | +3,6 (2,1) | +3,0 (1,8) |
+| % mal tope | 0 | 0 | 0 | 0 |
+
+`'foco'` no cambia nada; `'foco_cerca'` empeora en las dos semillas (más desmayos, más malestar alto). Mano sin cambio
+(25,7 % hambre / 29,2 % crudas del cierre). Por qué: la conjunción ya la podía armar el banco ("foco hambre" del estado
+con "me acerco a comida" del movimiento), así que darla hecha no le enseña nada nuevo; lo que le falta no es tener el
+rasgo sino que su peso aprenda rápido y bien, y con el error TD tan ruidoso un átomo más que se prende con cada paso
+solo reparte el crédito entre más pesos (con `'foco_cerca'`, el doble de átomos y peor). Lo que regala `alivia()` no
+es la conjunción: es que la mano ya sabe hacia dónde mirar. Sacado: el código no queda. Sigue la otra mitad de la idea: que las unidades aprendan de lo que predicen (`PREDICE_PROPIO`) y el
+crítico con el cuerpo entero.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
