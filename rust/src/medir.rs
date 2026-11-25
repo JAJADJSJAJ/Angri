@@ -70,9 +70,9 @@ fn valor(m: &Metricas, k: &str) -> Option<f64> {
     m.iter().find(|e| e.0 == k).map(|e| e.1).filter(|x| x.is_finite())
 }
 
-/// Saca `-j J` y `--config ARCHIVO`; devuelve (hilos, archivo, resto).
-fn opciones(args: &[String]) -> (usize, Option<String>, Vec<String>) {
-    let (mut hilos, mut archivo, mut resto) = (1usize, None, vec![]);
+/// Saca `-j J`, `--config ARCHIVO` y `--desde K` (primera semilla); devuelve (hilos, archivo, resto, desde).
+fn opciones(args: &[String]) -> (usize, Option<String>, Vec<String>, u64) {
+    let (mut hilos, mut archivo, mut resto, mut desde) = (1usize, None, vec![], 0u64);
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
@@ -84,15 +84,19 @@ fn opciones(args: &[String]) -> (usize, Option<String>, Vec<String>) {
                 archivo = Some(args.get(i + 1).expect("--config ARCHIVO").clone());
                 i += 1;
             }
+            "--desde" => {
+                desde = args.get(i + 1).and_then(|x| x.parse().ok()).expect("--desde K");
+                i += 1;
+            }
             _ => resto.push(args[i].clone()),
         }
         i += 1;
     }
-    (hilos, archivo, resto)
+    (hilos, archivo, resto, desde)
 }
 
 pub fn medir(args: &[String]) {
-    let (hilos, archivo, resto) = opciones(args);
+    let (hilos, archivo, resto, desde) = opciones(args);
     let mut ajustes: Vec<String> = resto.iter().filter(|a| a.contains('=')).cloned().collect();
     let modo = resto.iter().find(|a| *a == "azar" || *a == "reflejos").cloned();
     if let Some(m) = &modo {
@@ -103,7 +107,7 @@ pub fn medir(args: &[String]) {
     let ticks: i64 = nums.first().map_or(50_000, |x| x.parse().expect("TICKS"));
     let n: u64 = nums.get(1).map_or(5, |x| x.parse().expect("N"));
     let (_, c) = armar(archivo.as_deref(), &ajustes);
-    let tareas: Vec<(&Config, u64)> = (0..n).map(|s| (&c, s)).collect();
+    let tareas: Vec<(&Config, u64)> = (desde..desde + n).map(|s| (&c, s)).collect();
     let vs = vidas(&tareas, ticks, hilos);
     let mente = if c.mente_azar { if c.reflejos { "reflejos" } else { "azar puro" } } else { "aprende" };
     println!("{n} vidas de {ticks} ticks, mente: {mente}\n");
@@ -121,9 +125,9 @@ pub fn medir(args: &[String]) {
 }
 
 pub fn comparar(args: &[String]) {
-    let (hilos, archivo, resto) = opciones(args);
+    let (hilos, archivo, resto, desde) = opciones(args);
     if resto.len() != 4 {
-        eprintln!("uso: angri comparar TICKS N \"AJUSTES A\" \"AJUSTES B\" [-j J] [--config ARCHIVO]");
+        eprintln!("uso: angri comparar TICKS N \"AJUSTES A\" \"AJUSTES B\" [-j J] [--config ARCHIVO] [--desde K]");
         std::process::exit(1);
     }
     let ticks: i64 = resto[0].parse().expect("TICKS");
@@ -131,7 +135,7 @@ pub fn comparar(args: &[String]) {
     let aj = |t: &str| t.split_whitespace().map(String::from).collect::<Vec<_>>();
     let (_, ca) = armar(archivo.as_deref(), &aj(&resto[2]));
     let (_, cb) = armar(archivo.as_deref(), &aj(&resto[3]));
-    let tareas: Vec<(&Config, u64)> = [&ca, &cb].iter().flat_map(|c| (0..n).map(move |s| (*c, s))).collect();
+    let tareas: Vec<(&Config, u64)> = [&ca, &cb].iter().flat_map(|c| (desde..desde + n).map(move |s| (*c, s))).collect();
     let vs = vidas(&tareas, ticks, hilos);
     let (va, vb) = vs.split_at(n as usize);
     let nombre = |t: &str| if t.is_empty() { "(config actual)".to_string() } else { t.to_string() };
