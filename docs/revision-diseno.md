@@ -47,6 +47,7 @@ Regla para todo lo que sigue: de a un cambio, `angri comparar` con 256 pares y `
 - **La cueva no abriga** (0,6, menos que el día) y descansar casi no hace nada.
   **Medido (paso 3d), apagado** (`CUEVA = 'abriga'`): mano neutra, propia peor (cruda +1,8, z 2); duerme menos y casi nunca en la cueva.
 - **El desmayo regala** 0,35 de energía y agua: medio plato gratis.
+  **Medido (paso 3e), queda 0,35**: con 0,1 arma un bucle de sufrimiento (racha de hambre ×8–11, desmayos ×2, cruda +7/+10).
 
 ## 4. Atajos hechos a mano (la etapa 14 de verdad)
 `alivia()` (hambre→comida, sed→agua, frío→descanso), el rasgo fijo "voy hacia la comida" (`dc`), el bit "veo comida"

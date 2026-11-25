@@ -1274,6 +1274,28 @@ En la mano no cambia nada; en la propia empeora (z ~2). Descansar despierta en l
 menos y casi nunca en la cueva (descansa ahí y después duerme afuera). El abrigo no hacía falta: el frío no es lo
 que la traba. Queda apagado.
 
+**e) El desmayo regala (`DESMAYO_RESTO`) — se queda en 0,35.** Al desmayarse despierta con al menos 0,35 de energía y
+agua: medio plato gratis. Probado `DESMAYO_RESTO = 0,1` (apenas lo justo para no volver a caer enseguida). Desde 14000:
+
+| | mano | propia |
+|---|---|---|
+| % hambre despierta | +4,1 (2,8) | +4,8 (3,6) |
+| peor 10k hambre | +7,8 (5,2) | +3,9 (7,5) |
+| racha de hambre | 2.269 → 18.641 (7,9) | 2.424 → 27.158 (12,0) |
+| % cruda < 0,15 | +7,2 (4,9) | +10,4 (9,5) |
+| desmayos | 29 → 55 (7,4) | 77 → 128 (12,6) |
+| % trabadas | +1,2 | +14,5 (3,6) |
+| % mal alto | +5,1 (3,1) | +6,0 (4,3) |
+| % mal tope | 0 | 0 |
+
+Sin el regalo arma justo el bucle de sufrimiento que hay que vigilar: despierta casi vacía, no llega a la comida,
+vuelve a caer, y la racha de hambre se multiplica por 8–11. El regalo no es una trampa que tape un problema de
+aprendizaje: es lo que corta el bucle (decisión del usuario: no muere). Queda en 0,35; no hay código nuevo.
+
+**Paso 3 terminado: nada prendido.** Ninguno de los cuatro cambios del mundo mejora; el último empeora mucho. Lo que
+traba a Angri no es el mundo (en invierno no pasa más hambre que en verano, plantarse no le quita comida, el frío no
+la traba): es la mente. Sigue el paso 4 (los atajos hechos a mano).
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
