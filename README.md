@@ -1421,6 +1421,25 @@ la comida" vale igual para cualquier paso que acerque, y el "me alejo" le da un 
 decirle hacia qué ir: solo ve qué pasos acercan a cada cosa, y aprende de su malestar cuáles le sirven. Con la mano
 no cambia nada (no usa los átomos). Las configs de `rust/pruebas` no lo nombran (`'vieja'`): la referencia no cambia.
 
+**g) Huellas más largas (`HUELLA = 0,9`, `SEROTONINA = 0,97`) — apagado (quedan 0,8 y 0,95).** Con λ·γ = 0,76 el
+crédito llega ~4 pasos atrás; con 0,873, ~8. No hace falta código (son números de `config.txt`). Encima del f, desde
+29000 (propia) y 30000 (mano):
+
+| | propia | mano |
+|---|---|---|
+| malestar | +0,023 (2,8) | +0,035 (4,8) |
+| % hambre despierta | +5,5 (2,9) | +8,3 (5,0) |
+| % cruda < 0,15 | +3,2 (2,1) | +7,5 (5,0) |
+| % sed | +7,7 (4,2) | +6,8 (5,1) |
+| % trabadas | 19 → 29 (2,6) | 6 → 16 (3,6) |
+| desmayos | +8 (2,3) | +14 (5,1) |
+| % mal tope | 0 | 0 |
+
+Empeoran las dos. Por qué: el error TD de Angri es muy ruidoso (cada tick cambian muchas cosas a la vez) y una huella
+larga reparte ese ruido sobre más pasos; con γ más alto, además, el V tiene que sumar un futuro más largo y tarda más en
+aprenderlo. Con 200.000 ticks no le alcanza. Lo que hacía falta para que el golpe llegue a quien lo merece no era
+mirar más atrás sino ver mejor qué paso acerca a qué (el f).
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
