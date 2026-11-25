@@ -986,6 +986,16 @@ Las mediciones largas ahora corren en el i5 por SSH (`~/medir/Angri`, aparte de 
 
 - **Unidades que predicen** (`PREDICE_PROPIO`): cada unidad aprende además a predecir (TD, γ 0,9) cuánto suben o bajan la energía, la integridad y el calor, y eso cuenta en su utilidad para no ser reemplazada. Barrido con peso 0,3, 1 y 3: malestar 0,510, 0,506 y 0,507 contra 0,493, come menos. No ayuda; queda apagado (0). Ojo: casi todas las variantes caían en ~0,506–0,512, así que medí de nuevo con otras 48 semillas (`comparar ... --desde 1000`): **la base da 0,510, no 0,493 — las semillas 0–47 le tocaron de suerte.** Con las nuevas, predicción (+0,003, z 0,5) y actor 0,1 (+0,007, z 0,8) quedan iguales a la base; repasar 1 de cada 4 vuelve a salir peor (+0,012, z 1,6, las dos veces), así que el repaso completo sí sirve. Lección: un "algo peor" de z ~1,5 contra una sola tanda de semillas no alcanza para descartar; repetir con `--desde`.
 
+### Cuarta vuelta: más rápida, misma vida (2026-11-24)
+
+En el i5 la propia corría a ~12.000 ticks/s por hilo (no los ~42.000 de la PC) y con 4 hilos rendía solo 2,2×: una comparación de 48 pares tardaba ~7 min. Con cronómetros (en una copia aparte) se vio que el 41 % del tiempo era buscar las activas (~1.000 candidatas revisadas y ~370 activas por búsqueda, ~4 búsquedas por tick) y el 30 % las huellas. Tres cambios, todos con la vida idéntica bit a bit (mismo archivo guardado):
+
+- **Forma compacta**: los átomos de cada unidad están copiados aparte (8 bytes, no se guardan: se rearman al cargar), así la búsqueda no lee la unidad entera.
+- **El sueño busca una vez por recuerdo**: con `REPASOS = 2` vuelve muchas veces al mismo recuerdo, y mientras duerme no nace ninguna unidad, así que las activas salen iguales.
+- **Reusar las activas de s2 al elegir** si siente exactamente lo mismo y no nació ninguna en el medio; y las huellas de las de movimiento solo recorren el peso que usan.
+
+PC: 17,9 → 13,2 s (2 vidas de 200.000 ticks, −26 %). **i5, 4 vidas: 63 → 46 s con un hilo y 27 → 19 s con cuatro (−30 %).**
+
 **Sigue**: la propia todavía come menos. Lo que falta ya no es ajuste sino forma: que las unidades aprendan también de lo que predicen (no solo del error TD) y vidas de varios millones de ticks.
 
 Para probar: `angri comparar 200000 96 "MUNDO=bosque OBJETOS=True" "MUNDO=bosque OBJETOS=True RASGOS=propios" -j 12`.

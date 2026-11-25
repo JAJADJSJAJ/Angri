@@ -196,6 +196,9 @@ impl Quimica {
 pub const MOVIMIENTOS: [(i64, i64); 5] = [(0, -1), (0, 1), (-1, 0), (1, 0), (0, 0)];
 /// acciones: 5 movimientos y (con OBJETOS) agarrar, soltar, apilar, atar, golpear, frotar
 pub const NACC: usize = 11;
+
+/// (etapa 14) las unidades propias activas en s y en s2 de un recuerdo
+pub type ActivasMomento = (Vec<(u32, u8)>, Vec<(u32, u8)>);
 pub const AGARRAR: usize = 5;
 pub const SOLTAR: usize = 6;
 pub const APILAR: usize = 7;
@@ -620,19 +623,17 @@ impl Ganglios {
         }
     }
 
-    pub fn repasar(&mut self, m: &Momento, sentir: Option<&(crate::propia::Sentir, crate::propia::Sentir)>,
-                   fraccion: f64, c: &Config) -> f64 {
+    pub fn repasar(&mut self, m: &Momento, activas: Option<&ActivasMomento>, fraccion: f64, c: &Config) -> f64 {
         let na = m.rasgos.na as usize;
         let mut h = [0.0f64; NACC];
         for b in 0..na {
             h[b] = psum(m.rasgos.de(b).iter().map(|&i| self.w[i as usize]));
         }
         // (etapa 14) las unidades propias de ese momento
-        let propio = match (&self.propia, sentir) {
-            (Some(p), Some((s, s2))) => {
-                let act = p.activas_de(s);
-                p.sumar(&act, &mut h, na);
-                let (vp, vp2) = (p.valor(&act), p.valor(&p.activas_de(s2)));
+        let propio = match (&self.propia, activas) {
+            (Some(p), Some((act, act2))) => {
+                p.sumar(act, &mut h, na);
+                let (vp, vp2) = (p.valor(act), p.valor(act2));
                 Some((act, vp, vp2))
             }
             _ => None,
@@ -767,9 +768,18 @@ impl Hipocampo {
             let elegidos = g.rng.choices_pesos(&pesos, k);
             let parejo = self.sentires.len() == dia.len();
             let cada = c.repaso_propio_cada.max(1) as usize;
+            // las unidades activas de cada recuerdo se buscan una sola vez por noche: mientras
+            // duerme no nace ninguna, así que salen iguales cada vez que vuelve al mismo recuerdo
+            let mut cache: Vec<Option<ActivasMomento>> = vec![None; dia.len()];
             for (j, i) in elegidos.into_iter().enumerate() {
-                let s = if parejo && j % cada == 0 { self.sentires.get(i) } else { None };
-                g.repasar(&dia[i], s, c.aprende_repaso, c);
+                let act = match (parejo && j % cada == 0, &g.propia) {
+                    (true, Some(p)) => {
+                        let (s, s2) = &self.sentires[i];
+                        Some(&*cache[i].get_or_insert_with(|| (p.activas_de(s), p.activas_de(s2))))
+                    }
+                    _ => None,
+                };
+                g.repasar(&dia[i], act, c.aprende_repaso, c);
             }
         }
         self.dia.clear();

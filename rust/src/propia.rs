@@ -58,8 +58,23 @@ impl Unidad {
     }
 }
 
+/// Lo justo para saber si una unidad está activa, aparte y compacto (8 bytes): así la
+/// búsqueda de activas no lee la unidad entera. No se guarda: sale de `unidades`.
+#[derive(Clone, Copy)]
+struct Forma {
+    atomos: [u16; 3],
+    k: u8,
+    mover: bool,
+}
+
+impl Forma {
+    fn de(u: &Unidad) -> Forma {
+        Forma { atomos: u.atomos, k: u.k, mover: u.mover }
+    }
+}
+
 /// Lo que siente en un momento, en átomos.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct Sentir {
     pub estado: Vec<u16>,     // ordenados
     pub mover: [Vec<u16>; 5], // por movimiento (índices >= N_ESTADO), ordenados
@@ -69,6 +84,9 @@ pub struct Propia {
     rng: Azar,
     pub unidades: Vec<Unidad>, // las primeras N_ATOMOS son los átomos solos
     indice: Vec<Vec<u32>>,     // átomo -> unidades del banco cuyo primer átomo es ese
+    forma: Vec<Forma>,         // copia compacta de la forma de cada unidad
+    // lo que sintió en s2 y sus activas: si al elegir siente lo mismo (y no nació nadie), se reusan
+    previa: Option<(Sentir, Vec<(u32, u8)>)>,
     // huellas densas por unidad; `huella` lista las que no están en cero
     ev: Vec<f64>,
     ew: Vec<[f64; NACC]>,
@@ -174,8 +192,9 @@ impl Propia {
             unidades.push(Unidad::vacia());
         }
         let n = unidades.len();
+        let forma = unidades.iter().map(Forma::de).collect();
         Propia {
-            rng: Azar::new(semilla ^ 0x14_0b5e55), unidades, indice: vec![vec![]; N_ATOMOS],
+            rng: Azar::new(semilla ^ 0x14_0b5e55), unidades, indice: vec![vec![]; N_ATOMOS], forma, previa: None,
             ev: vec![0.0; n], ew: vec![[0.0; NACC]; n], marca: vec![false; n], huella: vec![],
             cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0,
             t: 0, nacidas: 0, reiniciadas: 0, molde: Sentir::default(), molde_a: 4, molde_d: 0.0,
@@ -206,7 +225,7 @@ impl Propia {
         }
         let probar = |a: usize, act: &mut Vec<(u32, u8)>| {
             for &u in &self.indice[a] {
-                let un = &self.unidades[u as usize];
+                let un = &self.forma[u as usize];
                 let mut m: u8 = 0x1f;
                 let mut ok = true;
                 for &b in &un.atomos[..un.k as usize] {
@@ -243,7 +262,10 @@ impl Propia {
 
     /// al elegir: guarda s y suma a cada acción lo que dicen sus unidades
     pub fn preferencias(&mut self, s: Sentir, h: &mut [f64; NACC], na: usize) {
-        let act = self.activas_de(&s);
+        let act = match self.previa.take() {
+            Some((ps, pa)) if ps == s => pa,
+            _ => self.activas_de(&s),
+        };
         self.sumar(&act, h, na);
         self.vs = self.valor(&act);
         self.ahora = s;
@@ -309,8 +331,9 @@ impl Propia {
         let act = self.activas_de(s);
         let v = self.valor(&act);
         if c.predice_propio > 0.0 {
-            self.activas2 = act;
+            self.activas2 = act.clone();
         }
+        self.previa = Some((s.clone(), act));
         v
     }
 
@@ -381,12 +404,14 @@ impl Propia {
         let decae = c.serotonina * c.huella;
         let n = self.activas.len() as f64;
         // las huellas se desvanecen; las que quedan en casi cero se sueltan
-        let (ev, ew, marca) = (&mut self.ev, &mut self.ew, &mut self.marca);
+        let (ev, ew, marca, forma) = (&mut self.ev, &mut self.ew, &mut self.marca, &self.forma);
         self.huella.retain(|&u| {
             let u = u as usize;
             ev[u] *= decae;
             let mut m = ev[u];
-            for x in ew[u].iter_mut() {
+            // las de movimiento solo usan ew[0] (el resto queda siempre en cero)
+            let usa = if forma[u].mover { 1 } else { NACC };
+            for x in ew[u][..usa].iter_mut() {
                 *x *= decae;
                 m = m.max(x.abs());
             }
@@ -523,6 +548,7 @@ impl Propia {
     /// la unidad `u` (re)nace: 2 o 3 átomos de lo que acaba de pasar (el estado y el
     /// movimiento que hizo), prefiriendo los raros, hasta que sea selectiva
     fn nacer(&mut self, u: usize, c: &Config) {
+        self.previa = None;
         let viejo = self.unidades[u];
         if viejo.k > 0 {
             let l = &mut self.indice[viejo.clave as usize];
@@ -537,6 +563,7 @@ impl Propia {
             self.huella.retain(|&x| x as usize != u);
         }
         self.unidades[u] = Unidad { nace: self.t, ..Unidad::vacia() };
+        self.forma[u] = Forma::de(&self.unidades[u]);
         let t = self.t.max(1) as f64;
         let mut pool: Vec<(u16, f64)> = self.ahora.estado.iter().copied().filter(|&a| a != 0)
             .map(|a| (a, self.cuenta[a as usize] as f64 / t)).collect();
@@ -580,6 +607,7 @@ impl Propia {
         atomos[..k].copy_from_slice(&elegidos);
         let mover = elegidos.iter().any(|&a| a as usize >= N_ESTADO);
         self.unidades[u] = Unidad { atomos, k: k as u8, clave, mover, nace: self.t, ..Unidad::vacia() };
+        self.forma[u] = Forma::de(&self.unidades[u]);
         self.indice[clave as usize].push(u as u32);
     }
 
@@ -592,6 +620,7 @@ impl Propia {
         }
         self.huella.clear();
         self.activas.clear();
+        self.previa = None;
         self.activas2.clear();
         self.cuerpo_antes = [f64::NAN; 7];
     }
@@ -609,5 +638,33 @@ impl Propia {
 
 crate::pieza!(Unidad { atomos, k, clave, mover, v, w, util, veces, nace, q });
 crate::pieza!(Sentir { estado, mover });
-crate::pieza!(Propia { rng, unidades, indice, ev, ew, marca, huella, cuenta, ahora, activas, elegida, vs, t,
-                      nacidas, reiniciadas, molde, molde_a, molde_d, activas2, cuerpo_antes });
+/// lo que se guarda de Propia (todo menos `forma`, que se rearma de `unidades` al cargar)
+struct Guardada {
+    rng: Azar, unidades: Vec<Unidad>, indice: Vec<Vec<u32>>, ev: Vec<f64>, ew: Vec<[f64; NACC]>, marca: Vec<bool>,
+    huella: Vec<u32>, cuenta: Vec<i64>, ahora: Sentir, activas: Vec<(u32, u8)>, elegida: usize, vs: f64, t: i64,
+    nacidas: i64, reiniciadas: i64, molde: Sentir, molde_a: usize, molde_d: f64, activas2: Vec<(u32, u8)>,
+    cuerpo_antes: [f64; 7],
+}
+
+crate::pieza!(Guardada { rng, unidades, indice, ev, ew, marca, huella, cuenta, ahora, activas, elegida, vs, t,
+                         nacidas, reiniciadas, molde, molde_a, molde_d, activas2, cuerpo_antes });
+
+impl crate::guardar::Pieza for Propia {
+    fn guardar(&self, e: &mut crate::guardar::Escritor) {
+        let p = self;
+        // mismos campos y en el mismo orden que antes: los archivos viejos siguen sirviendo
+        macro_rules! g { ($($f:ident),*) => { $( e.campo(stringify!($f)); crate::guardar::Pieza::guardar(&p.$f, e); )* } }
+        g!(rng, unidades, indice, ev, ew, marca, huella, cuenta, ahora, activas, elegida, vs, t,
+           nacidas, reiniciadas, molde, molde_a, molde_d, activas2, cuerpo_antes);
+    }
+    fn cargar(l: &mut crate::guardar::Lector) -> Self {
+        let g = Guardada::cargar(l);
+        let forma = g.unidades.iter().map(Forma::de).collect();
+        Propia {
+            rng: g.rng, unidades: g.unidades, indice: g.indice, forma, previa: None, ev: g.ev, ew: g.ew, marca: g.marca,
+            huella: g.huella, cuenta: g.cuenta, ahora: g.ahora, activas: g.activas, elegida: g.elegida, vs: g.vs,
+            t: g.t, nacidas: g.nacidas, reiniciadas: g.reiniciadas, molde: g.molde, molde_a: g.molde_a,
+            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes,
+        }
+    }
+}
