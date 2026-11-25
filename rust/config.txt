@@ -124,6 +124,7 @@ ESTRES_COBRA = 'sin_peso'    # (revisión, paso 2b; prendido) el estrés sube co
 INVIERNO = 'viejo'            # (revisión, paso 3a) en invierno no brotan fruta ni baya (3 de cada 5 brotes no hacen nada): "viejo" o "repartido" (el brote fuera de estación no se pierde: va a nuez o raíz, mitad y mitad, y si esa tampoco es de estación se pierde; siguen sus topes)
 CRECIDA = 'vieja'             # (revisión, paso 3b) la crecida pone en peligro el río y sus orillas de punta a punta (300-900 ticks): "vieja" o "vado" (3 filas en el medio del mapa quedan como estaban: siempre hay por dónde cruzar)
 AGUA_FRIA = 0                 # (revisión, paso 3c) cuánto baja la temperatura del aire estando parada en el agua (0 = viejo: plantarse a beber es gratis)
+CUEVA = 'vieja'               # (revisión, paso 3d) "vieja" (TEMP_CUEVA, menos que el día; descansar solo baja el cansancio) o "abriga" (la cueva está a EQUILIBRIO_BOSQUE.calor + 0,1 todo el año, y descansar despierta ahí baja la adenosina a la mitad de lo que la baja dormir)
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
 DOLOR = 6.0                   # (etapa 11: 3 -> 6) castigo directo por lastimarse (no pasa por el malestar: no se satura)
 RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)

@@ -1255,6 +1255,25 @@ Se planta menos (la mano), pero solo cambia una cosa por otra: pasa más frío y
 empeorar en todo. Plantarse no era una trampa que le quitara tiempo de comer: el costo solo agrega sufrimiento.
 Queda apagado.
 
+**d) La cueva no abriga (`CUEVA`) — apagado (`'vieja'`).** La cueva está a 0,6 (menos que el día) y descansar solo
+baja el cansancio. `'abriga'`: la cueva está a 0,7 todo el año y descansar despierta ahí baja la adenosina (a la
+mitad de lo que la baja dormir). Desde 13000:
+
+| | mano | propia |
+|---|---|---|
+| % hambre despierta | +0,2 (0,2) | +2,7 (2,2) |
+| peor 10k hambre | +0,2 (0,2) | +0,6 (1,0) |
+| % cruda < 0,15 | +0,1 (0,1) | +1,8 (2,0) |
+| % trabadas | −0,8 | +6,6 (1,9) |
+| desmayos | +0,9 | +5,4 (2,1) |
+| sueños | −19 (−19,6) | −12 (−10,6) |
+| % duerme en cueva | −2,6 (−8,1) | −0,7 (−5,5) |
+| % mal tope | 0 | 0 |
+
+En la mano no cambia nada; en la propia empeora (z ~2). Descansar despierta en la cueva le saca el sueño: duerme
+menos y casi nunca en la cueva (descansa ahí y después duerme afuera). El abrigo no hacía falta: el frío no es lo
+que la traba. Queda apagado.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

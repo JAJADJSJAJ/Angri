@@ -552,7 +552,8 @@ impl Bosque {
     pub fn temperatura(&self, x: i64, y: i64, c: &Config) -> f64 {
         let z = self.zona_en(x, y);
         if z == Z_CUEVA {
-            return c.temp_cueva;
+            // (revisión, paso 3d) la cueva abriga: un poco por encima del calor de equilibrio, todo el año
+            return if c.cueva_abriga { c.equilibrio[6] + 0.1 } else { c.temp_cueva };
         }
         let ts = [c.temp_dia, c.temp_dia + 0.1, c.temp_dia - 0.05, c.temp_dia - 0.2];
         let mut t = ts[self.estacion(c) as usize];

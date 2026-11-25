@@ -421,7 +421,13 @@ impl Angri {
                 self.cuerpo.rasparse();
                 self.evento = Evento::Lastima;
             }
-            DESCANSO => self.cuerpo.descansar(),
+            DESCANSO => {
+                self.cuerpo.descansar();
+                // (revisión, paso 3d) descansar despierta en la cueva baja el sueño (a la mitad que dormir)
+                if c.cueva_abriga {
+                    self.quimica.adenosina = (self.quimica.adenosina - c.adenosina_limpieza_sueno * 0.5).max(0.0);
+                }
+            }
             _ => {}
         }
     }

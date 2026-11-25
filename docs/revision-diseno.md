@@ -45,6 +45,7 @@ Regla para todo lo que sigue: de a un cambio, `angri comparar` con 256 pares y `
 - **Plantarse en el agua es gratis** (bebe cada tick sin costo): 22 % del tiempo plantada.
   **Medido (paso 3c), apagado** (`AGUA_FRIA = 0.2`): mano plantada −2,9 puntos pero frío +4,3 y nada mejora; propia algo peor.
 - **La cueva no abriga** (0,6, menos que el día) y descansar casi no hace nada.
+  **Medido (paso 3d), apagado** (`CUEVA = 'abriga'`): mano neutra, propia peor (cruda +1,8, z 2); duerme menos y casi nunca en la cueva.
 - **El desmayo regala** 0,35 de energía y agua: medio plato gratis.
 
 ## 4. Atajos hechos a mano (la etapa 14 de verdad)
