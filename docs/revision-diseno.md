@@ -39,6 +39,7 @@ Regla para todo lo que sigue: de a un cambio, `angri comparar` con 256 pares y `
 ## 3. El mundo
 - **Invierno**: no brotan fruta ni baya y lo que había se borra en ~2.000 ticks; quedan nueces (hay que golpearlas)
   y raíces (todas del otro lado del río). 3 de cada 5 brotes son fruta o baya y en invierno no hacen nada.
+  **Medido (paso 3a), apagado** (`INVIERNO = 'repartido'`): neutro en las dos mentes; el hambre de invierno no es mayor que la de verano.
 - **La crecida corta el mapa** (río más orillas en peligro 300–900 ticks).
 - **Plantarse en el agua es gratis** (bebe cada tick sin costo): 22 % del tiempo plantada.
 - **La cueva no abriga** (0,6, menos que el día) y descansar casi no hace nada.

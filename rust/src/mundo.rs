@@ -662,7 +662,11 @@ impl Bosque {
             }
         }
         if self.rng.random() < c.prob_brote {
-            let t = self.rng.choice(&[FRUTA, FRUTA, BAYA, NUEZ, RAIZ]);
+            let mut t = self.rng.choice(&[FRUTA, FRUTA, BAYA, NUEZ, RAIZ]);
+            // (revisión, paso 3a) en invierno el brote de fruta o baya no se pierde: va a nueces o raíces
+            if c.invierno == 1 && !da(t, self.estacion(c)) {
+                t = self.rng.choice(&[NUEZ, RAIZ]);
+            }
             self.brotar(t, false, c);
         }
         if self.rng.random() < c.prob_nueva_novedad

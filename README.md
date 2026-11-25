@@ -1202,6 +1202,28 @@ referencia no cambia.
 
 **(latente) El tálamo mira 5 necesidades** (`extra.rs`, `urg` de 0..5: no ve agua ni calor). Está apagado
 (`TALAMO = False`, medido en la etapa 5), así que hoy no afecta nada; anotado para cuando se lo vuelva a probar.
+### Paso 3: el mundo
+
+Cambios del mundo para que sea más justo, no más fácil a mano. Ojo: un mundo más fácil mejora números sin que
+Angri aprenda mejor, así que cada uno se justifica por justicia y se mide con métricas crudas. Encima del paso 2,
+`angri comparar 200000 256 "MUNDO=bosque OBJETOS=True" "... <OPCION>"`, B − A (z), mano y `RASGOS=propios`.
+
+**a) Invierno (`INVIERNO`) — apagado (`'viejo'`).** 3 de cada 5 brotes son fruta o baya y fuera de estación no hacen
+nada. `'repartido'`: el brote fuera de estación va a nuez o raíz (mitad y mitad, con sus topes). Desde 10000:
+
+| | mano | propia |
+|---|---|---|
+| % hambre despierta | −0,2 (−0,2) | −0,3 (−0,3) |
+| peor 10k hambre | −0,7 (−0,5) | +1,1 (1,8) |
+| % cruda < 0,15 | −0,4 (−0,5) | −0,6 (−0,7) |
+| % hambre inv | +0,3 (0,2) | +0,2 (0,2) |
+| comidas | +116 (2,3) | +12 (0,4) |
+| % mal tope | 0 | 0 |
+
+Neutro: come más (la mano) pero no pasa menos hambre, ni siquiera en invierno. El hambre de invierno no es mayor que
+la de verano (mano 27,7 contra 29,6): lo que falta no es comida en el mundo sino ir a buscarla. Como solo agrega
+comida sin arreglar nada medible, queda apagado (el mundo más simple).
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
