@@ -559,6 +559,10 @@ impl Bosque {
         if self.noche(c) {
             t -= c.frio_noche;
         }
+        // (revisión, paso 3c) estar parada en el agua enfría
+        if c.agua_fria != 0.0 && self.g[self.i(x, y)] == AGUA {
+            t -= c.agua_fria;
+        }
         let tapado = self.objetos && self.techo[self.i(x, y)] > 0;
         if !tapado {
             if self.lluvia != 0 && z != Z_BOSQUE {

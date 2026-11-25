@@ -1238,6 +1238,23 @@ río y sus orillas pasan a peligro de punta a punta. `'vado'`: 3 filas en el med
 
 Neutro: la crecida es rara (pocas veces por vida) y cruzar el peligro raspa pero no traba. Queda apagado.
 
+**c) Plantarse en el agua es gratis (`AGUA_FRIA`) — apagado (0).** Parada en el agua bebe cada tick sin costo. Con
+`AGUA_FRIA = 0,2` el agua enfría (el aire ahí está 0,2 más frío). Desde 12000:
+
+| | mano | propia |
+|---|---|---|
+| % plantada | −2,9 (−6,4) | −0,2 (−1,6) |
+| % frío | +4,3 (14,4) | +1,6 (8,8) |
+| % hambre despierta | +0,4 (0,3) | +1,6 (1,2) |
+| peor 10k hambre | −1,2 (−0,7) | +0,8 (1,5) |
+| % cruda < 0,15 | +0,8 (0,7) | +1,2 (1,2) |
+| % trabadas | −0,4 | +7,0 (1,9) |
+| % mal tope | 0 | 0 |
+
+Se planta menos (la mano), pero solo cambia una cosa por otra: pasa más frío y no come mejor; la propia tiende a
+empeorar en todo. Plantarse no era una trampa que le quitara tiempo de comer: el costo solo agrega sufrimiento.
+Queda apagado.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

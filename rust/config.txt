@@ -123,6 +123,7 @@ CRITICO_CUERPO = 2            # (revisión, paso 2a; solo con RASGOS=mano: con l
 ESTRES_COBRA = 'sin_peso'    # (revisión, paso 2b; prendido) el estrés sube con hambre, sed, frío y heridas, y además pesa en el malestar: cobra doble. "doble" (viejo), "sin_peso" (no pesa en el malestar: PESO_NECESIDAD.estres = 0) o "solo_golpes" (pesa, pero solo sube con golpes, raspones, mordidas y enfermedad, no con lo que ya cuenta otra necesidad)
 INVIERNO = 'viejo'            # (revisión, paso 3a) en invierno no brotan fruta ni baya (3 de cada 5 brotes no hacen nada): "viejo" o "repartido" (el brote fuera de estación no se pierde: va a nuez o raíz, mitad y mitad, y si esa tampoco es de estación se pierde; siguen sus topes)
 CRECIDA = 'vieja'             # (revisión, paso 3b) la crecida pone en peligro el río y sus orillas de punta a punta (300-900 ticks): "vieja" o "vado" (3 filas en el medio del mapa quedan como estaban: siempre hay por dónde cruzar)
+AGUA_FRIA = 0                 # (revisión, paso 3c) cuánto baja la temperatura del aire estando parada en el agua (0 = viejo: plantarse a beber es gratis)
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
 DOLOR = 6.0                   # (etapa 11: 3 -> 6) castigo directo por lastimarse (no pasa por el malestar: no se satura)
 RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)

@@ -43,6 +43,7 @@ Regla para todo lo que sigue: de a un cambio, `angri comparar` con 256 pares y `
 - **La crecida corta el mapa** (río más orillas en peligro 300–900 ticks).
   **Medido (paso 3b), apagado** (`CRECIDA = 'vado'`): neutro en las dos mentes (la crecida es rara).
 - **Plantarse en el agua es gratis** (bebe cada tick sin costo): 22 % del tiempo plantada.
+  **Medido (paso 3c), apagado** (`AGUA_FRIA = 0.2`): mano plantada −2,9 puntos pero frío +4,3 y nada mejora; propia algo peor.
 - **La cueva no abriga** (0,6, menos que el día) y descansar casi no hace nada.
 - **El desmayo regala** 0,35 de energía y agua: medio plato gratis.
 
