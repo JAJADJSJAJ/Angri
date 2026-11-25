@@ -1440,6 +1440,35 @@ larga reparte ese ruido sobre más pasos; con γ más alto, además, el V tiene 
 aprenderlo. Con 200.000 ticks no le alcanza. Lo que hacía falta para que el golpe llegue a quien lo merece no era
 mirar más atrás sino ver mejor qué paso acerca a qué (el f).
 
+**Paso 4 terminado.** Lo que regala cada receta a la mano (lo que la propia tiene que ganar sola): `alivia()` ~15
+puntos de crudas (sobre todo sed), el bit "veo comida" del crítico ~15 (sobre todo hambre), "voy hacia la comida"
+~2,5; los lugares por necesidad nada (sacados). En la propia: un solo crítico empeora, huellas largas empeoran, la
+distancia fina con "me acerco / me alejo" mejora 14 puntos (prendida).
+
+### Cierre de la revisión: mano contra propia
+
+Con todo lo que quedó prendido (`FOCO_CIEGO='neutro_todo'`, `CRITICO_CUERPO=2` solo mano, `ESTRES_COBRA='sin_peso'`,
+`ATAJO_LUGARES=False`, `DISTANCIA_PROPIA='fina'` solo propia), 512 pares desde 31000, A = mano, B = propia, contra la
+base del paso 0 (256 pares desde 1000):
+
+| | mano paso 0 | propia paso 0 | mano hoy | propia hoy | z hoy |
+|---|---|---|---|---|---|
+| % hambre | 38,6 | 58,2 | 25,7 | 42,0 | 14,7 |
+| % cruda < 0,15 | 40,4 | 62,4 | 29,2 | 45,7 | 17,4 |
+| peor 10k hambre | 87,4 | 94,8 | 75,9 | 89,0 | 12,5 |
+| % trabadas | 16,8 | 39,8 | 6,3 | 15,0 | 4,6 |
+| racha hambre | 2.409 | 2.461 | 2.222 | 2.392 | 5,3 |
+| % hambre prim / ver / oto / inv | 36 / 42 / 34 / 42 | 55 / 60 / 54 / 64 | 26 / 28 / 21 / 28 | 42 / 44 / 34 / 47 | |
+| % sed | | | 23,7 | 34,0 | 11,3 |
+| desmayos | | | 31 | 52 | 10,8 |
+| % duerme refugio propio | | | 1,7 | 6,3 | 9,9 |
+| % mal tope | 0 | 0 | 0 | 0 | |
+
+Las dos mentes mejoraron mucho (crudas −11 y −17 puntos, vidas trabadas a un tercio) y el malestar nunca tocó el tope.
+La propia sigue ~16 puntos atrás en 200.000 ticks, más o menos lo que regalan las dos recetas grandes de la mano
+(`alivia()` y "veo comida"): la vara dice que lo que le falta a la propia es aprender sola esas dos cosas, qué alivia
+qué y "hay salida a la vista". Sigue durmiendo en refugio propio 4 veces más que la mano.
+
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.

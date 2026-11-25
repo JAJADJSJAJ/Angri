@@ -54,6 +54,10 @@ Regla para todo lo que sigue: de a un cambio, `angri comparar` con 256 pares y `
 en el crítico y los lugares por necesidad. Sacarlos de a uno en la mano mide cuánto "regala la receta": esa es la vara
 para la propia. En la propia: un solo crítico (hoy suma la V de la tabla y la de las unidades, que persiguen el mismo
 error), distancia más fina y peso por "me acerco / me alejo", huellas más largas (λ 0,9, γ 0,97: hoy ~4 pasos).
+**HECHO (ver README, «Paso 4»).** Regalan: `alivia()` ~15 puntos de crudas, "veo comida" ~15, `dc` ~2,5 (quedan);
+los lugares nada (sacados, `ATAJO_LUGARES=False`). Propia: un solo crítico empeora (queda `'ambos'`), huellas largas
+empeoran, distancia fina con "me acerco / me alejo" mejora 14 puntos (`DISTANCIA_PROPIA='fina'`). Cierre: mano 25,7 /
+propia 42,0 % hambre (paso 0: 38,6 / 58,2).
 
 ## Orden
 0 → 1 → 2 → 3 → 4. Primero que vea y mida bien; después que no se trabe; después que el mundo sea justo; recién
