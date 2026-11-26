@@ -1818,3 +1818,25 @@ Dividir el ritmo la deja sin aprender: apagado. El decaimiento destraba vidas y 
 pérdida de plasticidad (pesos sin freno). Pero se lastima 3,6 veces más: lo que olvida incluye cuidarse. Sigue peor que
 la propia (0,27 a los 50 años). Queda apagado por ahora (ver docs/proxima-etapa.md): falta un freno que no borre el
 cuidado (decaer solo los rasgos-sesgo, o reiniciar como la propia).
+
+### Por qué el freno borraba el cuidado, y el freno por uso (2026-11-26)
+
+La mano solo anticipa un peligro con los pesos de rasgos raros ("peligro al lado" 54 / 20+n / 450+n, "fuego al lado"
+750+n): el crítico no ve la celda de al lado. Esos rasgos aprenden pocos ticks por encuentro, pero `activos` nunca se
+vacía, así que `DECAE_ACTOR` los achicaba **todos los ticks** (vida media ~69 k ticks con 1e-5; una mordida cada ~37 k).
+Los rasgos de comer y moverse se refrescan cada tick: por eso destrababa y a la vez olvidaba cuidarse.
+
+`DECAE_ACTOR_MODO`: `'reloj'` (el viejo), `'presentes'` (solo achica los rasgos de alguna acción de este tick: olvida
+por uso), `'huella'` (proporcional a |huella|). Contra la mano sin atajos, 512 pares × 300 k (Actions):
+
+| | malestar | hambre | trabadas | desmayos | heridas | mordidas |
+|---|---|---|---|---|---|---|
+| sin freno | 0,408 | 45,5 % | 20,5 % | 94 | 78 | 10,6 |
+| `reloj` 1e-4 | 0,406 | 45,3 | 0,8 | 90 | 237 | |
+| **`presentes` 1e-4** | **0,363** (z −15) | **35,8** | **0,6** | **65** | 73 | 15,1 |
+| `huella` 1e-4 | 0,386 | 40,5 | 7,4 | 82 | 75 | 12,2 |
+| `presentes` 1e-5 | 0,388 | 40,6 | 9,6 | 80 | 78 | 12,0 |
+
+Vidas largas, `presentes` 1e-4 (5 M × 128, `--desde 60000`): **malestar plano 0,38 → 0,36 en 50 años** (sin freno
+0,42 → 0,51; z −14,5 a los 50), hambre 68 → 34 %, **trabadas 68 → 0 %**, desmayos 2.365 → 1.025. Costo: heridas
+336 → 662 y mordidas 131 → 270 (×2; el freno viejo daba ×3,6). La propia está en 0,27 a los 50 años.
