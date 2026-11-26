@@ -67,7 +67,7 @@ pub struct Config {
 }
 
 /// Claves que pueden faltar (configs viejas): valen lo de por defecto.
-const OPCIONALES: [(&str, &str); 44] = [
+const OPCIONALES: [(&str, &str); 46] = [
     ("RITMO_RARO", "1"), ("REPASO_PROPIO", "True"), ("NACER_SORPRESA", "False"), ("REPASO_PROPIO_CADA", "1"), ("PREDICE_PROPIO", "0"), ("PREDICE_ACTOR", "0"), ("PREDICE_TODAS", "0"), ("CRITICO_CUERPO_PROPIO", "0"), ("SALIDA_PROPIA", "0"), ("SALIDA_UMBRAL", "0.03"), ("SALIDA_DEBUG", "False"), ("SALIDA_LEJOS", "0"), ("SALIDA_LEJOS_PESO", "1"),
     ("TOPE_ACTIVA", "0.2"),
     ("RASGOS", "'mano'"), ("PROPIOS", "4096"), ("NUEVOS_POR_TICK", "4"), ("REEMPLAZO_CADA", "100"),
