@@ -1747,3 +1747,37 @@ mucho menos seguido que la mano (1.033 contra 2.680 comidas) y aprende más lent
 
 Qué sigue: vidas largas (5 M de ticks, 128 pares, `--desde 60000`) mano contra propia con esto prendido, en Actions
 (run 45901483641), para ver si la propia pasa a la mano antes del año 16.
+
+### Aprender las recetas, vidas largas con todo lo prendido (2026-11-26)
+
+128 pares de 5 M de ticks (50 años), A = mano, B = propia con `PREDICE_ACTOR=16` y `SALIDA_PROPIA=3`,
+`angri comparar 5000000 128 "MUNDO=bosque OBJETOS=True" "... RASGOS=propios" --desde 60000`, **medido en GitHub
+Actions** (run 45901483641, 20 partes, ~19 min). B − A (z):
+
+| | mano | propia | z |
+|---|---|---|---|
+| malestar (toda la vida) | 0,414 | 0,268 | −10,0 |
+| malestar año 1 / 2 / 3 | 0,327 / 0,297 / 0,303 | 0,395 / 0,331 / 0,306 | 6,8 / 2,9 / 0,2 |
+| malestar año 4 / 5 / 10 | 0,318 / 0,320 / 0,382 | 0,285 / 0,274 / 0,256 | −2,3 / −3,0 / −8,1 |
+| malestar año 16 / 30 / 50 | 0,415 / 0,434 / 0,459 | 0,258 / 0,263 / 0,274 | −9,3 / −10,0 / −10,3 |
+| % hambre | 52,2 | 19,7 | −9,5 |
+| % cruda < 0,15 | 49,0 | 19,0 | −10,6 |
+| % trabadas | 44,5 | 10,9 | −6,3 |
+| % malestar alto | 54,8 | 17,8 | −10,1 |
+| racha alta (ticks) | 1,36 M | 0,55 M | −4,2 |
+| desmayos | 1.744 | 531 | −9,7 |
+| heridas / mordidas | 287 / 134 | 451 / 226 | 8,0 / 4,7 |
+| % duerme refugio propio | 4,2 | 6,2 | 1,2 |
+| % mal tope | 0 | 0 | |
+
+**La propia alcanza a la mano en el año 3 y la pasa desde el año 4** (antes de estos pasos: año 16 y ~34, con 24 pares).
+Desde ahí la distancia crece y se queda en ~0,17–0,19 de malestar (z ~−10) hasta el año 50. Las dos cosas pasan a la
+vez: la propia sigue mejorando (0,40 → 0,25) y **la mano empeora toda la vida** (0,30 en el año 2 → 0,46 en el 50; en
+vidas largas pasa la mitad del tiempo con hambre y se traba el 44 %). Por qué, probablemente: las recetas de la mano
+(`alivia()`, "veo comida") son atajos que no se corrigen cuando el bosque cambia (se vacía de comida cerca de donde
+vive, los objetos se acumulan), y la mano termina pasando el día con cosas en la mano y tomando agua (285.000 veces);
+la propia aprende de lo que predice y se adapta. Costo de la propia: se lastima más (heridas +57 %, mordidas +68 %):
+se mueve más y huye más. El malestar nunca tocó el tope, y el bucle de sufrimiento de las vidas largas (2/3 del tiempo
+con malestar alto) en la propia bajó a 18 %; en la mano sigue (55 %).
+
+Qué sigue (paso 3 del orden): sacar de la mano `alivia()` y el bit "veo comida" y volver a la etapa 14/15.
