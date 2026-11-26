@@ -1670,7 +1670,7 @@ y la sed sube parejo; lo que la tiene con sed no es no saber que el agua alivia 
 tomar. El malestar nunca toca el tope. **Queda apagado (`PREDICE_TODAS = 0`)**; la vida por defecto no cambia y
 `rust/pruebas/referencia.txt` no se regenera; guardar y retomar con la propia dan `IDÉNTICO` (con 0 y con 2).
 
-## Aprender las recetas, paso 6: que la salida llegue más lejos que un paso (2026-11-26) — sin medir, apagado
+## Aprender las recetas, paso 6: que la salida llegue más lejos que un paso (2026-11-26) — empeora, apagado
 
 Idea: `SALIDA_PROPIA` solo mira el alivio que predicen los movimientos de *ahora*; si la comida está a varios pasos,
 ningún movimiento la ve. `SALIDA_LEJOS` (solo propia, con `SALIDA_PROPIA`, `PREDICE_ACTOR` y `PREDICE_TODAS` < 2): las
@@ -1678,9 +1678,24 @@ unidades de movimiento aprenden con TD, en el último casillero de `q` (libre co
 cambiar el formato), a qué franja de salida lleva cada movimiento, y eso se suma a la elección × `SALIDA_LEJOS_PESO`.
 1 = la franja del estado siguiente (variante a); 2 = horizonte largo: franja siguiente × 0,1 + 0,9 × la mejor salida
 predicha desde ahí (variante b hecha con TD en vez de una ventana de N pasos). Nada dice qué es comida.
+`angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... SALIDA_LEJOS=2 SALIDA_LEJOS_PESO=1" -j 2`
+(medido en el i5, las dos semillas a la vez; terminaron 07:05, justo al empezar el corte), B − A (z):
 
-**Medición pendiente**: la tanda (`SALIDA_LEJOS=2 SALIDA_LEJOS_PESO=1`, 256 pares, semillas 40000 y 50000, las dos a la
-vez con `-j 2`) no terminó antes del corte de luz del 2026-11-26. Para relanzar en el i5:
-`cd ~/medir/Angri/rust && nohup sh paso6.sh &` (resultados en `paso6_40000.txt` y `paso6_50000.txt`; otra variante con
-`V="SALIDA_LEJOS=1 ..." sh paso6.sh`). Queda apagado (`SALIDA_LEJOS = 0`); la vida por defecto no cambia, la referencia no
-se regenera, y `angri retomar` con la propia da `IDÉNTICO` (con 0 y con 2).
+| | 40000 | 50000 |
+|---|---|---|
+| base: % hambre | 34,2 | 34,9 |
+| malestar | +0,010 (1,7) | +0,002 (0,4) |
+| % hambre | +2,7 (1,9) | 0,0 (0,0) |
+| % cruda < 0,15 | +1,7 (1,5) | 0,0 |
+| heridas | 53,6 → 72,1 (7,8) | 53,9 → 75,6 (9,1) |
+| desmayos | +5,3 (2,0) | +0,6 |
+| comidas | −36 (−1,8) | −4 |
+| % trabadas | 7,8 → 11,3 | 8,2 → 7,8 |
+| % mal tope | 0 | 0 |
+
+Empeora: el hambre no baja en ninguna semilla y las heridas suben ~40 % en las dos (z 8–9). Por qué, probablemente: lo
+que aprende es "a qué franja de salida lleva este movimiento", y la salida más alta está donde hay alivio *o peligro*
+(las unidades predicen también la integridad); el empuje la manda hacia donde pasan cosas, y ahí se lastima. Además el
+peso 1 está en otra escala que el empuje de `PREDICE_ACTOR`. La variante 1 no se midió. **Queda apagado
+(`SALIDA_LEJOS = 0`)**; la vida por defecto no cambia, la referencia no se regenera, y `angri retomar` con la propia da
+`IDÉNTICO` (con 0 y con 2).
