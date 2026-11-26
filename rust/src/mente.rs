@@ -655,8 +655,14 @@ impl Ganglios {
                 }
             }
         }
+        // (mano) ritmo dividido por cuántos rasgos tiene la acción elegida, como la propia
+        let div = if c.actor_por_activos { (self.rasgos.de(self.a).len().max(1)) as f64 } else { 1.0 };
+        let encoge = 1.0 - c.decae_actor;
         for &i in &self.activos {
-            self.w[i] += Self::ritmo(c.aprende_actor, self.exp_w[i], c) * delta * hw[i];
+            self.w[i] += Self::ritmo(c.aprende_actor, self.exp_w[i], c) / div * delta * hw[i];
+            if c.decae_actor > 0.0 {
+                self.w[i] *= encoge;
+            }
         }
         if let Some(p) = &mut self.propia {
             p.aprender(delta, &self.probs, self.a, self.rasgos.na as usize, cuerpo, c);
@@ -743,7 +749,8 @@ impl Ganglios {
             let g = gv[k];
             if g != 0.0 {
                 let i = gi[k] as usize;
-                self.w[i] += fraccion * rho * Self::ritmo(c.aprende_actor, self.exp_w[i], c) * delta * g;
+                let div = if c.actor_por_activos { (m.rasgos.de(m.a).len().max(1)) as f64 } else { 1.0 };
+                self.w[i] += fraccion * rho * Self::ritmo(c.aprende_actor, self.exp_w[i], c) / div * delta * g;
             }
         }
         delta
