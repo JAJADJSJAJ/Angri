@@ -646,6 +646,20 @@ impl Propia {
                 }
             }
         }
+        if c.decae_propio > 0.0 {
+            // olvidar por uso: solo las unidades activas este tick
+            let encoge = 1.0 - c.decae_propio;
+            for &(u, _) in &self.activas {
+                let un = &mut self.unidades[u as usize];
+                if un.mover {
+                    un.w[0] *= encoge;
+                } else {
+                    for b in 0..na {
+                        un.w[b] *= encoge;
+                    }
+                }
+            }
+        }
         if c.predice_propio > 0.0 || c.predice_actor > 0.0 {
             self.predecir(cuerpo, n, c);
         }

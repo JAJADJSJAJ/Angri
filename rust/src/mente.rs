@@ -657,13 +657,14 @@ impl Ganglios {
         }
         // (mano) ritmo dividido por cuántos rasgos tiene la acción elegida, como la propia
         let div = if c.actor_por_activos { (self.rasgos.de(self.a).len().max(1)) as f64 } else { 1.0 };
-        let encoge = 1.0 - c.decae_actor;
+        let sp = c.decae_solo_positivos;
+        let encoge_de = |w: f64| if sp && w <= 0.0 { 1.0 } else { 1.0 - c.decae_actor };
         for &i in &self.activos {
             self.w[i] += Self::ritmo(c.aprende_actor, self.exp_w[i], c) / div * delta * hw[i];
             if c.decae_actor > 0.0 {
                 match c.decae_actor_modo {
-                    0 => self.w[i] *= encoge,
-                    2 => self.w[i] *= 1.0 - c.decae_actor * hw[i].abs().min(1.0),
+                    0 => self.w[i] *= encoge_de(self.w[i]),
+                    2 => if !(sp && self.w[i] <= 0.0) { self.w[i] *= 1.0 - c.decae_actor * hw[i].abs().min(1.0) },
                     _ => {}
                 }
             }
@@ -677,8 +678,22 @@ impl Ganglios {
                     if !vistos[..nv].contains(&i) {
                         vistos[nv] = i;
                         nv += 1;
-                        self.w[i as usize] *= encoge;
+                        let k = i as usize;
+                        self.w[k] *= encoge_de(self.w[k]);
                     }
+                }
+            }
+        }
+        if c.decae_actor > 0.0 && c.decae_actor_modo == 3 {
+            // olvidar por hacer: solo los rasgos de la acción elegida, una vez cada uno
+            let mut vistos = [0u16; MAXR];
+            let mut nv = 0usize;
+            for &i in self.rasgos.de(self.a) {
+                if !vistos[..nv].contains(&i) {
+                    vistos[nv] = i;
+                    nv += 1;
+                    let k = i as usize;
+                    self.w[k] *= encoge_de(self.w[k]);
                 }
             }
         }
