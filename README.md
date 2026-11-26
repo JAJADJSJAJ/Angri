@@ -1781,3 +1781,25 @@ se mueve más y huye más. El malestar nunca tocó el tope, y el bucle de sufrim
 con malestar alto) en la propia bajó a 18 %; en la mano sigue (55 %).
 
 Qué sigue (paso 3 del orden): sacar de la mano `alivia()` y el bit "veo comida" y volver a la etapa 14/15.
+
+## Sacar los atajos de la mano y frenar sus pesos (2026-11-26)
+
+**Por qué empeora la mano** (leído del código, a confirmar con un registro de pesos): sus pesos del actor no tienen
+freno (`CALMA = 1e12`: el ritmo nunca baja, y nada los achica), los rasgos que están casi siempre prendidos hacen de
+sesgo y juntan el error de toda la vida, la política se vuelve casi fija (temperatura 0,3) y el gradiente `1 − π` se
+apaga; las recetas fijas no siguen al bosque que cambia. La propia divide por unidades activas y reinicia lo que no sirve.
+
+**Sacar `alivia()` y "veo comida"** (`ATAJO_ALIVIA=False ATAJO_VEO_COMIDA=False`, 512 pares × 300 k, Actions): hambre
+24,3 → 45,5 % (z 21), desmayos 43 → 94, trabadas 4,7 → 20,5 %, malestar +0,107. La mano dependía de esas recetas.
+
+**Frenos a los pesos de la mano**, contra la mano sin atajos (512 pares × 300 k, Actions):
+
+| llave | hambre | trabadas | desmayos | heridas |
+|---|---|---|---|---|
+| (base sin atajos) | 45,5 % | 20,5 % | 94 | 78 |
+| `ACTOR_POR_ACTIVOS=True` (ritmo / rasgos de la acción) | 67,7 | 75,6 | 151 | 54 |
+| `DECAE_ACTOR=1e-5` (los pesos activos se achican) | 41,5 (z −4,3) | 7,8 | 82 | 113 |
+| `DECAE_ACTOR=1e-4` | 45,3 | 0,8 | 90 | 237 |
+
+Dividir el ritmo la deja sin aprender: apagado. El decaimiento destraba vidas y baja algo el hambre, pero olvida cuidarse
+(heridas +45 % / ×3). Queda apagado hasta ver vidas largas (5 M × 128) con 1e-5 y 1e-6.
