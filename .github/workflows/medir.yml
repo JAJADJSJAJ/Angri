@@ -4,8 +4,6 @@
 name: medir
 
 on:
-  push:  # TEMPORAL: prueba chica en la rama
-    branches: [medir-en-actions]
   workflow_dispatch:
     inputs:
       ticks:
@@ -36,12 +34,12 @@ permissions:
   contents: read
 
 env:
-  TICKS: ${{ inputs.ticks || '20000' }}
-  PARES: ${{ inputs.pares || '8' }}
+  TICKS: ${{ inputs.ticks }}
+  PARES: ${{ inputs.pares }}
   DESDE: ${{ inputs.desde || '0' }}
   VAR_A: ${{ inputs.variante_a }}
-  VAR_B: ${{ inputs.variante_b || 'MUNDO=bosque' }}
-  PARTES: ${{ inputs.partes || '2' }}
+  VAR_B: ${{ inputs.variante_b }}
+  PARTES: ${{ inputs.partes || '16' }}
 
 jobs:
   compilar:
