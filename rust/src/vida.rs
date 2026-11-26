@@ -256,18 +256,23 @@ impl Angri {
             let v = &mut self.cuerpo.v[ENERGIA];
             *v = (*v - c.gasto_energia_mover * (carga + esfuerzo)).max(0.0);
         }
+        let mut fin = None;
+        let antes_desmayo = self.malestar;
         if let Mundo::B(b) = &self.mundo {
             let aire = b.temperatura(self.x, self.y, c);
             self.cuerpo.clima(self.despierto, se_movio, aire, c);
             if self.cuerpo.v[INTEGRIDAD] <= 0.0 {
-                self.desmayo(c);
+                fin = self.desmayo(c);
             }
         }
-        let antes = self.malestar;
+        // (sin DESMAYO_FINAL el desmayo ya dejó self.malestar en el de después y el paso no se aprende)
+        let antes = if fin.is_some() { antes_desmayo } else { self.malestar };
         let malestar = self.cuerpo.malestar(c);
         self.malestar = malestar;
         if self.despierto && self.vieja.is_none() {
-            let mut recompensa = c.recompensa_alivio * (antes - malestar) - c.recompensa_estado * malestar;
+            // con DESMAYO_FINAL el último paso se aprende con el malestar de cuando cayó
+            let m_paso = fin.unwrap_or(malestar);
+            let mut recompensa = c.recompensa_alivio * (antes - m_paso) - c.recompensa_estado * m_paso;
             if (encontrado == PELIGRO && (se_movio || !bosque)) || mordido || quemado {
                 recompensa -= c.dolor;
             }
@@ -283,7 +288,7 @@ impl Angri {
             let tacto = self.tacto(c);
             let clima = self.clima(c);
             self.mente.aprender(recompensa, &sentida, &self.cuerpo.v, foco, (self.x, self.y), tacto.as_ref(),
-                                clima, self.cuerpo.n, c);
+                                clima, self.cuerpo.n, fin.is_some(), c);
             if let Some(t) = &mut self.talamo {
                 t.aprender(self.mente.dopamina, c);
             }
@@ -295,6 +300,9 @@ impl Angri {
                     h.anotar(m, self.mente.ultimo_sentir.take(), c);
                 }
             }
+        }
+        if fin.is_some() {
+            self.mente.olvidar_paso(); // ya aprendió el final: lo que sigue es otro episodio
         }
         self.quimica.actualizar(self.despierto, malestar, self.cuerpo.v[ESTRES], sorpresa, c);
         self.regular_sueno(c);
@@ -413,12 +421,20 @@ impl Angri {
                 self.cuerpo.rasparse();
                 self.evento = Evento::Lastima;
             }
-            DESCANSO => self.cuerpo.descansar(),
+            DESCANSO => {
+                self.cuerpo.descansar();
+                // (revisión, paso 3d) descansar despierta en la cueva baja el sueño (a la mitad que dormir)
+                if c.cueva_abriga {
+                    self.quimica.adenosina = (self.quimica.adenosina - c.adenosina_limpieza_sueno * 0.5).max(0.0);
+                }
+            }
             _ => {}
         }
     }
 
-    fn desmayo(&mut self, c: &Config) {
+    /// Devuelve el malestar de cuando cayó si el desmayo es final de episodio (DESMAYO_FINAL).
+    fn desmayo(&mut self, c: &Config) -> Option<f64> {
+        let fin = (c.desmayo_final && self.vieja.is_none()).then(|| self.cuerpo.malestar(c));
         if let (Some(o), Mundo::B(b)) = (self.lleva.take(), &mut self.mundo) {
             b.tirar(self.x, self.y, o);
         }
@@ -456,10 +472,11 @@ impl Angri {
         v[AGUA_N] = v[AGUA_N].max(c.desmayo_resto);
         self.desmayos += 1;
         self.evento = Evento::Desmaya;
-        if self.vieja.is_none() {
+        if self.vieja.is_none() && fin.is_none() {
             self.mente.olvidar_paso();
         }
         self.malestar = self.cuerpo.malestar(c);
+        fin
     }
 
     fn regular_sueno(&mut self, c: &Config) {

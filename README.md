@@ -71,6 +71,22 @@ poca comida (tope de 10) y 5 peligros que deambulan.
 La comida ahora crece alrededor de 3 **fuentes fijas** (como árboles frutales), así que el mundo tiene
 estructura que vale la pena aprender.
 
+### Medir en GitHub Actions
+
+Como el repo es público, GitHub presta gratis runners de 4 núcleos: `.github/workflows/medir.yml`
+reparte un `angri comparar` en hasta 20 porciones en paralelo (cada una con `--desde` y `-j 4`, con
+`nice`), cada porción guarda sus resultados crudos por par (`--crudo parte.tsv`) y un último trabajo los
+junta con `angri juntar crudos/*.tsv`. **Juntar da exactamente la misma tabla que una sola corrida** con
+los mismos pares (el número se guarda con todos sus decimales y los pares se ordenan por semilla:
+probado con 16 pares de 20.000 ticks en 1 porción contra 4). La tabla sale en el resumen de la corrida y
+como artifact `tabla`.
+
+    rust/medir-actions.sh 300000 256 "" "MUNDO=bosque" 16      # lanza, espera y baja la tabla
+    gh workflow run medir.yml -f ticks=300000 -f pares=256 -f variante_b="MUNDO=bosque" -f partes=16
+
+Por qué: así las mediciones grandes no ocupan la PC ni el i5. El i5 queda de respaldo (y para vidas
+de más de ~5 h por porción, el tope de un trabajo de Actions).
+
 ## Etapa 2 — estado
 
 Funciona: sin saber qué es la comida ni el peligro, aprende solo y **en vidas largas supera a los reflejos innatos**.
@@ -986,12 +1002,716 @@ Las mediciones largas ahora corren en el i5 por SSH (`~/medir/Angri`, aparte de 
 
 - **Unidades que predicen** (`PREDICE_PROPIO`): cada unidad aprende además a predecir (TD, γ 0,9) cuánto suben o bajan la energía, la integridad y el calor, y eso cuenta en su utilidad para no ser reemplazada. Barrido con peso 0,3, 1 y 3: malestar 0,510, 0,506 y 0,507 contra 0,493, come menos. No ayuda; queda apagado (0). Ojo: casi todas las variantes caían en ~0,506–0,512, así que medí de nuevo con otras 48 semillas (`comparar ... --desde 1000`): **la base da 0,510, no 0,493 — las semillas 0–47 le tocaron de suerte.** Con las nuevas, predicción (+0,003, z 0,5) y actor 0,1 (+0,007, z 0,8) quedan iguales a la base; repasar 1 de cada 4 vuelve a salir peor (+0,012, z 1,6, las dos veces), así que el repaso completo sí sirve. Lección: un "algo peor" de z ~1,5 contra una sola tanda de semillas no alcanza para descartar; repetir con `--desde`.
 
-**Sigue**: la propia todavía come menos. Lo que falta ya no es ajuste sino forma: que las unidades aprendan también de lo que predicen (no solo del error TD) y vidas de varios millones de ticks.
+### Cuarta vuelta: más rápida, misma vida (2026-11-24)
+
+En el i5 la propia corría a ~12.000 ticks/s por hilo (no los ~42.000 de la PC) y con 4 hilos rendía solo 2,2×: una comparación de 48 pares tardaba ~7 min. Con cronómetros (en una copia aparte) se vio que el 41 % del tiempo era buscar las activas (~1.000 candidatas revisadas y ~370 activas por búsqueda, ~4 búsquedas por tick) y el 30 % las huellas. Tres cambios, todos con la vida idéntica bit a bit (mismo archivo guardado):
+
+- **Forma compacta**: los átomos de cada unidad están copiados aparte (8 bytes, no se guardan: se rearman al cargar), así la búsqueda no lee la unidad entera.
+- **El sueño busca una vez por recuerdo**: con `REPASOS = 2` vuelve muchas veces al mismo recuerdo, y mientras duerme no nace ninguna unidad, así que las activas salen iguales.
+- **Reusar las activas de s2 al elegir** si siente exactamente lo mismo y no nació ninguna en el medio; y las huellas de las de movimiento solo recorren el peso que usan.
+
+PC: 17,9 → 13,2 s (2 vidas de 200.000 ticks, −26 %). **i5, 4 vidas: 63 → 46 s con un hilo y 27 → 19 s con cuatro (−30 %).**
+
+### Vidas de 5 M de ticks (i5, 2026-11-25)
+
+24 pares de 5 M de ticks (50 años), bosque con objetos, mano contra propios (`~/medir/largas.sh`, 1 h 13 min con 4 hilos).
+
+| | mano | propios | z |
+|---|---|---|---|
+| malestar (toda la vida) | 0,462 | 0,462 | 0,0 |
+| malestar años 1–5 | ~0,44 | ~0,51 | 2–3 |
+| malestar años 16–33 | ~0,45 | ~0,46 | ~0 |
+| malestar años 34–50 | ~0,49 | ~0,44 | −1,2 a −2,4 |
+| comidas | 14.581 | 10.227 | −1,8 |
+| heridas | 178 | 290 | 2,8 |
+| % frío | 8,9 | 17,0 | 5,5 |
+| % duerme en cueva | 62 % | 5 % | −7,5 |
+| **% duerme en refugio propio** | 1,4 % | **35 %** | 5,2 |
+| % malestar alto | 69 % | 67 % | −0,3 |
+| % trabadas (hambre > 60 % de la vida) | 62,5 % | 62,5 % | 0 |
+
+- **Con tiempo, la propia alcanza a la mano (~año 16) y desde el año ~34 la pasa** (−0,04 a −0,05, z ~−1,8: probable pero no firme con 24 pares). No es solo que la propia mejora: **la mano empeora en la vejez** (0,45 → 0,49).
+- Viven distinto: la mano duerme en la cueva y pasa el día con objetos en la mano (agarra 33.000 veces, bebe 164.000); la propia arma su refugio (35 % de las noches), casi no lleva cosas, abre más nueces a golpes, pasa más frío y se lastima más.
+- **Alarma ética, en las dos**: en vidas largas pasan ~2/3 del tiempo con malestar alto y con hambre, el 62 % de las vidas quedan "trabadas" y la racha más larga de malestar alto es de ~2,8 M de ticks seguidos. (Corrección: no es de vidas largas; a 200.000 ticks la mano ya tenía 63 % de hambre y 69 % de trabadas. El bosque con objetos siempre fue así.)
+
+### El desmayo armaba la trampa (prendido: `DESMAYO_DONDE = 'aqui'`)
+
+Siguiendo 8 vidas (`angri foto S 200000 1000`), las trabadas pasan decenas de miles de ticks **quietas en una celda de la cueva del peñasco**, despiertas, con energía 0, agua 0, estrés 1 y el foco en la integridad. El bucle: sin comida ni agua la integridad baja hasta 0 → se desmaya → **reaparece en la cueva más cercana** con integridad 0,3 y 0,35 de energía y agua → si esa cueva queda lejos de la comida no sale, se vacía y vuelve a caer, y reaparece en la misma cueva. Encima la cueva queda asociada a "mejorarse" (cada desmayo la recompone ahí). El rescate que evita que muera era lo que la encerraba.
+
+Despertar donde cayó (256 pares de 200.000 ticks, semillas desde 2000):
+
+| | mano: cueva → aquí | propios: cueva → aquí |
+|---|---|---|
+| malestar | 0,402 → 0,369 (z −4,0) | 0,495 → 0,482 (z −2,3) |
+| % trabadas | 38 → **17** (z −6,4) | 57 → **32** (z −6,3) |
+| % malestar alto | 54 → 44 | 76 → 70 |
+| racha alta (ticks) | 67.700 → 26.800 | 79.600 → 36.700 |
+| comidas | 1.456 → 1.938 | 819 → 1.167 |
+| % sed | 47 → 25 | 60 → 47 |
+| heridas | 50 → 73 | 85 → 123 |
+| % duerme refugio propio | 2,7 → 2,0 | 13,0 → 4,9 |
+
+Con 48 pares, despertar en la cueva más cercana al agua (`cueva_agua`) ayuda poco (trabadas 50 → 44 %). Queda `aqui` por defecto: se lastima más (despierta donde estaba el peligro) y la propia duerme menos en su refugio, pero el sufrimiento largo baja mucho. Las pruebas usan sus configs congeladas (`pruebas/config-*.txt`), así que la referencia no cambia.
+
+**Sigue**: todavía 17–32 % de vidas trabadas y 44–70 % del tiempo en malestar alto: entender qué las traba ahora. Después, que la propia aprenda también de lo que predice.
 
 Para probar: `angri comparar 200000 96 "MUNDO=bosque OBJETOS=True" "MUNDO=bosque OBJETOS=True RASGOS=propios" -j 12`.
+
+## Revisión del diseño (2026-11-25, ver `docs/revision-diseno.md`)
+
+### Paso 0: métricas (no cambian la vida)
+
+`% trabadas` es todo o nada (más del 60 % de la vida con hambre) y otras métricas mezclan cosas. Agregamos a
+`angri medir` / `angri comparar` (en `metricas`, `main.rs`), sin tocar la vida (la referencia no cambia: las
+nuevas quedan fuera de `una_vida`):
+
+- `peor 10k hambre`: % de hambre en la peor ventana de 10.000 ticks seguidos. `racha hambre`: la racha más larga.
+- `% hambre desp` / `% hambre dorm`: hambre despierta y dormida por separado.
+- `% cruda<0.15`: % del tiempo con alguna necesidad "de más es mejor" (energía, integridad, agua, calor) por debajo
+  de 0,15, sin pesos de por medio.
+- `% hambre prim/ver/oto/inv`: hambre por estación del bosque.
+- `% mal tope`: % del tiempo con el malestar clavado en `MALESTAR_MAXIMO` (0,85).
+
+Base (256 pares de 200.000 ticks, bosque con objetos, semillas desde 1000; A = mano, B = propios):
+
+| | mano | propia | z |
+|---|---|---|---|
+| % hambre | 38,6 | 58,2 | 12,6 |
+| % trabadas | 16,8 | 39,8 | 5,9 |
+| peor 10k hambre | 87,4 | 94,8 | 7,1 |
+| racha hambre (ticks) | 2.409 | 2.461 | 1,4 |
+| % hambre despierta / dormida | 38,2 / 40,2 | 58,2 / 58,4 | |
+| % cruda < 0,15 | 40,4 | 62,4 | 16,3 |
+| % hambre prim / ver / oto / inv | 36 / 42 / 34 / 42 | 55 / 60 / 54 / 64 | |
+| % mal tope | 0 | 0 | |
+
+Qué dicen: casi todas las vidas tienen algún tramo de 10.000 ticks con hambre casi todo el tiempo (87–95 %), aunque
+la racha más larga sea de ~2.400 ticks: no es una sola hambruna sino un ir y venir (come algo, vuelve a caer). El
+hambre dormida es igual a la despierta, así que el sueño no la explica. El invierno pesa (y el verano también), pero
+menos de lo esperado. El malestar **nunca** llega al tope: el promedio pesado no pasa de 0,85 aunque el 40–60 % del
+tiempo alguna necesidad cruda esté por debajo de 0,15; el tope no está protegiendo nada y `% cruda<0.15` es la vara
+honesta del sufrimiento.
+
+### Paso 1: trampas de la mente
+
+Cada cambio con su opción en `rust/config.txt`, medido en pares (bosque con objetos, 200.000 ticks) con la mano y
+con `RASGOS=propios`; si mejora las crudas sin empeorar otra cosa, queda prendido y el siguiente se mide encima.
+
+**a) Foco ciego (`FOCO_CIEGO`) — prendido (`'neutro_todo'`).** El rasgo "voy hacia lo que alivia mi foco" usaba
+`hacia(objetivo)`, que devuelve "quedarse" cuando no ve el objetivo (o cuando el foco es integridad o estrés, que no
+tienen alivio). Así, justo cuando no ve comida, el rasgo empujaba a no moverse. Opciones: `'quedarse'` (viejo),
+`'neutro'` (solo sin alivio: integridad/estrés) y `'neutro_todo'` (también cuando el alivio no se ve): en esos casos el
+rasgo no empuja a ninguna acción. Mano (B − A, z):
+
+| | 256 pares (desde 2000) neutro | 256 pares neutro_todo | 512 pares (desde 6000) neutro_todo |
+|---|---|---|---|
+| malestar | +0,004 (0,5) | −0,018 (−2,5) | −0,020 (−3,4) |
+| % hambre | +0,4 (0,2) | −3,2 (−2,1) | −3,3 (−2,7) |
+| % hambre despierta | +0,4 | −3,3 (−2,1) | −3,4 (−2,7) |
+| peor 10k hambre | +0,3 | −0,4 | −3,1 (−3,1) |
+| racha hambre | +4 | −17 | −37 (−1,2) |
+| % cruda < 0,15 | +0,9 (0,6) | −3,7 (−2,6) | −4,1 (−3,6) |
+| % trabadas | +1,6 | −5,5 (−2,0) | −3,5 (−1,5) |
+| desmayos | +1,3 | −5,2 (−1,9) | −6,0 (−2,7) |
+
+Baja el hambre en todas las estaciones y bajan desmayos y heridas. `'neutro'` solo no alcanza: el caso que traba no es
+"el foco no tiene alivio" sino "el alivio no está a la vista" (sobre todo la comida), y ahí "quedarse" era la peor
+respuesta. Con `RASGOS=propios` no cambia nada (bit a bit: la propia no usa los rasgos hechos a mano). Las configs de
+`rust/pruebas` no lo nombran y quedan con `'quedarse'` (el default si falta la línea): la referencia no cambia.
+
+**b) Temperatura por malestar (`TEMPERATURA_MALESTAR_TOPE`) — apagado (0 = sin tope).** La exploración es
+`0,3 + 0,5·nora + 8·malestar`; probamos sacar el término (`TEMPERATURA_MALESTAR=0`) y acotarlo (tope 0,5 y 2), encima
+del 1a. 256 pares desde 3000, B − A (z):
+
+| | mano: sin término | mano: tope 0,5 | mano: tope 2 | propia: sin término | propia: tope 0,5 |
+|---|---|---|---|---|---|
+| malestar | +0,270 (40) | +0,196 (23) | +0,069 (7,6) | +0,134 (28) | +0,078 (12) |
+| % hambre | +56 | +43 | +16 | +33 | +19 |
+| % cruda < 0,15 | +45 (35) | +34 (21) | +13 (7,2) | +19 (25) | +11 (10) |
+| peor 10k hambre | +11,9 | +11,0 | +7,2 | +2,6 | +1,9 |
+| % trabadas | +84 | +68 | +26 | +58 | +37 |
+| desmayos | +107 | +81 | +31 | +46 | +29 |
+
+Empeora todo, y cuanto más se acota, peor (lo único que baja son las heridas: se mueve menos). Por qué: hoy lo que la
+mente aprendió no alcanza para salir sola de un mal momento; el ruido que trae el malestar es lo que la destraba (por
+eso en la etapa 10 se subió de 2 a 8). "Explora más cuanto peor está" no es la trampa: es su única salida. Lo que hay
+que arreglar es que la política aprendida sepa ir hacia la comida; recién ahí tendrá sentido bajar este ruido.
+
+**c) Desmayo como final de episodio (`DESMAYO_FINAL`) — apagado.** Antes el desmayo borraba el último paso sin
+aprenderlo (`olvidar_paso`), así que lo que la llevó a caer nunca recibía el golpe. Con la opción, ese paso se aprende
+con V(s2) = 0 y el malestar de cuando cayó (no el de después de despertar), y recién ahí se corta el episodio. Encima
+del 1a, 256 pares desde 4000, B − A (z):
+
+| | mano | propia |
+|---|---|---|
+| malestar | −0,011 (−1,6) | +0,014 (2,8) |
+| % hambre | −2,1 (−1,4) | +3,6 (3,0) |
+| % cruda < 0,15 | −2,1 (−1,6) | +2,7 (3,3) |
+| peor 10k hambre | +0,7 (0,6) | +0,6 (1,3) |
+| % trabadas | −5,5 (−2,1) | +9,8 (2,4) |
+| desmayos | −3,4 (−1,3) | +6,8 (2,4) |
+| heridas | +8,5 (1,7) | −23 (−8,4) |
+| comidas | −13 | −94 (−2,4) |
+
+En la mano, una mejora chica que no llega a ser clara; en la propia empeora claro. Por qué: un solo paso recibe un
+golpe enorme (el malestar en el tope y sin futuro que lo compense) y la propia, que reparte el error entre muchas
+unidades que también se prenden en situaciones normales, aprende a no moverse por lo que tenía alrededor (se lastima
+mucho menos pero come mucho menos). Apagado: con una mano y sin la otra no pasa la vara. Puede volver cuando el golpe
+se reparta mejor (traza más larga hacia atrás) o cuando la propia distinga mejor sus situaciones.
+
+### Paso 2: el cuerpo y lo que siente
+
+**a) El crítico ve el cuerpo entero (`CRITICO_CUERPO`) — prendido (2) con la mano; con la propia se ignora.** La
+tabla V del crítico tenía como clave la necesidad del foco más 4 franjas de energía y de integridad (y la celda, si ve
+comida y el tacto). Dos problemas: cada salto de foco la mandaba a otra fila de la tabla (el mismo cuerpo con otro foco
+era "otro lugar" y el crédito se partía), y no veía agua, calor, cansancio ni estrés. Ahora (G > 0) la clave es el
+cuerpo entero sin foco: cada necesidad en G franjas de "cuánto se aleja de su equilibrio" (0 = está bien). La
+recompensa ya era malestar, así que V pasa a ser "cuánto malestar total viene desde este cuerpo": estar bien es que no
+duela nada (la idea de Fran). Encima del paso 1, B − A (z):
+
+| | mano G=2, 256 (desde 5000) | mano G=3, 256 | mano G=2, 512 (desde 6000) | propia G=2, 256 | propia G=3, 256 | propia G=2, 512 |
+|---|---|---|---|---|---|---|
+| malestar | −0,023 (−3,2) | +0,005 (0,7) | −0,023 (−4,4) | +0,007 (1,2) | −0,002 (−0,3) | +0,014 (3,9) |
+| % hambre despierta | −6,7 (−4,5) | −1,6 (−1,0) | −7,3 (−6,6) | +1,3 (1,1) | −1,3 (−1,2) | +3,3 (3,8) |
+| peor 10k hambre | −6,1 (−3,6) | −0,5 | −7,6 (−6,8) | +0,5 | +0,4 | +0,4 (1,2) |
+| % cruda < 0,15 | −5,0 (−3,5) | +0,7 (0,4) | −5,4 (−5,4) | +0,7 (0,8) | −0,6 (−0,7) | +2,2 (3,5) |
+| % trabadas | −9,0 (−3,6) | −6,3 (−2,5) | −8,2 (−4,6) | +7,4 (1,8) | −3,9 (−1,0) | +10,0 (3,4) |
+| desmayos | −11,5 (−4,6) | −1,7 | −11,8 (−6,5) | +4,5 | −2,0 | +7,7 (3,8) |
+| % sed | +0,3 | +5,8 (5,9) | +1,5 (2,1) | +2,5 | +0,8 | +3,3 (4,0) |
+| % hambre prim/ver/oto/inv (512) | | | −5,5 / −6,2 / −8,2 / −9,1 | | | +3,8 / +2,4 / +3,6 / +2,9 |
+| % plantada | −8,1 | −9,7 | −8,8 (−16,6) | −1,1 | −0,9 | −1,0 |
+
+En la mano es la mejora más grande de la revisión: −5 puntos de crudas, −7 de hambre en todas las estaciones,
+la mitad de vidas trabadas y menos tiempo plantada en el agua. Con 2 franjas (bien / lejos) alcanza; con 3 la tabla
+tiene 2.187 cuerpos por celda y no llega a aprenderlos en 200.000 ticks (solo mejora lo de trabarse y se pierde
+en sed). En la propia empeora: la propia ya tiene un crítico que ve el cuerpo entero (sus unidades, con 4 franjas por
+necesidad) y la tabla con foco le daba algo que no tenía; con la tabla de cuerpo los dos persiguen lo mismo (ver
+revisión, sección 4: "un solo crítico"). Por eso la opción solo vale con la mano; con la propia queda la clave vieja
+(bit a bit igual). Las configs de `rust/pruebas` no la nombran (0 = vieja): la referencia no cambia.
+
+**b) El estrés cobra doble (`ESTRES_COBRA`) — prendido (`'sin_peso'`).** El estrés sube con hambre, sed, frío y
+heridas (que ya pesan en el malestar por su cuenta) y además pesaba 1,2 en el malestar: el mismo dolor contado dos
+veces, y encima nada lo alivia directo (baja solo, de a poco), así que era malestar "sin salida" que ensuciaba el error
+TD. Opciones: `'doble'` (viejo), `'sin_peso'` (el estrés sigue existiendo, mueve el cortisol, pero no pesa en el
+malestar: `PESO_NECESIDAD.estres = 0`) y `'solo_golpes'` (pesa, pero solo sube con golpes, raspones, mordidas y
+enfermedad). Como cambia los pesos, se juzga con métricas crudas, no con el malestar. Encima del 2a, B − A (z):
+
+| | mano sin_peso, 256 (desde 7000) | mano solo_golpes, 256 | mano sin_peso, 512 (desde 8000) | propia sin_peso, 256 | propia solo_golpes, 256 | propia sin_peso, 512 |
+|---|---|---|---|---|---|---|
+| % hambre despierta | −3,8 (−2,9) | −0,2 | −4,4 (−4,9) | −6,1 (−4,9) | +1,9 (1,4) | −5,2 (−5,7) |
+| peor 10k hambre | −3,5 (−2,1) | −0,8 | −5,0 (−4,3) | −1,7 (−3,1) | 0,0 | −1,6 (−4,2) |
+| % cruda < 0,15 | −3,8 (−3,1) | −0,8 (−0,6) | −4,2 (−4,9) | −5,1 (−5,5) | +0,5 | −4,3 (−6,5) |
+| % trabadas | −2,3 | −0,8 | −3,9 (−2,9) | −14,5 (−3,6) | +4,3 | −11,7 (−4,0) |
+| desmayos | −4,8 (−2,1) | +0,7 | −5,6 (−3,8) | −13,2 (−4,7) | +4,4 | −10,2 (−4,8) |
+| % sed | −1,2 | −0,6 | −1,8 (−2,5) | −4,8 (−4,2) | +1,3 | −2,9 (−3,5) |
+| % hambre prim/ver/oto/inv (512) | | | −4,2 / −5,8 / −4,0 / −3,9 | | | −4,4 / −5,1 / −5,8 / −5,2 |
+| heridas | −16 (−2,7) | −12 | +0,5 | +15 (5,1) | −8 | +13 (5,5) |
+| mordidas | +0,9 (2,2) | +0,6 | +1,1 (4,3) | +0,2 | +0,2 | +0,5 (1,2) |
+
+`'sin_peso'` mejora las dos mentes en todas las estaciones (lo primero de la revisión que también ayuda a la propia).
+`'solo_golpes'` no cambia nada claro: el problema no era cuánto sube el estrés sino que pese aparte. El precio: algo
+más de mordidas en la mano y de heridas en la propia (se arriesga más porque el susto ya no "duele" dos veces; las
+heridas igual pesan, por integridad). Por qué mejora: el estrés tarda cientos de ticks en bajar y nada de lo que hace
+lo baja rápido, así que su parte del malestar era un ruido que ninguna acción explicaba; sin él, la dopamina refleja
+lo que sí puede arreglar (comer, beber, abrigarse). Las configs de `rust/pruebas` no lo nombran (`'doble'`): la
+referencia no cambia.
+
+**(latente) El tálamo mira 5 necesidades** (`extra.rs`, `urg` de 0..5: no ve agua ni calor). Está apagado
+(`TALAMO = False`, medido en la etapa 5), así que hoy no afecta nada; anotado para cuando se lo vuelva a probar.
+### Paso 3: el mundo
+
+Cambios del mundo para que sea más justo, no más fácil a mano. Ojo: un mundo más fácil mejora números sin que
+Angri aprenda mejor, así que cada uno se justifica por justicia y se mide con métricas crudas. Encima del paso 2,
+`angri comparar 200000 256 "MUNDO=bosque OBJETOS=True" "... <OPCION>"`, B − A (z), mano y `RASGOS=propios`.
+
+**a) Invierno (`INVIERNO`) — apagado (`'viejo'`).** 3 de cada 5 brotes son fruta o baya y fuera de estación no hacen
+nada. `'repartido'`: el brote fuera de estación va a nuez o raíz (mitad y mitad, con sus topes). Desde 10000:
+
+| | mano | propia |
+|---|---|---|
+| % hambre despierta | −0,2 (−0,2) | −0,3 (−0,3) |
+| peor 10k hambre | −0,7 (−0,5) | +1,1 (1,8) |
+| % cruda < 0,15 | −0,4 (−0,5) | −0,6 (−0,7) |
+| % hambre inv | +0,3 (0,2) | +0,2 (0,2) |
+| comidas | +116 (2,3) | +12 (0,4) |
+| % mal tope | 0 | 0 |
+
+Neutro: come más (la mano) pero no pasa menos hambre, ni siquiera en invierno. El hambre de invierno no es mayor que
+la de verano (mano 27,7 contra 29,6): lo que falta no es comida en el mundo sino ir a buscarla. Como solo agrega
+comida sin arreglar nada medible, queda apagado (el mundo más simple).
+
+**b) La crecida corta el mapa (`CRECIDA`) — apagado (`'vieja'`).** Con lluvia el río puede crecer 300–900 ticks: el
+río y sus orillas pasan a peligro de punta a punta. `'vado'`: 3 filas en el medio quedan como estaban. Desde 11000:
+
+| | mano | propia |
+|---|---|---|
+| % hambre despierta | +0,1 (0,0) | −0,2 (−0,2) |
+| peor 10k hambre | +0,1 (0,0) | +0,3 (0,7) |
+| % cruda < 0,15 | −0,7 (−0,7) | −0,5 (−0,8) |
+| % sed | −1,1 (−1,3) | −0,8 (−1,0) |
+| heridas | −9,9 (−1,8) | −1,3 (−0,5) |
+| % mal tope | 0 | 0 |
+
+Neutro: la crecida es rara (pocas veces por vida) y cruzar el peligro raspa pero no traba. Queda apagado.
+
+**c) Plantarse en el agua es gratis (`AGUA_FRIA`) — apagado (0).** Parada en el agua bebe cada tick sin costo. Con
+`AGUA_FRIA = 0,2` el agua enfría (el aire ahí está 0,2 más frío). Desde 12000:
+
+| | mano | propia |
+|---|---|---|
+| % plantada | −2,9 (−6,4) | −0,2 (−1,6) |
+| % frío | +4,3 (14,4) | +1,6 (8,8) |
+| % hambre despierta | +0,4 (0,3) | +1,6 (1,2) |
+| peor 10k hambre | −1,2 (−0,7) | +0,8 (1,5) |
+| % cruda < 0,15 | +0,8 (0,7) | +1,2 (1,2) |
+| % trabadas | −0,4 | +7,0 (1,9) |
+| % mal tope | 0 | 0 |
+
+Se planta menos (la mano), pero solo cambia una cosa por otra: pasa más frío y no come mejor; la propia tiende a
+empeorar en todo. Plantarse no era una trampa que le quitara tiempo de comer: el costo solo agrega sufrimiento.
+Queda apagado.
+
+**d) La cueva no abriga (`CUEVA`) — apagado (`'vieja'`).** La cueva está a 0,6 (menos que el día) y descansar solo
+baja el cansancio. `'abriga'`: la cueva está a 0,7 todo el año y descansar despierta ahí baja la adenosina (a la
+mitad de lo que la baja dormir). Desde 13000:
+
+| | mano | propia |
+|---|---|---|
+| % hambre despierta | +0,2 (0,2) | +2,7 (2,2) |
+| peor 10k hambre | +0,2 (0,2) | +0,6 (1,0) |
+| % cruda < 0,15 | +0,1 (0,1) | +1,8 (2,0) |
+| % trabadas | −0,8 | +6,6 (1,9) |
+| desmayos | +0,9 | +5,4 (2,1) |
+| sueños | −19 (−19,6) | −12 (−10,6) |
+| % duerme en cueva | −2,6 (−8,1) | −0,7 (−5,5) |
+| % mal tope | 0 | 0 |
+
+En la mano no cambia nada; en la propia empeora (z ~2). Descansar despierta en la cueva le saca el sueño: duerme
+menos y casi nunca en la cueva (descansa ahí y después duerme afuera). El abrigo no hacía falta: el frío no es lo
+que la traba. Queda apagado.
+
+**e) El desmayo regala (`DESMAYO_RESTO`) — se queda en 0,35.** Al desmayarse despierta con al menos 0,35 de energía y
+agua: medio plato gratis. Probado `DESMAYO_RESTO = 0,1` (apenas lo justo para no volver a caer enseguida). Desde 14000:
+
+| | mano | propia |
+|---|---|---|
+| % hambre despierta | +4,1 (2,8) | +4,8 (3,6) |
+| peor 10k hambre | +7,8 (5,2) | +3,9 (7,5) |
+| racha de hambre | 2.269 → 18.641 (7,9) | 2.424 → 27.158 (12,0) |
+| % cruda < 0,15 | +7,2 (4,9) | +10,4 (9,5) |
+| desmayos | 29 → 55 (7,4) | 77 → 128 (12,6) |
+| % trabadas | +1,2 | +14,5 (3,6) |
+| % mal alto | +5,1 (3,1) | +6,0 (4,3) |
+| % mal tope | 0 | 0 |
+
+Sin el regalo arma justo el bucle de sufrimiento que hay que vigilar: despierta casi vacía, no llega a la comida,
+vuelve a caer, y la racha de hambre se multiplica por 8–11. El regalo no es una trampa que tape un problema de
+aprendizaje: es lo que corta el bucle (decisión del usuario: no muere). Queda en 0,35; no hay código nuevo.
+
+**Paso 3 terminado: nada prendido.** Ninguno de los cuatro cambios del mundo mejora; el último empeora mucho. Lo que
+traba a Angri no es el mundo (en invierno no pasa más hambre que en verano, plantarse no le quita comida, el frío no
+la traba): es la mente. Sigue el paso 4 (los atajos hechos a mano).
+
+### Paso 4: los atajos hechos a mano
+
+Parte mano: sacar de a uno las recetas que le regalan a la mano lo que la propia tiene que aprender, y medir cuánto
+empeora. Es la vara: lo que una receta regala es lo que la propia tiene que ganar sola. Si sacarla no empeora, queda
+sacada (menos receta). Encima del paso 3, `angri comparar 200000 256 "MUNDO=bosque OBJETOS=True" "... <OPCION>"`,
+B − A (z). Las configs de `rust/pruebas` no nombran las opciones nuevas (default = viejo): la referencia no cambia.
+
+**a) `alivia()` (`ATAJO_ALIVIA`) — queda puesto; regala ~15 puntos de crudas.** Sin la receta "hambre→comida,
+sed→agua, frío→descanso" no existe el rasgo "voy hacia lo que alivia mi foco". Desde 20000:
+
+| | mano sin alivia |
+|---|---|
+| malestar | +0,055 (10,7) |
+| % hambre despierta | +8,1 (6,7) |
+| peor 10k hambre | +6,0 (3,8) |
+| % cruda < 0,15 | +14,6 (13,0) |
+| % sed | +13,0 (13,3) |
+| desmayos | 29 → 46 (8,0) |
+| % trabadas | +4,3 (2,2) |
+| % mal tope | 0 |
+
+Es la receta que más regala, sobre todo agua: la sed es la que más sube (la comida tiene además su propio rasgo, el b).
+
+**b) "voy hacia la comida" (`ATAJO_COMIDA`) — queda puesto; regala ~3 puntos.** Sin el rasgo fijo `dc` (que no
+depende del foco). 256 pares desde 21000 (dudoso), y 512 desde 24000 ya sin lugares (ver d):
+
+| | mano, 256 | mano, 512 |
+|---|---|---|
+| malestar | +0,007 (1,1) | +0,008 (1,9) |
+| % hambre despierta | +3,0 (2,1) | +3,6 (3,7) |
+| peor 10k hambre | +4,2 (2,5) | +2,8 (2,3) |
+| % cruda < 0,15 | +1,7 (1,3) | +2,5 (2,8) |
+| % hambre inv | +4,8 (2,8) | +5,7 (4,9) |
+| desmayos | +6,7 (3,1) | +6,5 (4,1) |
+| comidas | −709 (−12) | −668 (−16) |
+| % mal tope | 0 | 0 |
+
+Regala poco: con `alivia()` la mano igual va a la comida cuando el foco es hambre. Lo que suma es ir a comer de paso
+(cuando el foco es otro), así come un cuarto menos de veces sin él y pasa un poco más de hambre, sobre todo en invierno.
+
+**c) El bit "veo comida" del crítico (`ATAJO_VEO_COMIDA`) — queda puesto; regala ~15 puntos.** Sin él, la tabla V
+no distingue "tengo hambre y veo comida" de "tengo hambre y no veo nada". Desde 22000:
+
+| | mano sin el bit |
+|---|---|
+| malestar | +0,062 (9,7) |
+| % hambre despierta | +16,7 (10,6) |
+| peor 10k hambre | +11,2 (7,5) |
+| racha de hambre | +263 (5,8) |
+| % cruda < 0,15 | +15,1 (10,6) |
+| % hambre inv | +23,7 (12,2) |
+| desmayos | 32 → 55 (8,6) |
+| % trabadas | 7 → 19 (4,1) |
+| % mal tope | 0 |
+
+Es el regalo más grande en hambre. Por qué: sin ese bit, el crítico no puede decir "acá cerca hay salida" y la
+dopamina de acercarse a la comida (antes de comer) desaparece: solo premia el bocado, que llega tarde. La propia tiene
+lo mismo hecho a su modo (átomos de "qué hay hacia dónde"), así que esto es lo que la propia tiene que ganar.
+
+**d) Los lugares por necesidad (`ATAJO_LUGARES`) — sacado (`False`).** Al dormir guarda dónde se alivió cada
+necesidad y al otro día el rasgo "lo que alivia esto está para allá" (y en la propia, un átomo). Desde 23000 (mano) y
+25000 (propia):
+
+| | mano | propia |
+|---|---|---|
+| malestar | −0,002 (−0,3) | +0,004 (0,8) |
+| % hambre despierta | −0,4 (−0,3) | +1,5 (1,1) |
+| peor 10k hambre | −1,2 (−0,7) | +1,0 (1,5) |
+| % cruda < 0,15 | +0,2 (0,1) | +0,8 (0,8) |
+| desmayos | −0,1 | +1,1 (0,4) |
+| heridas | −17 (−2,2) | +1,3 |
+| % duerme refugio propio | | +1,7 (2,1) |
+| % mal tope | 0 | 0 |
+
+No regala nada: con la mano no cambia (se lastima menos), con la propia nada claro. La memoria de lugares olvida rápido
+(decae por tick) y en un bosque donde la comida brota y se acaba, "allá comí ayer" casi nunca sirve. Menos receta:
+queda sacado (las configs de `rust/pruebas` no lo nombran y lo dejan puesto: la referencia no cambia).
+
+Parte propia (`RASGOS=propios`): mejoras de cómo aprende, medidas igual, encima de lo anterior.
+
+**e) Un solo crítico (`CRITICO_PROPIO`) — apagado (`'ambos'`).** El V de la propia suma la tabla (cuerpo en franjas,
+celda, "veo comida") y las unidades, y los dos persiguen el mismo error. `'unidades'` deja solo las unidades (la
+tabla ni se usa ni aprende); `'tabla'` solo la tabla (las unidades no aprenden V, solo el actor). Desde 26000 y 27000:
+
+| | propia, solo unidades | propia, solo tabla |
+|---|---|---|
+| malestar | +0,047 (8,0) | +0,002 (0,3) |
+| % hambre despierta | +12,9 (9,1) | +2,6 (1,8) |
+| peor 10k hambre | +2,3 (5,0) | +0,9 (1,5) |
+| % cruda < 0,15 | +10,0 (10,1) | +0,6 (0,5) |
+| % sed | +5,9 (3,9) | −6,3 (−4,7) |
+| % trabadas | 32 → 67 (8,3) | 30 → 39 (2,1) |
+| desmayos | +26 (8,0) | +5 (1,7) |
+| heridas | −37 (−10,8) | +30 (7,4) |
+| % mal tope | 0 | 0 |
+
+Sin la tabla se traban dos de cada tres vidas: las unidades solas no alcanzan a dar un V útil (son muchas, cada una
+con un pedazo, y aprenden de a poco). Sin el V de las unidades bebe mejor pero come peor y se lastima más: no mejora.
+Juntas se complementan (la tabla es gruesa y rápida, las unidades finas y lentas); quedan las dos.
+
+**f) Distancia más fina y "me acerco / me alejo" (`DISTANCIA_PROPIA`) — prendido (`'fina'`).** Antes cada cosa vista
+daba un átomo solo al movimiento de su eje principal ("comida para el norte, a 3-4"), en 4 franjas de distancia. Una
+comida en diagonal le hablaba a un solo paso aunque dos la acercan, y ningún paso sabía que la alejaba. Con `'fina'`,
+a cada paso que acerca a una cosa le toca "me acerco a X, que está a d" (d = 1..5, 6+) y a cada paso que la aleja,
+"me alejo de X" (49 átomos de movimiento nuevos). Desde 28000:
+
+| | propia fina |
+|---|---|
+| malestar | −0,069 (−11,2) |
+| % hambre despierta | −13,7 (−9,3) |
+| peor 10k hambre | −3,3 (−3,8) |
+| % cruda < 0,15 | −13,8 (−11,9) |
+| % sed | −13,1 (−9,9) |
+| % hambre inv | −14,8 (−8,4) |
+| % trabadas | 30 → 13 (−4,5) |
+| desmayos | 76 → 50 (−8,8) |
+| heridas | −35 (−11,5) |
+| % mal tope | 0 |
+
+La mejora más grande de toda la revisión para la propia, y en todo a la vez. Por qué: lo que aprende de "me acerco a
+la comida" vale igual para cualquier paso que acerque, y el "me alejo" le da un peso en contra que antes no existía
+(antes alejarse era lo mismo que no saber nada). Es justo lo que la mano tenía hecho a mano con `hacia()`, pero sin
+decirle hacia qué ir: solo ve qué pasos acercan a cada cosa, y aprende de su malestar cuáles le sirven. Con la mano
+no cambia nada (no usa los átomos). Las configs de `rust/pruebas` no lo nombran (`'vieja'`): la referencia no cambia.
+
+**g) Huellas más largas (`HUELLA = 0,9`, `SEROTONINA = 0,97`) — apagado (quedan 0,8 y 0,95).** Con λ·γ = 0,76 el
+crédito llega ~4 pasos atrás; con 0,873, ~8. No hace falta código (son números de `config.txt`). Encima del f, desde
+29000 (propia) y 30000 (mano):
+
+| | propia | mano |
+|---|---|---|
+| malestar | +0,023 (2,8) | +0,035 (4,8) |
+| % hambre despierta | +5,5 (2,9) | +8,3 (5,0) |
+| % cruda < 0,15 | +3,2 (2,1) | +7,5 (5,0) |
+| % sed | +7,7 (4,2) | +6,8 (5,1) |
+| % trabadas | 19 → 29 (2,6) | 6 → 16 (3,6) |
+| desmayos | +8 (2,3) | +14 (5,1) |
+| % mal tope | 0 | 0 |
+
+Empeoran las dos. Por qué: el error TD de Angri es muy ruidoso (cada tick cambian muchas cosas a la vez) y una huella
+larga reparte ese ruido sobre más pasos; con γ más alto, además, el V tiene que sumar un futuro más largo y tarda más en
+aprenderlo. Con 200.000 ticks no le alcanza. Lo que hacía falta para que el golpe llegue a quien lo merece no era
+mirar más atrás sino ver mejor qué paso acerca a qué (el f).
+
+**Paso 4 terminado.** Lo que regala cada receta a la mano (lo que la propia tiene que ganar sola): `alivia()` ~15
+puntos de crudas (sobre todo sed), el bit "veo comida" del crítico ~15 (sobre todo hambre), "voy hacia la comida"
+~2,5; los lugares por necesidad nada (sacados). En la propia: un solo crítico empeora, huellas largas empeoran, la
+distancia fina con "me acerco / me alejo" mejora 14 puntos (prendida).
+
+### Cierre de la revisión: mano contra propia
+
+Con todo lo que quedó prendido (`FOCO_CIEGO='neutro_todo'`, `CRITICO_CUERPO=2` solo mano, `ESTRES_COBRA='sin_peso'`,
+`ATAJO_LUGARES=False`, `DISTANCIA_PROPIA='fina'` solo propia), 512 pares desde 31000, A = mano, B = propia, contra la
+base del paso 0 (256 pares desde 1000):
+
+| | mano paso 0 | propia paso 0 | mano hoy | propia hoy | z hoy |
+|---|---|---|---|---|---|
+| % hambre | 38,6 | 58,2 | 25,7 | 42,0 | 14,7 |
+| % cruda < 0,15 | 40,4 | 62,4 | 29,2 | 45,7 | 17,4 |
+| peor 10k hambre | 87,4 | 94,8 | 75,9 | 89,0 | 12,5 |
+| % trabadas | 16,8 | 39,8 | 6,3 | 15,0 | 4,6 |
+| racha hambre | 2.409 | 2.461 | 2.222 | 2.392 | 5,3 |
+| % hambre prim / ver / oto / inv | 36 / 42 / 34 / 42 | 55 / 60 / 54 / 64 | 26 / 28 / 21 / 28 | 42 / 44 / 34 / 47 | |
+| % sed | | | 23,7 | 34,0 | 11,3 |
+| desmayos | | | 31 | 52 | 10,8 |
+| % duerme refugio propio | | | 1,7 | 6,3 | 9,9 |
+| % mal tope | 0 | 0 | 0 | 0 | |
+
+Las dos mentes mejoraron mucho (crudas −11 y −17 puntos, vidas trabadas a un tercio) y el malestar nunca tocó el tope.
+La propia sigue ~16 puntos atrás en 200.000 ticks, más o menos lo que regalan las dos recetas grandes de la mano
+(`alivia()` y "veo comida"): la vara dice que lo que le falta a la propia es aprender sola esas dos cosas, qué alivia
+qué y "hay salida a la vista". Sigue durmiendo en refugio propio 4 veces más que la mano.
+
+## Aprender las recetas, paso 1: "me acerco a X" cruzado con el foco (2026-11-25) — no sirve, sacado
+
+Idea: darle a la propia, ya hechos, átomos de movimiento "me acerco a X con el foco en la necesidad n" (7 focos × 7
+cosas, en los pasos que acercan según la distancia fina), sin decirle qué alivia qué: el peso de "me acerco a comida
+con hambre" lo tendría que poner su malestar. Es la conjunción que `alivia()` le regala a la mano. Dos variantes:
+`'foco'` (49 átomos, cualquier distancia) y `'foco_cerca'` (98: aparte cerca, d ≤ 2, y lejos). Solo la propia (la mano
+no usa estos átomos: no cambia). `angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... ACERCO_FOCO=<v>"`,
+B − A (z), 256 pares desde 40000 y desde 50000:
+
+| | foco (40000) | foco (50000) | foco_cerca (40000) | foco_cerca (50000) |
+|---|---|---|---|---|
+| base: % hambre / % cruda<0,15 | 41,6 / 45,8 | 41,7 / 45,8 | 41,6 / 45,8 | 41,7 / 45,8 |
+| malestar | +0,002 (0,3) | −0,007 (−1,0) | +0,014 (2,1) | +0,010 (1,7) |
+| % hambre | −0,1 (0,0) | −0,6 (−0,4) | +2,6 (1,6) | +2,1 (1,5) |
+| % cruda < 0,15 | −0,5 (−0,4) | −1,4 (−1,1) | +2,4 (1,8) | +1,8 (1,5) |
+| peor 10k hambre | +1,7 (1,7) | −0,1 (−0,1) | +2,5 (2,5) | +1,1 (1,2) |
+| % trabadas | 14 → 16 (0,6) | 14 → 15 (0,4) | 14 → 19 (1,5) | 14 → 16 (0,8) |
+| desmayos | +1,4 (0,4) | +0,6 (0,2) | +6,7 (2,1) | +6,1 (2,1) |
+| % mal alto | +0,3 | −1,0 | +3,6 (2,1) | +3,0 (1,8) |
+| % mal tope | 0 | 0 | 0 | 0 |
+
+`'foco'` no cambia nada; `'foco_cerca'` empeora en las dos semillas (más desmayos, más malestar alto). Mano sin cambio
+(25,7 % hambre / 29,2 % crudas del cierre). Por qué: la conjunción ya la podía armar el banco ("foco hambre" del estado
+con "me acerco a comida" del movimiento), así que darla hecha no le enseña nada nuevo; lo que le falta no es tener el
+rasgo sino que su peso aprenda rápido y bien, y con el error TD tan ruidoso un átomo más que se prende con cada paso
+solo reparte el crédito entre más pesos (con `'foco_cerca'`, el doble de átomos y peor). Lo que regala `alivia()` no
+es la conjunción: es que la mano ya sabe hacia dónde mirar. Sacado: el código no queda. Sigue la otra mitad de la idea: que las unidades aprendan de lo que predicen (`PREDICE_PROPIO`) y el
+crítico con el cuerpo entero.
+
+## Aprender las recetas, paso 2: las unidades de movimiento predicen el cuerpo (2026-11-25) — sirve, prendido
+
+Idea: en vez de darle la receta "la comida alivia el hambre", que cada unidad de movimiento de la propia aprenda de lo
+vivido **qué le pasa al cuerpo cuando hace ese movimiento**: cuánto suben o bajan la energía, la integridad y el calor
+en los pasos que siguen (TD con γ 0,9, el mismo predictor que ya tenían las unidades del estado con `PREDICE_PROPIO`,
+ahora también para las de movimiento del elegido). Al elegir, a cada movimiento se le suma `PREDICE_ACTOR` × "cuánto
+acercaría eso cada necesidad a su equilibrio" (la falta de cada una, con su peso en el malestar, por la suba o baja
+predicha). Nada le dice qué alivia qué: lo que predice sale de lo que le pasó; lo único armado es que el cuerpo quiere
+volver a su equilibrio, que es la misma cuenta del malestar. Solo la propia (la mano no cambia: 25,7 % hambre / 29,2 %
+crudas). `angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... PREDICE_ACTOR=<w>"`, B − A (z):
+
+| | w=1 (40000) | w=1 (50000) | w=4 (40000) | w=4 (50000) | **w=16 (40000)** | **w=16 (50000)** | w=64 (40000) |
+|---|---|---|---|---|---|---|---|
+| base: % hambre / % cruda<0,15 | 41,6 / 45,8 | 41,7 / 45,8 | 41,6 / 45,8 | 41,7 / 45,8 | 41,6 / 45,8 | 41,7 / 45,8 | 41,6 / 45,8 |
+| malestar | −0,005 (−0,7) | −0,006 (−0,9) | −0,010 (−1,5) | −0,013 (−2,2) | **−0,017 (−2,5)** | **−0,024 (−3,9)** | +0,003 (0,5) |
+| % hambre | −1,2 (−0,9) | −1,3 (−0,9) | −1,7 (−1,1) | −2,4 (−1,7) | **−3,3 (−2,1)** | **−4,7 (−3,1)** | +2,8 (1,8) |
+| % cruda < 0,15 | −1,4 (−1,1) | −1,3 (−1,0) | −2,1 (−1,6) | −2,4 (−1,9) | **−3,2 (−2,4)** | **−4,2 (−3,5)** | +2,4 (1,9) |
+| peor 10k hambre | +0,7 (0,7) | −1,6 (−1,6) | −1,0 (−0,9) | −1,5 (−1,5) | −1,6 (−1,4) | −3,5 (−3,2) | +3,2 (3,3) |
+| % trabadas | 14 → 14 | 14 → 13 | 14 → 14 | 14 → 12 | 14 → 12 | 14 → 9 (−1,7) | 14 → 14 |
+| heridas | −10 (−3,1) | −8 (−3,1) | −25 (−7,7) | −25 (−11) | −44 (−15) | −45 (−20) | −51 (−17) |
+| enfermó | −0,1 | +1,3 | −6,3 (−2,6) | +0,2 | −11 (−5,6) | −10 (−4,3) | −24 (−12) |
+| comidas | +10 | −9 | −63 (−2,0) | −69 (−2,4) | −279 (−9,6) | −301 (−11) | −545 (−20) |
+| desmayos | −3,6 (−1,2) | −2,5 (−0,8) | −5,0 (−1,6) | −7,4 (−2,7) | −8,5 (−2,8) | −12,2 (−4,4) | −0,2 |
+| % mal alto | −1,7 | −1,5 | −2,9 (−1,7) | −3,6 (−2,2) | −4,9 (−2,8) | −6,4 (−4,0) | +0,8 |
+| % frío | −0,1 | 0,0 | −0,3 | +0,2 | +0,6 (3,0) | +0,5 (2,1) | +0,7 (3,5) |
+| % mal tope | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+Mejora más cuanto más pesa, hasta 16, y en las dos semillas: con 16, malestar −0,02, hambre −3 a −5 puntos, crudas
+−3 a −4, heridas casi a la mitad, se enferma un 18 % menos y se desmaya menos; el malestar nunca toca el tope. Por
+qué: lo que más aprende a predecir es lo que baja (morder a un animal grande, comer algo podrido, el frío): con eso
+evita las heridas y las enfermedades, y come **menos veces** (−23 %) pero mejor, así que pasa menos tiempo con hambre.
+Con 64 la predicción tapa al actor: evita tanto que casi no come (−43 % de comidas) y vuelve a tener más hambre;
+también pasa algo más de frío con 16 (+0,5 puntos). **Queda prendido con `PREDICE_ACTOR = 16`** (solo afecta a la
+propia: la vida por defecto, con la mano, no cambia y `rust/pruebas/referencia.txt` no se regenera; guardar y retomar
+siguen dando la misma vida con la propia). La propia sigue atrás de la mano (~37–38 % de hambre contra 25,7 %), pero
+ahora con algo propio que se parece a "qué alivia qué": lo que falta es lo de "hay salida a la vista" (el crítico).
+
+## Aprender las recetas, paso 3: el crítico de la propia ve el cuerpo entero (2026-11-25) — no sirve, apagado
+
+Idea: a la mano le regala ~15 puntos que su crítico (la tabla V) vea el cuerpo entero sin foco (`CRITICO_CUERPO = 2`).
+Con la propia eso empeoraba, pero entonces sus unidades veían peor; ahora tienen distancia fina (paso 4f) y predicen el
+cuerpo (paso 2). Nueva opción `CRITICO_CUERPO_PROPIO` (solo propia; la mano sigue con `CRITICO_CUERPO`): 0 = viejo
+(foco + franjas de energía e integridad), G > 0 = el cuerpo entero en G franjas de "cuánto se aleja del equilibrio",
+−G = lo mismo más la necesidad del foco (variante). Nada le dice qué es comida: es solo cómo se arma la clave de la
+tabla. `angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... CRITICO_CUERPO_PROPIO=<g>"`
+(con `PREDICE_ACTOR=16` y `DISTANCIA_PROPIA='fina'` en las dos), B − A (z):
+
+| | G=2 (40000) | G=2 (50000) | G=3 (40000) | G=3 (50000) | −2 (40000) | −2 (50000) |
+|---|---|---|---|---|---|---|
+| base: % hambre / % cruda<0,15 | 38,4 / 42,6 | 37,0 / 41,6 | 38,4 / 42,6 | 37,0 / 41,6 | 38,4 / 42,6 | 37,0 / 41,6 |
+| malestar | +0,001 (0,2) | +0,006 (1,0) | +0,007 (1,1) | +0,007 (1,3) | +0,004 (0,7) | +0,011 (1,9) |
+| % hambre | +0,8 (0,5) | +1,5 (1,1) | +1,7 (1,2) | +1,4 (1,1) | +0,8 (0,6) | +3,0 (2,1) |
+| % cruda < 0,15 | +0,5 (0,4) | +1,0 (0,9) | +1,8 (1,4) | +1,5 (1,4) | +0,7 (0,6) | +2,0 (1,7) |
+| peor 10k hambre | +0,9 | +1,1 | +1,8 (1,6) | +0,9 | −0,6 | +1,0 |
+| % trabadas | 12 → 10 | 9 → 11 | 12 → 12 | 9 → 11 | 12 → 13 | 9 → 14 (1,7) |
+| heridas | −2,0 (−1,3) | −1,5 (−0,9) | −1,7 (−1,1) | 0,0 | +0,2 | −1,8 (−1,1) |
+| desmayos | −1,1 | +3,1 (1,1) | +0,4 | +1,7 | 0,0 | +5,9 (2,1) |
+| % mal alto | +0,3 | +1,3 | +1,5 | +1,4 | +0,8 | +2,8 (1,8) |
+| % mal tope | 0 | 0 | 0 | 0 | 0 | 0 |
+
+Ninguna mejora: G=2 es neutro, G=3 y −2 empeoran algo (más hambre y desmayos; el malestar nunca toca el tope). Por
+qué: la propia ya tiene un segundo crítico en sus unidades, que ven el cuerpo entero y lo que tiene alrededor; partir
+la tabla por todo el cuerpo le da muchas más claves (2^7 o 3^7 por celda) con menos visitas cada una, y lo que la mano
+gana ahí (pasar de ver solo el foco a ver todo) la propia ya lo tenía por las unidades. Lo que le falta no está en cómo
+se ve el cuerpo sino en "hay salida a la vista". **Queda `CRITICO_CUERPO_PROPIO = 0` (apagado)**; la vida por defecto
+no cambia y `rust/pruebas/referencia.txt` no se regenera.
+
+## Aprender las recetas, paso 4: "hay salida a la vista" aprendida (2026-11-26) — sirve, prendido
+
+Idea: lo que a la mano le regala el bit "veo comida" del crítico es poder separar "estoy mal y no hay nada" de "estoy
+mal pero cerca hay algo que alivia". La propia lo arma con lo que ya aprendió en el paso 2: para cada uno de los 5
+movimientos de ahora, las unidades de movimiento (`PREDICE_ACTOR`) predicen cuánto acercaría eso el cuerpo a su
+equilibrio; se toma el mejor, se divide por lo lejos que está el cuerpo del equilibrio ("qué parte del camino cierra el
+mejor movimiento") y se corta en `SALIDA_PROPIA` franjas (umbral `SALIDA_UMBRAL = 0,03`, cada franja siguiente pide 3
+veces más; en una vida la mediana es ~0,01, el 75 % ~0,03 y el 90 % ~0,1). Esa franja entra en la clave de la tabla V
+de la propia. Nada le dice qué es comida: es lo que predicen sus unidades. Para que el estado siguiente (s2) tenga su
+franja, la propia mira s2 antes de armar la clave. La variante "como átomo" no se armó: el valor sale de las unidades
+que prenden los átomos, así que sería circular (haría falta una segunda pasada por tick).
+`angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... SALIDA_PROPIA=<g> SALIDA_UMBRAL=0.03" -j 4`
+(medido en el i5, con todo lo prendido), B − A (z):
+
+| | G=2 (40000) | G=2 (50000) | **G=3 (40000)** | **G=3 (50000)** |
+|---|---|---|---|---|
+| base: % hambre / % cruda<0,15 | 38,4 / 42,6 | 37,0 / 41,6 | 38,4 / 42,6 | 37,0 / 41,6 |
+| malestar | −0,009 (−1,4) | −0,007 (−1,2) | **−0,015 (−2,6)** | −0,007 (−1,1) |
+| % hambre | −2,3 (−1,5) | −2,1 (−1,5) | **−4,2 (−3,0)** | −2,1 (−1,4) |
+| % cruda < 0,15 | −1,6 (−1,2) | −1,7 (−1,5) | **−2,7 (−2,3)** | −1,7 (−1,4) |
+| peor 10k hambre | −1,2 (−1,1) | −1,4 (−1,2) | −2,6 (−2,3) | −2,4 (−1,9) |
+| racha de hambre | −85 (−2,8) | −36 (−1,1) | −37 (−1,1) | −35 (−1,1) |
+| % trabadas | 12 → 10 | 9 → 9 | 12 → 8 (−1,7) | 9 → 8 |
+| desmayos | −3,6 (−1,2) | −1,4 (−0,5) | −8,1 (−3,1) | −1,7 (−0,6) |
+| % mal alto | −2,3 (−1,3) | −1,9 (−1,2) | −4,0 (−2,5) | −2,1 (−1,3) |
+| comidas | +36 (1,5) | +33 (1,6) | +62 (3,0) | +32 (1,5) |
+| heridas | +1,0 | +0,9 | +0,6 | 0,0 |
+| enfermó | +2,6 (1,2) | +2,2 (1,2) | +0,3 | +3,9 (1,9) |
+| % mal tope | 0 | 0 | 0 | 0 |
+
+Las cuatro tandas van para el mismo lado: menos hambre, menos crudas, menos malestar alto, menos desmayos; el malestar
+nunca toca el tope. G=3 mejora más que G=2 (juntando las dos semillas, hambre −3,1 puntos, z ≈ −3,1; crudas −2,2,
+z ≈ −2,6). Por qué: con la franja el crítico aprende que "mal con salida" vale más que "mal sin salida", y el error TD
+premia acercarse a donde hay salida; come más seguido (+3–6 %) y se traba menos. Con 3 franjas distingue "algo alivia
+un poco" de "algo me saca del pozo", que es lo que la mano tiene gratis. Costo: se enferma algo más en una semilla
+(+3,9, z 1,9): también se anima con lo que predice que alivia y está podrido. **Queda prendido con `SALIDA_PROPIA = 3`**
+(solo propia: la vida por defecto, con la mano, no cambia y `rust/pruebas/referencia.txt` no se regenera; guardar y
+retomar con la propia dan `IDÉNTICO`).
+
+### Aprender las recetas, cierre: mano contra propia
+
+Igual que el cierre de la revisión (A = mano, B = propia, `angri comparar 200000 512 "MUNDO=bosque OBJETOS=True"
+"... RASGOS=propios" -j 12`), con lo que quedó prendido de esta etapa (`PREDICE_ACTOR=16`; `ACERCO_FOCO` sacado,
+`CRITICO_CUERPO_PROPIO` apagado). Dos tandas de 512 pares: `--desde 31000` (las mismas semillas del cierre: la mano
+da 25,7 exacto, así que los números se comparan directo) y `--desde 1000`.
+
+| | mano cierre rev. | propia cierre rev. | mano 31000 | propia 31000 | z | mano 1000 | propia 1000 | z |
+|---|---|---|---|---|---|---|---|---|
+| % hambre | 25,7 | 42,0 | 25,7 | 39,4 | 11,9 | 25,9 | 37,7 | 11,6 |
+| % cruda < 0,15 | 29,2 | 45,7 | 29,2 | 43,2 | 14,0 | 29,7 | 42,4 | 14,4 |
+| peor 10k hambre | 75,9 | 89,0 | 75,9 | 87,4 | 10,4 | 77,7 | 86,5 | 8,3 |
+| % trabadas | 6,3 | 15,0 | 6,3 | 11,9 | 3,1 | 5,5 | 11,3 | 3,4 |
+| % sed | 23,7 | 34,0 | 23,7 | 32,9 | 9,8 | 23,1 | 32,7 | 11,7 |
+| desmayos | 31 | 52 | 30,7 | 43,9 | 6,4 | 31,3 | 40,9 | 5,2 |
+| % malestar alto | | | 26,3 | 39,2 | 10,0 | 26,7 | 37,7 | 9,7 |
+| % duerme refugio propio | 1,7 | 6,3 | 1,7 | 5,7 | 8,3 | 1,6 | 5,7 | 9,1 |
+| % mal tope | 0 | 0 | 0 | 0 | | 0 | 0 | |
+
+La distancia en crudas contra la vara bajó de 16,5 a 14,0 puntos (y 12,7 con las otras semillas); en hambre, de 16,3 a
+13,7 / 11,7. Es decir, de los ~16 puntos que regalan `alivia()` y "veo comida", la propia ganó sola unos 2,5–4: casi
+todo por el paso 2 (predecir el cuerpo es su versión aprendida de "qué alivia qué"). Se desmaya bastante menos (52 → 41–44)
+y se traba menos, el malestar nunca tocó el tope. Los ~12–14 puntos que quedan son, sobre todo, "hay salida a la vista":
+el paso 3 mostró que no se arregla mirando el cuerpo de otra forma.
+
+Qué sigue: vidas largas (1–5 M de ticks) mano contra propia con todo esto, para ver si con tiempo la propia alcanza a
+la mano (la mano aprende rápido por las recetas; la propia tiene que descubrirlas).
 
 ## Reglas del proyecto
 
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
 - Cada pieza "cerebral" se mide; si no mejora nada, se saca.
 - Tope al malestar (`MALESTAR_MAXIMO`) y registro de su interior, siempre.
+
+## Aprender las recetas, paso 5: las unidades predicen también la sed y las demás necesidades (2026-11-26) — no sirve, apagado
+
+Idea: las unidades de movimiento (`PREDICE_ACTOR`) solo predecían energía, integridad y calor; quedaban afuera el agua,
+el cansancio, la curiosidad y el estrés (este último hoy no pesa en el malestar). La propia pasaba ~31 % del tiempo con
+sed. `PREDICE_TODAS` (solo propia): 1 = suma el agua, 2 = suma las cuatro; entra en el empuje del actor y en la salida
+(`SALIDA_PROPIA`). Nada le dice qué alivia la sed: lo aprende de cómo cambia el cuerpo. Con 0 la cuenta es exactamente la
+de antes (las nuevas van al final y los bucles cortan en las prendidas); la mente guardada pasa a la versión 5 (14
+predicciones por unidad). `angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... PREDICE_TODAS=<n>"
+-j 4` (medido en el i5, con todo lo prendido), B − A (z):
+
+| | T=1 (40000) | T=1 (50000) | T=2 (40000) | T=2 (50000) |
+|---|---|---|---|---|
+| base: % hambre / % sed | 34,2 / 30,7 | 34,9 / 31,2 | 34,2 / 30,7 | 34,9 / 31,2 |
+| malestar | 0,000 (0,0) | −0,002 (−0,3) | 0,000 (0,0) | −0,008 (−1,3) |
+| % hambre | +0,8 (0,6) | −1,1 (−0,8) | +1,0 (0,7) | −1,8 (−1,3) |
+| % sed | +0,1 (0,1) | +1,0 (0,7) | +0,1 (0,1) | −1,1 (−0,8) |
+| % cruda < 0,15 | −0,2 | −0,5 | +0,1 | −1,2 (−1,0) |
+| % mal alto | −0,2 | −0,5 | 0,0 | −2,0 (−1,3) |
+| bebe (veces) | 6140 → 2694 (−15) | 5875 → 2658 (−13) | 6140 → 2638 (−15) | 5875 → 2684 (−14) |
+| desm. sed | −1,3 (−3,2) | +0,4 (0,7) | −0,9 (−2,3) | −0,3 (−0,8) |
+| desmayos | +1,3 | +0,1 | +1,9 | −3,3 (−1,2) |
+| comidas | −37 (−1,9) | +6 | −41 (−2,1) | −2 |
+| % trabadas | 7,8 → 11,3 | 8,2 → 9,8 | 7,8 → 9,0 | 8,2 → 7,4 |
+| % mal tope | 0 | 0 | 0 | 0 |
+
+Ninguna mejora en las dos semillas: el % de sed y el de hambre no se mueven (las semillas van para lados distintos).
+Lo único grande es que toma agua la mitad de las veces (sorbos más largos: deja de cortar la bebida para irse), sin
+menos tiempo con sed; los desmayos por sed bajan algo en una semilla. Por qué no alcanza: el agua es fácil de encontrar
+y la sed sube parejo; lo que la tiene con sed no es no saber que el agua alivia sino el reparto de tiempo entre comer y
+tomar. El malestar nunca toca el tope. **Queda apagado (`PREDICE_TODAS = 0`)**; la vida por defecto no cambia y
+`rust/pruebas/referencia.txt` no se regenera; guardar y retomar con la propia dan `IDÉNTICO` (con 0 y con 2).
+
+## Aprender las recetas, paso 6: que la salida llegue más lejos que un paso (2026-11-26) — empeora, apagado
+
+Idea: `SALIDA_PROPIA` solo mira el alivio que predicen los movimientos de *ahora*; si la comida está a varios pasos,
+ningún movimiento la ve. `SALIDA_LEJOS` (solo propia, con `SALIDA_PROPIA`, `PREDICE_ACTOR` y `PREDICE_TODAS` < 2): las
+unidades de movimiento aprenden con TD, en el último casillero de `q` (libre con `PREDICE_TODAS` < 2, así se guarda sin
+cambiar el formato), a qué franja de salida lleva cada movimiento, y eso se suma a la elección × `SALIDA_LEJOS_PESO`.
+1 = la franja del estado siguiente (variante a); 2 = horizonte largo: franja siguiente × 0,1 + 0,9 × la mejor salida
+predicha desde ahí (variante b hecha con TD en vez de una ventana de N pasos). Nada dice qué es comida.
+`angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... SALIDA_LEJOS=2 SALIDA_LEJOS_PESO=1" -j 2`
+(medido en el i5, las dos semillas a la vez; terminaron 07:05, justo al empezar el corte), B − A (z):
+
+| | 40000 | 50000 |
+|---|---|---|
+| base: % hambre | 34,2 | 34,9 |
+| malestar | +0,010 (1,7) | +0,002 (0,4) |
+| % hambre | +2,7 (1,9) | 0,0 (0,0) |
+| % cruda < 0,15 | +1,7 (1,5) | 0,0 |
+| heridas | 53,6 → 72,1 (7,8) | 53,9 → 75,6 (9,1) |
+| desmayos | +5,3 (2,0) | +0,6 |
+| comidas | −36 (−1,8) | −4 |
+| % trabadas | 7,8 → 11,3 | 8,2 → 7,8 |
+| % mal tope | 0 | 0 |
+
+Empeora: el hambre no baja en ninguna semilla y las heridas suben ~40 % en las dos (z 8–9). Por qué, probablemente: lo
+que aprende es "a qué franja de salida lleva este movimiento", y la salida más alta está donde hay alivio *o peligro*
+(las unidades predicen también la integridad); el empuje la manda hacia donde pasan cosas, y ahí se lastima. Además el
+peso 1 está en otra escala que el empuje de `PREDICE_ACTOR`. La variante 1 no se midió. **Queda apagado
+(`SALIDA_LEJOS = 0`)**; la vida por defecto no cambia, la referencia no se regenera, y `angri retomar` con la propia da
+`IDÉNTICO` (con 0 y con 2).

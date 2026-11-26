@@ -552,12 +552,17 @@ impl Bosque {
     pub fn temperatura(&self, x: i64, y: i64, c: &Config) -> f64 {
         let z = self.zona_en(x, y);
         if z == Z_CUEVA {
-            return c.temp_cueva;
+            // (revisión, paso 3d) la cueva abriga: un poco por encima del calor de equilibrio, todo el año
+            return if c.cueva_abriga { c.equilibrio[6] + 0.1 } else { c.temp_cueva };
         }
         let ts = [c.temp_dia, c.temp_dia + 0.1, c.temp_dia - 0.05, c.temp_dia - 0.2];
         let mut t = ts[self.estacion(c) as usize];
         if self.noche(c) {
             t -= c.frio_noche;
+        }
+        // (revisión, paso 3c) estar parada en el agua enfría
+        if c.agua_fria != 0.0 && self.g[self.i(x, y)] == AGUA {
+            t -= c.agua_fria;
         }
         let tapado = self.objetos && self.techo[self.i(x, y)] > 0;
         if !tapado {
@@ -650,7 +655,7 @@ impl Bosque {
         if self.lluvia != 0 {
             self.lluvia -= 1;
             if self.lluvia > 0 && self.crecida == 0 && self.rng.random() < c.prob_crecida {
-                self.crecer(true);
+                self.crecer(true, c);
             }
         } else if self.rng.random() < c.prob_lluvia {
             self.lluvia = self.rng.randint(200, 700);
@@ -658,11 +663,15 @@ impl Bosque {
         if self.crecida != 0 {
             self.crecida -= 1;
             if self.crecida == 0 {
-                self.crecer(false);
+                self.crecer(false, c);
             }
         }
         if self.rng.random() < c.prob_brote {
-            let t = self.rng.choice(&[FRUTA, FRUTA, BAYA, NUEZ, RAIZ]);
+            let mut t = self.rng.choice(&[FRUTA, FRUTA, BAYA, NUEZ, RAIZ]);
+            // (revisión, paso 3a) en invierno el brote de fruta o baya no se pierde: va a nueces o raíces
+            if c.invierno == 1 && !da(t, self.estacion(c)) {
+                t = self.rng.choice(&[NUEZ, RAIZ]);
+            }
             self.brotar(t, false, c);
         }
         if self.rng.random() < c.prob_nueva_novedad
@@ -695,9 +704,14 @@ impl Bosque {
         self.mover_predador(angri, refugiado, c);
     }
 
-    fn crecer(&mut self, si: bool) {
+    fn crecer(&mut self, si: bool, c: &Config) {
         self.crecida = if si { self.rng.randint(300, 900) } else { 0 };
+        let medio = self.h / 2;
         for y in 0..self.h {
+            // (revisión, paso 3b) un vado de 3 filas en el medio que la crecida no tapa
+            if c.vado && (y - medio).abs() <= 1 {
+                continue;
+            }
             let rx = self.rio_x[y as usize];
             for x in (rx - 2).max(0)..(rx + 3).min(self.w) {
                 let i = self.i(x, y);

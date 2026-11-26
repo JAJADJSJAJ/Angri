@@ -1,0 +1,150 @@
+# Mide en GitHub Actions: `angri comparar` repartido en varias porciones en paralelo
+# (cada una en un runner de 4 núcleos) y `angri juntar` al final, que da la misma
+# tabla que una sola corrida con todos los pares. Ver rust/medir-actions.sh.
+name: medir
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticks:
+        description: "Ticks por vida"
+        required: true
+        default: "300000"
+      pares:
+        description: "Pares A/B en total"
+        required: true
+        default: "256"
+      desde:
+        description: "Primera semilla"
+        required: false
+        default: "0"
+      variante_a:
+        description: "Ajustes de A (vacío = config actual)"
+        required: false
+        default: ""
+      variante_b:
+        description: "Ajustes de B, p. ej. MUNDO=bosque OBJETOS=True"
+        required: true
+      partes:
+        description: "Porciones en paralelo (hasta 20)"
+        required: false
+        default: "16"
+
+permissions:
+  contents: read
+
+env:
+  TICKS: ${{ inputs.ticks }}
+  PARES: ${{ inputs.pares }}
+  DESDE: ${{ inputs.desde || '0' }}
+  VAR_A: ${{ inputs.variante_a }}
+  VAR_B: ${{ inputs.variante_b }}
+  PARTES: ${{ inputs.partes || '16' }}
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      porciones: ${{ steps.plan.outputs.porciones }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            rust/target
+          key: target-${{ runner.os }}-${{ hashFiles('rust/Cargo.lock', 'rust/Cargo.toml', 'rust/src/**') }}
+          restore-keys: target-${{ runner.os }}-
+      - name: Compilar
+        working-directory: rust
+        run: cargo build --release
+      - name: Repartir los pares
+        id: plan
+        run: |
+          set -eu
+          for v in "$TICKS" "$PARES" "$DESDE" "$PARTES"; do
+            case "$v" in ''|*[!0-9]*) echo "ticks, pares, desde y partes tienen que ser números: '$v'"; exit 1;; esac
+          done
+          k=$PARTES
+          [ "$k" -gt 20 ] && k=20
+          [ "$k" -gt "$PARES" ] && k=$PARES
+          [ "$k" -lt 1 ] && k=1
+          json="["
+          for i in $(seq 0 $((k - 1))); do
+            a=$(( i * PARES / k )); b=$(( (i + 1) * PARES / k ))
+            [ "$b" -gt "$a" ] || continue
+            [ "$json" = "[" ] || json="$json,"
+            json="$json{\"i\":$i,\"desde\":$((DESDE + a)),\"n\":$((b - a))}"
+          done
+          echo "porciones=$json]" >> "$GITHUB_OUTPUT"
+          echo "porciones: $json]"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: angri
+          path: rust/target/release/angri
+          retention-days: 1
+
+  porcion:
+    needs: compilar
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        p: ${{ fromJSON(needs.compilar.outputs.porciones) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: angri
+          path: bin
+      - name: Porción ${{ matrix.p.i }} (desde ${{ matrix.p.desde }}, ${{ matrix.p.n }} pares)
+        working-directory: rust
+        env:
+          N: ${{ matrix.p.n }}
+          D: ${{ matrix.p.desde }}
+          I: ${{ matrix.p.i }}
+        run: |
+          chmod +x ../bin/angri
+          nice -n 10 ../bin/angri comparar "$TICKS" "$N" "$VAR_A" "$VAR_B" -j 4 --desde "$D" --crudo "../crudo-$I.tsv"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crudo-${{ matrix.p.i }}
+          path: crudo-${{ matrix.p.i }}.tsv
+          retention-days: 30
+
+  juntar:
+    needs: porcion
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: angri
+          path: bin
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: crudo-*
+          path: crudos
+          merge-multiple: true
+      - name: Juntar
+        run: |
+          chmod +x bin/angri
+          bin/angri juntar crudos/*.tsv > tabla.txt
+          cat tabla.txt
+          {
+            echo "## angri comparar en Actions"
+            echo
+            echo '```'
+            cat tabla.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tabla
+          path: |
+            tabla.txt
+            crudos/
+          retention-days: 90

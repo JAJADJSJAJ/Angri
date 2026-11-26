@@ -26,7 +26,8 @@ use crate::mundo::*;
 
 /// átomos del estado: 0..N_ESTADO; de un movimiento: N_ESTADO..N_ATOMOS
 pub const N_ESTADO: usize = 68;
-pub const N_MOVER: usize = 44;
+/// (44 de siempre + 49 de DISTANCIA_PROPIA='fina': 42 de "me acerco" y 7 de "me alejo")
+pub const N_MOVER: usize = 93;
 pub const N_ATOMOS: usize = N_ESTADO + N_MOVER;
 const SIN_ATOMO: u16 = u16::MAX;
 /// marca de una unidad del estado en la lista de activas (las de movimiento llevan
@@ -47,10 +48,21 @@ pub struct Unidad {
     pub q: [f64; NPRED], // (PREDICE_PROPIO) lo que predice de los cambios del cuerpo
 }
 
-/// lo que predicen las unidades: suba y baja de energía, integridad y calor
-pub const NPRED: usize = 6;
-const PREDICE: [usize; 3] = [crate::mente::ENERGIA, crate::mente::INTEGRIDAD, crate::mente::CALOR];
+/// lo que predicen las unidades: suba y baja de cada necesidad. Las primeras 3 (energía, integridad,
+/// calor) siempre; (PREDICE_TODAS, paso 5) 1 suma el agua, 2 suma todas. Las que no se usan quedan en 0
+/// y los bucles van solo hasta `np`, así con PREDICE_TODAS = 0 la cuenta es la misma de antes.
+pub const NPRED: usize = 14;
+const PREDICE: [usize; 7] = [crate::mente::ENERGIA, crate::mente::INTEGRIDAD, crate::mente::CALOR, crate::mente::AGUA_N, crate::mente::CANSANCIO, crate::mente::CURIOSIDAD, crate::mente::ESTRES];
+fn npred(c: &Config) -> usize {
+    match c.predice_todas { 0 => 3, 1 => 4, _ => 7 }
+}
 const GAMMA_PRED: f64 = 0.9;
+/// (paso 6) casillero de `q` donde las unidades de movimiento guardan la salida a la que llevan
+const SL: usize = NPRED - 1;
+#[inline]
+fn lejos_activo(c: &Config) -> bool {
+    c.salida_lejos > 0 && c.salida_propia > 0 && c.predice_actor > 0.0 && c.predice_todas < 2
+}
 
 impl Unidad {
     fn vacia() -> Unidad {
@@ -58,8 +70,23 @@ impl Unidad {
     }
 }
 
+/// Lo justo para saber si una unidad está activa, aparte y compacto (8 bytes): así la
+/// búsqueda de activas no lee la unidad entera. No se guarda: sale de `unidades`.
+#[derive(Clone, Copy)]
+struct Forma {
+    atomos: [u16; 3],
+    k: u8,
+    mover: bool,
+}
+
+impl Forma {
+    fn de(u: &Unidad) -> Forma {
+        Forma { atomos: u.atomos, k: u.k, mover: u.mover }
+    }
+}
+
 /// Lo que siente en un momento, en átomos.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct Sentir {
     pub estado: Vec<u16>,     // ordenados
     pub mover: [Vec<u16>; 5], // por movimiento (índices >= N_ESTADO), ordenados
@@ -69,6 +96,9 @@ pub struct Propia {
     rng: Azar,
     pub unidades: Vec<Unidad>, // las primeras N_ATOMOS son los átomos solos
     indice: Vec<Vec<u32>>,     // átomo -> unidades del banco cuyo primer átomo es ese
+    forma: Vec<Forma>,         // copia compacta de la forma de cada unidad
+    // lo que sintió en s2 y sus activas: si al elegir siente lo mismo (y no nació nadie), se reusan
+    previa: Option<(Sentir, Vec<(u32, u8)>)>,
     // huellas densas por unidad; `huella` lista las que no están en cero
     ev: Vec<f64>,
     ew: Vec<[f64; NACC]>,
@@ -79,6 +109,7 @@ pub struct Propia {
     activas: Vec<(u32, u8)>,
     elegida: usize,
     pub vs: f64, // V propio de s
+    pub salida: u32, // (paso 4) franja de "hay salida a la vista" del último sentir mirado (no se guarda: se recalcula)
     pub t: i64,
     pub nacidas: i64,
     pub reiniciadas: i64,
@@ -103,7 +134,7 @@ fn dir_de(dx: i64, dy: i64) -> usize {
 
 /// Los átomos de este momento (sin orden de importancia, sin "hacia dónde ir").
 pub fn sentir(vista: &Vista, cuerpo: &[f64; 7], ncuerpo: usize, n: usize, dr: usize, dicha: usize,
-              tacto: Option<&Tacto>, clima: u8) -> Sentir {
+              tacto: Option<&Tacto>, clima: u8, fina: bool) -> Sentir {
     let mut s = Sentir::default();
     let e = &mut s.estado;
     e.push(0); // siempre (solo para el crítico)
@@ -141,8 +172,21 @@ pub fn sentir(vista: &Vista, cuerpo: &[f64; 7], ncuerpo: usize, n: usize, dr: us
         if let Some(a) = MOVIMIENTOS[..4].iter().position(|&x| x == (dx, dy)) {
             s.mover[a].push((m + cod) as u16);
         }
-        let dist = match dx.abs() + dy.abs() { 1 => 0, 2 => 1, 3 | 4 => 2, _ => 3 };
-        s.mover[dir_de(dx, dy)].push((m + 7 + cod * 4 + dist) as u16);
+        let d = dx.abs() + dy.abs();
+        if fina {
+            // (paso 4f) a cada movimiento que la acerca, "me acerco a esto a distancia d"; al que la aleja, "me alejo"
+            for (a, &(mx, my)) in MOVIMIENTOS[..4].iter().enumerate() {
+                let d2 = (dx - mx).abs() + (dy - my).abs();
+                if d2 < d {
+                    s.mover[a].push((m + 44 + cod * 6 + (d as usize - 1).min(5)) as u16);
+                } else {
+                    s.mover[a].push((m + 86 + cod) as u16);
+                }
+            }
+        } else {
+            let dist = match d { 1 => 0, 2 => 1, 3 | 4 => 2, _ => 3 };
+            s.mover[dir_de(dx, dy)].push((m + 7 + cod * 4 + dist) as u16);
+        }
     }
     for a in 0..5 {
         if let Some(t) = tacto {
@@ -174,10 +218,11 @@ impl Propia {
             unidades.push(Unidad::vacia());
         }
         let n = unidades.len();
+        let forma = unidades.iter().map(Forma::de).collect();
         Propia {
-            rng: Azar::new(semilla ^ 0x14_0b5e55), unidades, indice: vec![vec![]; N_ATOMOS],
+            rng: Azar::new(semilla ^ 0x14_0b5e55), unidades, indice: vec![vec![]; N_ATOMOS], forma, previa: None,
             ev: vec![0.0; n], ew: vec![[0.0; NACC]; n], marca: vec![false; n], huella: vec![],
-            cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0,
+            cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0, salida: 0,
             t: 0, nacidas: 0, reiniciadas: 0, molde: Sentir::default(), molde_a: 4, molde_d: 0.0,
             activas2: vec![], cuerpo_antes: [f64::NAN; 7],
         }
@@ -206,7 +251,7 @@ impl Propia {
         }
         let probar = |a: usize, act: &mut Vec<(u32, u8)>| {
             for &u in &self.indice[a] {
-                let un = &self.unidades[u as usize];
+                let un = &self.forma[u as usize];
                 let mut m: u8 = 0x1f;
                 let mut ok = true;
                 for &b in &un.atomos[..un.k as usize] {
@@ -242,9 +287,40 @@ impl Propia {
     }
 
     /// al elegir: guarda s y suma a cada acción lo que dicen sus unidades
-    pub fn preferencias(&mut self, s: Sentir, h: &mut [f64; NACC], na: usize) {
-        let act = self.activas_de(&s);
+    pub fn preferencias(&mut self, s: Sentir, h: &mut [f64; NACC], na: usize, cuerpo: &[f64; 7], c: &Config) {
+        let act = match self.previa.take() {
+            Some((ps, pa)) if ps == s => pa,
+            _ => self.activas_de(&s),
+        };
         self.sumar(&act, h, na);
+        if c.predice_actor > 0.0 {
+            // cuánto vale cada suba/baja predicha: lo que acercaría esa necesidad a su equilibrio
+            let mut gusto = [0.0; NPRED];
+            for (j, &k) in PREDICE[..npred(c)].iter().enumerate() {
+                let falta = c.peso[k] * (c.equilibrio[k] - cuerpo[k]);
+                gusto[2 * j] = falta;
+                gusto[2 * j + 1] = -falta;
+            }
+            for &(u, m) in &act {
+                if m != DEL_ESTADO {
+                    let un = &self.unidades[u as usize];
+                    let x: f64 = (0..2 * npred(c)).map(|i| gusto[i] * un.q[i]).sum::<f64>() * c.predice_actor;
+                    for a in 0..5 {
+                        if m >> a & 1 == 1 {
+                            h[a] += x;
+                        }
+                    }
+                }
+            }
+        }
+        if lejos_activo(c) {
+            // (paso 6) a qué franja de salida predice que lleva cada movimiento
+            let p = Self::salida_mov(&self.unidades, &act);
+            for a in 0..5 {
+                h[a] += c.salida_lejos_peso * p[a];
+            }
+        }
+        self.salida = if c.salida_propia > 0 { self.salida_de(&act, cuerpo, c) } else { 0 };
         self.vs = self.valor(&act);
         self.ahora = s;
         self.activas = act;
@@ -281,7 +357,7 @@ impl Propia {
             return;
         }
         let n = act.len() as f64;
-        let ac = c.aprende_propio_critico / n * d;
+        let ac = if c.critico_propio == 1 { 0.0 } else { c.aprende_propio_critico / n * d };
         let aa = c.aprende_propio_actor / n * d;
         for &(u, m) in act {
             let un = &mut self.unidades[u as usize];
@@ -305,21 +381,107 @@ impl Propia {
     }
 
     /// V propio de s2 (para el error TD)
-    pub fn valor_de(&mut self, s: &Sentir, c: &Config) -> f64 {
+    /// (aprender las recetas, paso 4) "hay salida a la vista": el mejor alivio que predicen las unidades
+    /// de movimiento entre los 5 movimientos de ahora, como fracción de lo lejos que está el cuerpo de su
+    /// equilibrio, en SALIDA_PROPIA franjas (0 = ninguna salida). Nada dice qué es comida: es lo que predicen.
+    pub fn salida_de(&self, act: &[(u32, u8)], cuerpo: &[f64; 7], c: &Config) -> u32 {
+        let mut gusto = [0.0; NPRED];
+        let mut lejos = 0.0;
+        for (j, &k) in PREDICE[..npred(c)].iter().enumerate() {
+            let d = c.equilibrio[k] - cuerpo[k];
+            let falta = c.peso[k] * d;
+            lejos += falta * d;
+            gusto[2 * j] = falta;
+            gusto[2 * j + 1] = -falta;
+        }
+        let mut al = [0.0f64; 5];
+        for &(u, m) in act {
+            if m != DEL_ESTADO {
+                let un = &self.unidades[u as usize];
+                let x: f64 = (0..2 * npred(c)).map(|i| gusto[i] * un.q[i]).sum::<f64>();
+                for a in 0..5 {
+                    if m >> a & 1 == 1 {
+                        al[a] += x;
+                    }
+                }
+            }
+        }
+        let mejor = al.iter().cloned().fold(f64::MIN, f64::max);
+        if lejos < 1e-4 || mejor <= 0.0 {
+            return 0;
+        }
+        let r = mejor / lejos;
+        if c.salida_debug {
+            eprintln!("salida {r:.5} {mejor:.6} {lejos:.6}");
+        }
+        let g = c.salida_propia as u32;
+        let mut f = 0;
+        let mut u = c.salida_umbral;
+        while f + 1 < g && r >= u {
+            f += 1;
+            u *= 3.0;
+        }
+        f
+    }
+
+    /// (paso 6, SALIDA_LEJOS) la salida predicha para cada movimiento: suma del último casillero de `q`
+    /// de las unidades de movimiento activas para él (ese casillero no lo usa PREDICE_TODAS < 2)
+    fn salida_mov(unidades: &[Unidad], act: &[(u32, u8)]) -> [f64; 5] {
+        let mut p = [0.0; 5];
+        for &(u, m) in act {
+            if m != DEL_ESTADO {
+                let q = unidades[u as usize].q[SL];
+                for a in 0..5 {
+                    if m >> a & 1 == 1 {
+                        p[a] += q;
+                    }
+                }
+            }
+        }
+        p
+    }
+
+    /// (paso 6) aprende con TD a qué franja de salida lleva el movimiento elegido
+    fn aprender_lejos(&mut self, c: &Config) {
+        let a = self.elegida;
+        let g = (c.salida_propia - 1).max(1) as f64;
+        let mut y = self.salida as f64 / g; // la franja de s2 (la dejó valor_de)
+        if c.salida_lejos == 2 {
+            let p2 = Self::salida_mov(&self.unidades, &self.activas2);
+            let mejor = p2.iter().cloned().fold(f64::MIN, f64::max);
+            y = (1.0 - GAMMA_PRED) * y + GAMMA_PRED * mejor;
+        }
+        let pa = Self::salida_mov(&self.unidades, &self.activas)[a];
+        let na = self.activas.iter().filter(|&&(_, m)| m != DEL_ESTADO && m >> a & 1 == 1).count();
+        if na == 0 {
+            return;
+        }
+        let e = c.aprende_propio_critico / na as f64 * (y - pa);
+        for k in 0..self.activas.len() {
+            let (u, m) = self.activas[k];
+            if m != DEL_ESTADO && m >> a & 1 == 1 {
+                self.unidades[u as usize].q[SL] += e;
+            }
+        }
+    }
+
+    pub fn valor_de(&mut self, s: &Sentir, cuerpo: &[f64; 7], c: &Config) -> f64 {
         let act = self.activas_de(s);
         let v = self.valor(&act);
-        if c.predice_propio > 0.0 {
-            self.activas2 = act;
+        self.salida = if c.salida_propia > 0 { self.salida_de(&act, cuerpo, c) } else { 0 };
+        if c.predice_propio > 0.0 || c.predice_actor > 0.0 {
+            self.activas2 = act.clone();
         }
+        self.previa = Some((s.clone(), act));
         v
     }
 
-    fn predicho(&self, act: &[(u32, u8)]) -> [f64; NPRED] {
+    fn predicho(&self, act: &[(u32, u8)], np: usize) -> [f64; NPRED] {
         let mut q = [0.0; NPRED];
         for &(u, m) in act {
             if m == DEL_ESTADO {
                 let un = &self.unidades[u as usize];
-                for i in 0..NPRED {
+                for i in 0..np {
                     q[i] += un.q[i];
                 }
             }
@@ -329,21 +491,22 @@ impl Propia {
 
     /// las unidades aprenden a predecir los cambios del cuerpo (TD con sus propias huellas de estado)
     fn predecir(&mut self, cuerpo: &[f64; 7], n: f64, c: &Config) {
+        let np = 2 * npred(c);
         let antes = self.cuerpo_antes;
         self.cuerpo_antes = *cuerpo;
         if antes[0].is_nan() {
             return;
         }
         let mut cum = [0.0; NPRED];
-        for (j, &k) in PREDICE.iter().enumerate() {
+        for (j, &k) in PREDICE[..npred(c)].iter().enumerate() {
             let d = (cuerpo[k] - antes[k]) * 10.0;
             cum[2 * j] = d.max(0.0).min(1.0);
             cum[2 * j + 1] = (-d).max(0.0).min(1.0);
         }
-        let q1 = self.predicho(&self.activas);
-        let q2 = self.predicho(&self.activas2);
+        let q1 = self.predicho(&self.activas, np);
+        let q2 = self.predicho(&self.activas2, np);
         let mut d = [0.0; NPRED];
-        for i in 0..NPRED {
+        for i in 0..np {
             d[i] = c.aprende_propio_critico / n * (cum[i] + GAMMA_PRED * q2[i] - q1[i]);
         }
         for &u in &self.huella {
@@ -351,8 +514,41 @@ impl Propia {
             let e = self.ev[u];
             if e != 0.0 {
                 let un = &mut self.unidades[u];
-                for i in 0..NPRED {
+                for i in 0..np {
                     un.q[i] += d[i] * e;
+                }
+            }
+        }
+        if lejos_activo(c) && self.elegida < 5 {
+            self.aprender_lejos(c);
+        }
+        if c.predice_actor > 0.0 && self.elegida < 5 {
+            // (PREDICE_ACTOR) las de movimiento del elegido aprenden lo que ese movimiento agrega
+            let a = self.elegida;
+            let mut qa = q1;
+            let mut na = 0.0;
+            for &(u, m) in &self.activas {
+                if m != DEL_ESTADO && m >> a & 1 == 1 {
+                    na += 1.0;
+                    for i in 0..np {
+                        qa[i] += self.unidades[u as usize].q[i];
+                    }
+                }
+            }
+            if na > 0.0 {
+                let r = c.aprende_propio_critico / na;
+                let mut e = [0.0; NPRED];
+                for i in 0..np {
+                    e[i] = r * (cum[i] + GAMMA_PRED * q2[i] - qa[i]);
+                }
+                for k in 0..self.activas.len() {
+                    let (u, m) = self.activas[k];
+                    if m != DEL_ESTADO && m >> a & 1 == 1 {
+                        let un = &mut self.unidades[u as usize];
+                        for i in 0..np {
+                            un.q[i] += e[i];
+                        }
+                    }
                 }
             }
         }
@@ -381,12 +577,14 @@ impl Propia {
         let decae = c.serotonina * c.huella;
         let n = self.activas.len() as f64;
         // las huellas se desvanecen; las que quedan en casi cero se sueltan
-        let (ev, ew, marca) = (&mut self.ev, &mut self.ew, &mut self.marca);
+        let (ev, ew, marca, forma) = (&mut self.ev, &mut self.ew, &mut self.marca, &self.forma);
         self.huella.retain(|&u| {
             let u = u as usize;
             ev[u] *= decae;
             let mut m = ev[u];
-            for x in ew[u].iter_mut() {
+            // las de movimiento solo usan ew[0] (el resto queda siempre en cero)
+            let usa = if forma[u].mover { 1 } else { NACC };
+            for x in ew[u][..usa].iter_mut() {
                 *x *= decae;
                 m = m.max(x.abs());
             }
@@ -423,7 +621,7 @@ impl Propia {
                 self.huella.push(u as u32);
             }
         }
-        let ac = c.aprende_propio_critico / n * delta;
+        let ac = if c.critico_propio == 1 { 0.0 } else { c.aprende_propio_critico / n * delta };
         let aa = c.aprende_propio_actor / n * delta;
         let t = self.t;
         for &u in &self.huella {
@@ -448,7 +646,7 @@ impl Propia {
                 }
             }
         }
-        if c.predice_propio > 0.0 {
+        if c.predice_propio > 0.0 || c.predice_actor > 0.0 {
             self.predecir(cuerpo, n, c);
         }
         // utilidad: cuánto pesan cuando están activas
@@ -523,6 +721,7 @@ impl Propia {
     /// la unidad `u` (re)nace: 2 o 3 átomos de lo que acaba de pasar (el estado y el
     /// movimiento que hizo), prefiriendo los raros, hasta que sea selectiva
     fn nacer(&mut self, u: usize, c: &Config) {
+        self.previa = None;
         let viejo = self.unidades[u];
         if viejo.k > 0 {
             let l = &mut self.indice[viejo.clave as usize];
@@ -537,6 +736,7 @@ impl Propia {
             self.huella.retain(|&x| x as usize != u);
         }
         self.unidades[u] = Unidad { nace: self.t, ..Unidad::vacia() };
+        self.forma[u] = Forma::de(&self.unidades[u]);
         let t = self.t.max(1) as f64;
         let mut pool: Vec<(u16, f64)> = self.ahora.estado.iter().copied().filter(|&a| a != 0)
             .map(|a| (a, self.cuenta[a as usize] as f64 / t)).collect();
@@ -580,6 +780,7 @@ impl Propia {
         atomos[..k].copy_from_slice(&elegidos);
         let mover = elegidos.iter().any(|&a| a as usize >= N_ESTADO);
         self.unidades[u] = Unidad { atomos, k: k as u8, clave, mover, nace: self.t, ..Unidad::vacia() };
+        self.forma[u] = Forma::de(&self.unidades[u]);
         self.indice[clave as usize].push(u as u32);
     }
 
@@ -592,6 +793,7 @@ impl Propia {
         }
         self.huella.clear();
         self.activas.clear();
+        self.previa = None;
         self.activas2.clear();
         self.cuerpo_antes = [f64::NAN; 7];
     }
@@ -609,5 +811,33 @@ impl Propia {
 
 crate::pieza!(Unidad { atomos, k, clave, mover, v, w, util, veces, nace, q });
 crate::pieza!(Sentir { estado, mover });
-crate::pieza!(Propia { rng, unidades, indice, ev, ew, marca, huella, cuenta, ahora, activas, elegida, vs, t,
-                      nacidas, reiniciadas, molde, molde_a, molde_d, activas2, cuerpo_antes });
+/// lo que se guarda de Propia (todo menos `forma`, que se rearma de `unidades` al cargar)
+struct Guardada {
+    rng: Azar, unidades: Vec<Unidad>, indice: Vec<Vec<u32>>, ev: Vec<f64>, ew: Vec<[f64; NACC]>, marca: Vec<bool>,
+    huella: Vec<u32>, cuenta: Vec<i64>, ahora: Sentir, activas: Vec<(u32, u8)>, elegida: usize, vs: f64, t: i64,
+    nacidas: i64, reiniciadas: i64, molde: Sentir, molde_a: usize, molde_d: f64, activas2: Vec<(u32, u8)>,
+    cuerpo_antes: [f64; 7],
+}
+
+crate::pieza!(Guardada { rng, unidades, indice, ev, ew, marca, huella, cuenta, ahora, activas, elegida, vs, t,
+                         nacidas, reiniciadas, molde, molde_a, molde_d, activas2, cuerpo_antes });
+
+impl crate::guardar::Pieza for Propia {
+    fn guardar(&self, e: &mut crate::guardar::Escritor) {
+        let p = self;
+        // mismos campos y en el mismo orden que antes: los archivos viejos siguen sirviendo
+        macro_rules! g { ($($f:ident),*) => { $( e.campo(stringify!($f)); crate::guardar::Pieza::guardar(&p.$f, e); )* } }
+        g!(rng, unidades, indice, ev, ew, marca, huella, cuenta, ahora, activas, elegida, vs, t,
+           nacidas, reiniciadas, molde, molde_a, molde_d, activas2, cuerpo_antes);
+    }
+    fn cargar(l: &mut crate::guardar::Lector) -> Self {
+        let g = Guardada::cargar(l);
+        let forma = g.unidades.iter().map(Forma::de).collect();
+        Propia {
+            rng: g.rng, unidades: g.unidades, indice: g.indice, forma, previa: None, ev: g.ev, ew: g.ew, marca: g.marca,
+            huella: g.huella, cuenta: g.cuenta, ahora: g.ahora, activas: g.activas, elegida: g.elegida, vs: g.vs, salida: 0,
+            t: g.t, nacidas: g.nacidas, reiniciadas: g.reiniciadas, molde: g.molde, molde_a: g.molde_a,
+            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes,
+        }
+    }
+}

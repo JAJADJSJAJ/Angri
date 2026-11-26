@@ -54,7 +54,7 @@ PREDADOR_HARTO = 1500         # ticks sin cazar después de atacar (tope ético:
 RASTRO_DECAE = 0.99           # por tick, el olor de Angri
 RASTRO_DURA = 400
 SUENO_NOCHE = 0.3             # proceso C: de noche el umbral para dormirse baja esto; de día el de despertar sube
-DESMAYO_DONDE = 'cueva'       # dónde despierta: "cueva" (la más cercana), "cueva_agua" o "aqui"
+DESMAYO_DONDE = 'aqui'        # dónde despierta: "aqui" (donde cayó), "cueva" (la más cercana) o "cueva_agua". La cueva armaba un bucle: reaparecía lejos de la comida, se vaciaba y volvía a caer ahí (256 pares: trabadas 38 -> 17 %)
 DESMAYO_INTEGRIDAD = 0.3      # integridad 0 -> se desmaya y despierta en una cueva con esto
 DESMAYO_RESTO = 0.35          # y con al menos esto de energía y agua (no muere: decisión del usuario)
 MALESTAR_ALTO = 0.4           # para medir el % del tiempo en malestar alto (ética)
@@ -94,6 +94,13 @@ TOPE_ACTIVA = 0.2             # una unidad activa más que esto no distingue nad
 REPASO_PROPIO = True          # el sueño también repasa las unidades propias (medido: ayuda)
 REPASO_PROPIO_CADA = 1        # el sueño repasa las unidades en uno de cada N recuerdos (es lo más caro)
 PREDICE_PROPIO = 0            # las unidades también predicen los cambios del cuerpo; cuánto pesa eso para no ser reemplazadas (0 = no)
+PREDICE_ACTOR = 16            # (aprender las recetas, paso 2; solo propia; prendido: 1 y 4 ayudan poco, 16 mejor, 64 come de menos) las unidades de movimiento predicen cómo cambian energía, integridad y calor si hace ese movimiento; a cada movimiento se le suma este peso × cuánto acercaría eso cada necesidad a su equilibrio (0 = no)
+PREDICE_TODAS = 0            # (aprender las recetas, paso 5; solo propia, con PREDICE_ACTOR; apagado: 1 y 2 neutros, % sed igual) qué necesidades predicen las unidades de movimiento (y usan el actor y SALIDA_PROPIA): 0 = energía, integridad y calor; 1 = también el agua (sed); 2 = todas (también cansancio, curiosidad y estrés). Nada le dice qué alivia qué: lo aprende
+CRITICO_CUERPO_PROPIO = 0      # (aprender las recetas, paso 3; solo propia; apagado: 2 neutro, 3 y −2 empeoran) como CRITICO_CUERPO pero para la tabla V de la propia: 0 = viejo (foco + energía e integridad), G > 0 = el cuerpo entero en G franjas; −G = lo mismo más la necesidad del foco
+SALIDA_PROPIA = 3             # (aprender las recetas, paso 4; solo propia; prendido: 2 ayuda poco, 3 mejor: hambre −4,2 / −2,1) "hay salida a la vista" aprendida: el mejor alivio que predicen las unidades de movimiento (PREDICE_ACTOR) entre los movimientos de ahora, como fracción de lo lejos que está el cuerpo del equilibrio, entra en la clave de la tabla V en G franjas (0 = no)
+SALIDA_UMBRAL = 0.03          # (con SALIDA_PROPIA) umbral de la primera franja; cada franja siguiente pide 3 veces más (mediana ~0,01, 75 % ~0,03, 90 % ~0,1)
+SALIDA_LEJOS = 0              # (aprender las recetas, paso 6; solo propia, con SALIDA_PROPIA y PREDICE_TODAS < 2; apagado hasta medir) que la salida llegue más lejos que un paso: las unidades de movimiento aprenden (TD) a qué franja de salida lleva cada movimiento y eso empuja la elección. 0 = no; 1 = la franja del estado siguiente; 2 = horizonte largo (franja siguiente + 0,9 × la mejor que se predice desde ahí: "voy hacia la comida que veo a varios pasos")
+SALIDA_LEJOS_PESO = 1.0       # (con SALIDA_LEJOS) cuánto empuja a la elección la salida predicha de cada movimiento
 NACER_SORPRESA = False        # las unidades nuevas nacen del momento más sorpresivo (mayor error TD) desde el último reinicio
 RITMO_RARO = 1                # ritmo por unidad: una rara aprende hasta esto veces más rápido (3 y 10 probados: no cambia el malestar)
 
@@ -114,8 +121,23 @@ RECUERDO_DECAE = 0.9995       # por tick: los recuerdos se desvanecen
 TEMPERATURA_BASE = 0.3        # exploración de fondo
 TEMPERATURA_SORPRESA = 0.5    # la noradrenalina sube la exploración
 TEMPERATURA_MALESTAR = 8.0    # cuanto peor la pasa, más explora (etapa 10: 2 -> 8, saca a las vidas trabadas)
+TEMPERATURA_MALESTAR_TOPE = 0     # (revisión, paso 1b) tope a lo que el malestar suma a la temperatura (0 = sin tope)
 MARGEN_EXPLORAR = 0.0         # (0 = apagado; 1, 2 y 4 probados: traban casi todas las vidas) las acciones peores que la mejor por más de esto no reciben la temperatura por malestar
 PELIGRO_SIN_MALESTAR = True   # (etapa 11) la temperatura por malestar no se aplica a moverse sobre un peligro visible
+FOCO_CIEGO = 'neutro_todo'    # (revisión, paso 1a) qué hace el rasgo "voy hacia lo que alivia" cuando el foco no tiene a qué ir: "quedarse" (viejo: empuja a no moverse, aunque el foco sea integridad o estrés, que no tienen alivio), "neutro" (si no hay alivio no empuja nada) o "neutro_todo" (tampoco cuando el alivio no se ve)
+DESMAYO_FINAL = False         # (revisión, paso 1c) el desmayo como final de episodio: aprende el último paso con V(s2) = 0 y el malestar de antes de despertar (False: lo borra sin aprender)
+CRITICO_CUERPO = 2            # (revisión, paso 2a; solo con RASGOS=mano: con la propia empeora y se ignora) cómo ve el cuerpo el crítico (la tabla V): 0 = viejo (la necesidad del foco más franjas de energía e integridad: cada salto de foco cambia de tabla y no ve agua, calor, cansancio ni estrés); G > 0 = el cuerpo entero sin foco, cada necesidad en G franjas de "cuánto se aleja de su equilibrio" (G^7 claves por celda: pocas franjas para que la tabla aprenda)
+ESTRES_COBRA = 'sin_peso'    # (revisión, paso 2b; prendido) el estrés sube con hambre, sed, frío y heridas, y además pesa en el malestar: cobra doble. "doble" (viejo), "sin_peso" (no pesa en el malestar: PESO_NECESIDAD.estres = 0) o "solo_golpes" (pesa, pero solo sube con golpes, raspones, mordidas y enfermedad, no con lo que ya cuenta otra necesidad)
+INVIERNO = 'viejo'            # (revisión, paso 3a) en invierno no brotan fruta ni baya (3 de cada 5 brotes no hacen nada): "viejo" o "repartido" (el brote fuera de estación no se pierde: va a nuez o raíz, mitad y mitad, y si esa tampoco es de estación se pierde; siguen sus topes)
+CRECIDA = 'vieja'             # (revisión, paso 3b) la crecida pone en peligro el río y sus orillas de punta a punta (300-900 ticks): "vieja" o "vado" (3 filas en el medio del mapa quedan como estaban: siempre hay por dónde cruzar)
+AGUA_FRIA = 0                 # (revisión, paso 3c) cuánto baja la temperatura del aire estando parada en el agua (0 = viejo: plantarse a beber es gratis)
+CUEVA = 'vieja'               # (revisión, paso 3d) "vieja" (TEMP_CUEVA, menos que el día; descansar solo baja el cansancio) o "abriga" (la cueva está a EQUILIBRIO_BOSQUE.calor + 0,1 todo el año, y descansar despierta ahí baja la adenosina a la mitad de lo que la baja dormir)
+ATAJO_ALIVIA = True           # (revisión, paso 4a; mano) el rasgo "voy hacia lo que alivia mi foco" usa la receta alivia() (hambre->comida, sed->agua, frío->descanso); False = no existe (y llegar a un lugar recordado no se borra por "no ver su alivio")
+ATAJO_COMIDA = True           # (revisión, paso 4b; mano) el rasgo fijo "voy hacia la comida que veo" (dc); False = no existe
+ATAJO_VEO_COMIDA = True       # (revisión, paso 4c) el crítico (la tabla V) tiene un bit "veo comida"; False = no lo tiene
+ATAJO_LUGARES = False         # (revisión, paso 4d; sacado: no regala nada) los lugares recordados por necesidad ("lo que alivia esto está para allá": rasgo de la mano y átomo de la propia); False = no se usan
+CRITICO_PROPIO = 'ambos'      # (revisión, paso 4e; solo propia) el valor V suma la tabla y las unidades, que persiguen el mismo error: "ambos" (viejo), "tabla" o "unidades" (solo uno)
+DISTANCIA_PROPIA = 'fina'     # (revisión, paso 4f; solo propia; prendido) "vieja": cada cosa vista da un átomo al movimiento de su eje principal, con su distancia en 4 franjas (1, 2, 3-4, 5+); "fina": a cada movimiento que la acerca, "me acerco a X a distancia d" (1..5, 6+), y a cada uno que la aleja, "me alejo de X"
 RECOMPENSA_ALIVIO = 50.0      # peso de "el malestar bajó"
 DOLOR = 6.0                   # (etapa 11: 3 -> 6) castigo directo por lastimarse (no pasa por el malestar: no se satura)
 RECOMPENSA_ESTADO = 1.0       # peso de "estar mal" (castigo continuo)
