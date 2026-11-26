@@ -1637,3 +1637,35 @@ la mano (la mano aprende rápido por las recetas; la propia tiene que descubrirl
 - Nada de scripts que le digan qué hacer: las reglas viven dentro del sistema.
 - Cada pieza "cerebral" se mide; si no mejora nada, se saca.
 - Tope al malestar (`MALESTAR_MAXIMO`) y registro de su interior, siempre.
+
+## Aprender las recetas, paso 5: las unidades predicen también la sed y las demás necesidades (2026-11-26) — no sirve, apagado
+
+Idea: las unidades de movimiento (`PREDICE_ACTOR`) solo predecían energía, integridad y calor; quedaban afuera el agua,
+el cansancio, la curiosidad y el estrés (este último hoy no pesa en el malestar). La propia pasaba ~31 % del tiempo con
+sed. `PREDICE_TODAS` (solo propia): 1 = suma el agua, 2 = suma las cuatro; entra en el empuje del actor y en la salida
+(`SALIDA_PROPIA`). Nada le dice qué alivia la sed: lo aprende de cómo cambia el cuerpo. Con 0 la cuenta es exactamente la
+de antes (las nuevas van al final y los bucles cortan en las prendidas); la mente guardada pasa a la versión 5 (14
+predicciones por unidad). `angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... PREDICE_TODAS=<n>"
+-j 4` (medido en el i5, con todo lo prendido), B − A (z):
+
+| | T=1 (40000) | T=1 (50000) | T=2 (40000) | T=2 (50000) |
+|---|---|---|---|---|
+| base: % hambre / % sed | 34,2 / 30,7 | 34,9 / 31,2 | 34,2 / 30,7 | 34,9 / 31,2 |
+| malestar | 0,000 (0,0) | −0,002 (−0,3) | 0,000 (0,0) | −0,008 (−1,3) |
+| % hambre | +0,8 (0,6) | −1,1 (−0,8) | +1,0 (0,7) | −1,8 (−1,3) |
+| % sed | +0,1 (0,1) | +1,0 (0,7) | +0,1 (0,1) | −1,1 (−0,8) |
+| % cruda < 0,15 | −0,2 | −0,5 | +0,1 | −1,2 (−1,0) |
+| % mal alto | −0,2 | −0,5 | 0,0 | −2,0 (−1,3) |
+| bebe (veces) | 6140 → 2694 (−15) | 5875 → 2658 (−13) | 6140 → 2638 (−15) | 5875 → 2684 (−14) |
+| desm. sed | −1,3 (−3,2) | +0,4 (0,7) | −0,9 (−2,3) | −0,3 (−0,8) |
+| desmayos | +1,3 | +0,1 | +1,9 | −3,3 (−1,2) |
+| comidas | −37 (−1,9) | +6 | −41 (−2,1) | −2 |
+| % trabadas | 7,8 → 11,3 | 8,2 → 9,8 | 7,8 → 9,0 | 8,2 → 7,4 |
+| % mal tope | 0 | 0 | 0 | 0 |
+
+Ninguna mejora en las dos semillas: el % de sed y el de hambre no se mueven (las semillas van para lados distintos).
+Lo único grande es que toma agua la mitad de las veces (sorbos más largos: deja de cortar la bebida para irse), sin
+menos tiempo con sed; los desmayos por sed bajan algo en una semilla. Por qué no alcanza: el agua es fácil de encontrar
+y la sed sube parejo; lo que la tiene con sed no es no saber que el agua alivia sino el reparto de tiempo entre comer y
+tomar. El malestar nunca toca el tope. **Queda apagado (`PREDICE_TODAS = 0`)**; la vida por defecto no cambia y
+`rust/pruebas/referencia.txt` no se regenera; guardar y retomar con la propia dan `IDÉNTICO` (con 0 y con 2).
