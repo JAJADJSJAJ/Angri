@@ -1669,3 +1669,18 @@ menos tiempo con sed; los desmayos por sed bajan algo en una semilla. Por qué n
 y la sed sube parejo; lo que la tiene con sed no es no saber que el agua alivia sino el reparto de tiempo entre comer y
 tomar. El malestar nunca toca el tope. **Queda apagado (`PREDICE_TODAS = 0`)**; la vida por defecto no cambia y
 `rust/pruebas/referencia.txt` no se regenera; guardar y retomar con la propia dan `IDÉNTICO` (con 0 y con 2).
+
+## Aprender las recetas, paso 6: que la salida llegue más lejos que un paso (2026-11-26) — sin medir, apagado
+
+Idea: `SALIDA_PROPIA` solo mira el alivio que predicen los movimientos de *ahora*; si la comida está a varios pasos,
+ningún movimiento la ve. `SALIDA_LEJOS` (solo propia, con `SALIDA_PROPIA`, `PREDICE_ACTOR` y `PREDICE_TODAS` < 2): las
+unidades de movimiento aprenden con TD, en el último casillero de `q` (libre con `PREDICE_TODAS` < 2, así se guarda sin
+cambiar el formato), a qué franja de salida lleva cada movimiento, y eso se suma a la elección × `SALIDA_LEJOS_PESO`.
+1 = la franja del estado siguiente (variante a); 2 = horizonte largo: franja siguiente × 0,1 + 0,9 × la mejor salida
+predicha desde ahí (variante b hecha con TD en vez de una ventana de N pasos). Nada dice qué es comida.
+
+**Medición pendiente**: la tanda (`SALIDA_LEJOS=2 SALIDA_LEJOS_PESO=1`, 256 pares, semillas 40000 y 50000, las dos a la
+vez con `-j 2`) no terminó antes del corte de luz del 2026-11-26. Para relanzar en el i5:
+`cd ~/medir/Angri/rust && nohup sh paso6.sh &` (resultados en `paso6_40000.txt` y `paso6_50000.txt`; otra variante con
+`V="SALIDA_LEJOS=1 ..." sh paso6.sh`). Queda apagado (`SALIDA_LEJOS = 0`); la vida por defecto no cambia, la referencia no
+se regenera, y `angri retomar` con la propia da `IDÉNTICO` (con 0 y con 2).
