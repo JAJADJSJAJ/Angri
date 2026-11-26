@@ -57,6 +57,12 @@ fn npred(c: &Config) -> usize {
     match c.predice_todas { 0 => 3, 1 => 4, _ => 7 }
 }
 const GAMMA_PRED: f64 = 0.9;
+/// (paso 6) casillero de `q` donde las unidades de movimiento guardan la salida a la que llevan
+const SL: usize = NPRED - 1;
+#[inline]
+fn lejos_activo(c: &Config) -> bool {
+    c.salida_lejos > 0 && c.salida_propia > 0 && c.predice_actor > 0.0 && c.predice_todas < 2
+}
 
 impl Unidad {
     fn vacia() -> Unidad {
@@ -307,6 +313,13 @@ impl Propia {
                 }
             }
         }
+        if lejos_activo(c) {
+            // (paso 6) a qué franja de salida predice que lleva cada movimiento
+            let p = Self::salida_mov(&self.unidades, &act);
+            for a in 0..5 {
+                h[a] += c.salida_lejos_peso * p[a];
+            }
+        }
         self.salida = if c.salida_propia > 0 { self.salida_de(&act, cuerpo, c) } else { 0 };
         self.vs = self.valor(&act);
         self.ahora = s;
@@ -411,6 +424,47 @@ impl Propia {
         f
     }
 
+    /// (paso 6, SALIDA_LEJOS) la salida predicha para cada movimiento: suma del último casillero de `q`
+    /// de las unidades de movimiento activas para él (ese casillero no lo usa PREDICE_TODAS < 2)
+    fn salida_mov(unidades: &[Unidad], act: &[(u32, u8)]) -> [f64; 5] {
+        let mut p = [0.0; 5];
+        for &(u, m) in act {
+            if m != DEL_ESTADO {
+                let q = unidades[u as usize].q[SL];
+                for a in 0..5 {
+                    if m >> a & 1 == 1 {
+                        p[a] += q;
+                    }
+                }
+            }
+        }
+        p
+    }
+
+    /// (paso 6) aprende con TD a qué franja de salida lleva el movimiento elegido
+    fn aprender_lejos(&mut self, c: &Config) {
+        let a = self.elegida;
+        let g = (c.salida_propia - 1).max(1) as f64;
+        let mut y = self.salida as f64 / g; // la franja de s2 (la dejó valor_de)
+        if c.salida_lejos == 2 {
+            let p2 = Self::salida_mov(&self.unidades, &self.activas2);
+            let mejor = p2.iter().cloned().fold(f64::MIN, f64::max);
+            y = (1.0 - GAMMA_PRED) * y + GAMMA_PRED * mejor;
+        }
+        let pa = Self::salida_mov(&self.unidades, &self.activas)[a];
+        let na = self.activas.iter().filter(|&&(_, m)| m != DEL_ESTADO && m >> a & 1 == 1).count();
+        if na == 0 {
+            return;
+        }
+        let e = c.aprende_propio_critico / na as f64 * (y - pa);
+        for k in 0..self.activas.len() {
+            let (u, m) = self.activas[k];
+            if m != DEL_ESTADO && m >> a & 1 == 1 {
+                self.unidades[u as usize].q[SL] += e;
+            }
+        }
+    }
+
     pub fn valor_de(&mut self, s: &Sentir, cuerpo: &[f64; 7], c: &Config) -> f64 {
         let act = self.activas_de(s);
         let v = self.valor(&act);
@@ -464,6 +518,9 @@ impl Propia {
                     un.q[i] += d[i] * e;
                 }
             }
+        }
+        if lejos_activo(c) && self.elegida < 5 {
+            self.aprender_lejos(c);
         }
         if c.predice_actor > 0.0 && self.elegida < 5 {
             // (PREDICE_ACTOR) las de movimiento del elegido aprenden lo que ese movimiento agrega
