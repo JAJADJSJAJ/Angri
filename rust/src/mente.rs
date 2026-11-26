@@ -661,7 +661,25 @@ impl Ganglios {
         for &i in &self.activos {
             self.w[i] += Self::ritmo(c.aprende_actor, self.exp_w[i], c) / div * delta * hw[i];
             if c.decae_actor > 0.0 {
-                self.w[i] *= encoge;
+                match c.decae_actor_modo {
+                    0 => self.w[i] *= encoge,
+                    2 => self.w[i] *= 1.0 - c.decae_actor * hw[i].abs().min(1.0),
+                    _ => {}
+                }
+            }
+        }
+        if c.decae_actor > 0.0 && c.decae_actor_modo == 1 {
+            // olvidar por uso: solo los rasgos presentes en alguna acción de este tick, una vez cada uno
+            let mut vistos = [0u16; NACC * MAXR];
+            let mut nv = 0usize;
+            for b in 0..self.rasgos.na as usize {
+                for &i in self.rasgos.de(b) {
+                    if !vistos[..nv].contains(&i) {
+                        vistos[nv] = i;
+                        nv += 1;
+                        self.w[i as usize] *= encoge;
+                    }
+                }
             }
         }
         if let Some(p) = &mut self.propia {
