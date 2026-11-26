@@ -1840,3 +1840,24 @@ por uso), `'huella'` (proporcional a |huella|). Contra la mano sin atajos, 512 p
 Vidas largas, `presentes` 1e-4 (5 M × 128, `--desde 60000`): **malestar plano 0,38 → 0,36 en 50 años** (sin freno
 0,42 → 0,51; z −14,5 a los 50), hambre 68 → 34 %, **trabadas 68 → 0 %**, desmayos 2.365 → 1.025. Costo: heridas
 336 → 662 y mordidas 131 → 270 (×2; el freno viejo daba ×3,6). La propia está en 0,27 a los 50 años.
+
+### De dónde salen las heridas, y el freno por uso prendido (2026-11-26)
+
+Con `'presentes'` el freno achica los rasgos de lo que Angri **ve** al lado (54, 20+n "voy hacia el peligro") cada tick
+que hay un peligro pegado, y el dolor solo los refuerza el tick en que lo pisa. Probado contra `presentes` 1e-4 sin
+atajos (512 × 300 k): `'elegida'` (olvida solo lo que hace) malestar +0,016, trabadas 0,6 → 5 %, mordidas −1,2: peor.
+`DECAE_SOLO_POSITIVOS` (no achica pesos negativos) malestar +0,039, trabadas → 18 %: mucho peor (los pesos negativos
+también traban). 3e-4 ≈ 1e-4. Las mordidas de más vienen con cualquier freno que destrabe: anda más y se cruza más
+con el predador.
+
+**Con los atajos (la vida de hoy)**, `presentes` 1e-4: a 300 k malestar 0,300 → 0,267 (z −10), hambre 24 → 18 %,
+desmayos 43 → 27; en vidas largas (5 M × 128) **malestar 0,414 → 0,269 (z −14,6), plano 50 años (0,29 → 0,27; sin
+freno 0,33 → 0,46), trabadas 45 → 0 %, % malestar alto 55 → 18, desmayos 1.744 → 477**; heridas 287 → 542 y
+mordidas 134 → 286. La mano queda a la par de la propia (0,268). El malestar ya incluye el dolor de las heridas, y el
+tiempo sufriendo baja a un tercio: **prendido** (`DECAE_ACTOR = 0.0001`, `DECAE_ACTOR_MODO = 'presentes'`).
+
+`DECAE_PROPIO` (el mismo freno para las unidades de la propia): a 300 k 1e-4 malestar −0,014, hambre −4; en vidas
+largas neutro (−0,007, z −0,9) con heridas +69 %: apagado. `DECAE_ACTOR` no toca a la propia (no usa esos pesos).
+
+Pruebas: config nueva `rust/pruebas/config-freno.txt` (objetos, sin atajos, freno prendido) en la referencia y en
+retomar; las demás configs de prueba no cambian.

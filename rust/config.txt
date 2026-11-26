@@ -136,8 +136,8 @@ ATAJO_ALIVIA = True           # (revisión, paso 4a; mano) el rasgo "voy hacia l
 ATAJO_COMIDA = True           # (revisión, paso 4b; mano) el rasgo fijo "voy hacia la comida que veo" (dc); False = no existe
 ATAJO_VEO_COMIDA = True       # (revisión, paso 4c) el crítico (la tabla V) tiene un bit "veo comida"; False = no lo tiene
 ACTOR_POR_ACTIVOS = False     # (mano) el ritmo del actor se divide por cuántos rasgos tiene la acción elegida (como la propia divide por unidades activas)
-DECAE_ACTOR = 0               # (mano) cada tick los pesos activos del actor se achican en esta fracción (freno a que crezcan sin límite); 0 = no
-DECAE_ACTOR_MODO = 'reloj'    # (mano) a qué pesos frena DECAE_ACTOR: 'reloj' = todos los vistos alguna vez, cada tick; 'presentes' = solo los rasgos de alguna acción de este tick (olvida por uso); 'huella' = proporcional a |huella|; 'elegida' = solo los rasgos de la acción elegida (olvida lo que hace, no lo que ve)
+DECAE_ACTOR = 0.0001             # (mano) cada tick los pesos activos del actor se achican en esta fracción (freno a que crezcan sin límite); 0 = no
+DECAE_ACTOR_MODO = 'presentes' # (mano) a qué pesos frena DECAE_ACTOR: 'reloj' = todos los vistos alguna vez, cada tick; 'presentes' = solo los rasgos de alguna acción de este tick (olvida por uso); 'huella' = proporcional a |huella|; 'elegida' = solo los rasgos de la acción elegida (olvida lo que hace, no lo que ve)
 DECAE_SOLO_POSITIVOS = False  # (mano) DECAE_ACTOR solo achica pesos > 0 (no borra lo que el dolor enseñó a evitar)
 DECAE_PROPIO = 0              # (propia) cada tick los pesos de actor de las unidades activas se achican en esta fracción; 0 = no
 ATAJO_LUGARES = False         # (revisión, paso 4d; sacado: no regala nada) los lugares recordados por necesidad ("lo que alivia esto está para allá": rasgo de la mano y átomo de la propia); False = no se usan
