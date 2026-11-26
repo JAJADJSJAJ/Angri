@@ -5,6 +5,7 @@
 //!   angri visor [--carpeta DIR] [--puerto P]    -> mirarla desde el navegador (visor.rs)
 //!   angri medir [TICKS] [N] [CLAVE=VALOR ...]   -> métricas de N vidas (medir.rs)
 //!   angri comparar TICKS N "A" "B" [-j J]       -> pares A/B con la misma semilla
+//!   angri juntar CRUDO...                       -> junta porciones de comparar --crudo
 //!   angri vida SEMILLA TICKS      [CLAVE=VALOR ...] -> métricas de una vida en JSON
 //!   angri traza SEMILLA TICKS     ...              -> una línea por tick (bits exactos)
 //!   angri foto SEMILLA TICKS [CADA] ...            -> la foto del visor (o una cada CADA ticks)
@@ -344,6 +345,7 @@ fn main() {
         Some("vivir") => return vivir::vivir(resto),
         Some("medir") => return medir::medir(resto),
         Some("comparar") => return medir::comparar(resto),
+        Some("juntar") => return medir::juntar(resto),
         Some("visor") => return visor::visor(resto),
         Some("vida" | "traza" | "foto" | "velocidad" | "retomar") if args.len() >= 4 => {}
         _ => {
@@ -404,6 +406,7 @@ const AYUDA: &str = "uso: angri vivir [--carpeta DIR] [--ticks N] [--semilla S] 
                    [--panel] [--foto S] [--estado] [CLAVE=VALOR ...]
      angri visor [--carpeta DIR] [--puerto P] [--host H]
      angri medir [TICKS] [N] [azar|reflejos] [CLAVE=VALOR ...] [-j J]
-     angri comparar TICKS N \"AJUSTES A\" \"AJUSTES B\" [-j J]
+     angri comparar TICKS N \"AJUSTES A\" \"AJUSTES B\" [-j J] [--desde K] [--crudo SALIDA.tsv]
+     angri juntar CRUDO.tsv ...
      angri vida|traza|foto|velocidad|retomar SEMILLA TICKS [CLAVE=VALOR ...]
   (todos aceptan --config ARCHIVO; la de por defecto es rust/config.txt)";

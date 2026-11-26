@@ -10,6 +10,8 @@
 //!
 //!   angri comparar TICKS N "AJUSTES A" "AJUSTES B" [-j J] [--config ARCHIVO]
 //!     angri comparar 300000 256 "" "MUNDO=bosque" -j 12
+//!     angri comparar 300000 64 "" "MUNDO=bosque" -j 4 --desde 64 --crudo parte.tsv
+//!   angri juntar parte*.tsv   -> la misma tabla que una sola corrida con todos los pares
 //!   Comparación en pares: la misma semilla con A y con B. La suerte de cada vida
 //!   se cancela en buena parte; muestra B − A con su error estándar
 //!   (|dif| > 2 e.e. = diferencia real).
@@ -124,10 +126,27 @@ pub fn medir(args: &[String]) {
     }
 }
 
+/// Saca `--crudo ARCHIVO` de los argumentos.
+fn sacar_crudo(args: &[String]) -> (Option<String>, Vec<String>) {
+    let (mut crudo, mut resto) = (None, vec![]);
+    let mut i = 0;
+    while i < args.len() {
+        if args[i] == "--crudo" {
+            crudo = Some(args.get(i + 1).expect("--crudo ARCHIVO").clone());
+            i += 1;
+        } else {
+            resto.push(args[i].clone());
+        }
+        i += 1;
+    }
+    (crudo, resto)
+}
+
 pub fn comparar(args: &[String]) {
-    let (hilos, archivo, resto, desde) = opciones(args);
+    let (crudo, args) = sacar_crudo(args);
+    let (hilos, archivo, resto, desde) = opciones(&args);
     if resto.len() != 4 {
-        eprintln!("uso: angri comparar TICKS N \"AJUSTES A\" \"AJUSTES B\" [-j J] [--config ARCHIVO] [--desde K]");
+        eprintln!("uso: angri comparar TICKS N \"AJUSTES A\" \"AJUSTES B\" [-j J] [--config ARCHIVO] [--desde K] [--crudo SALIDA.tsv]");
         std::process::exit(1);
     }
     let ticks: i64 = resto[0].parse().expect("TICKS");
@@ -138,8 +157,26 @@ pub fn comparar(args: &[String]) {
     let tareas: Vec<(&Config, u64)> = [&ca, &cb].iter().flat_map(|c| (desde..desde + n).map(move |s| (*c, s))).collect();
     let vs = vidas(&tareas, ticks, hilos);
     let (va, vb) = vs.split_at(n as usize);
+    if let Some(ruta) = crudo {
+        // crudo: una línea por (semilla, lado, métrica). El f64 de Rust se escribe
+        // con lo justo para volver a leerse idéntico, así juntar da la misma tabla.
+        let mut t = format!("ticks\t{ticks}\nA\t{}\nB\t{}\n", resto[2], resto[3]);
+        for (lado, vv) in [("A", va), ("B", vb)] {
+            for (i, m) in vv.iter().enumerate() {
+                for (k, x) in m {
+                    t += &format!("v\t{}\t{lado}\t{k}\t{x}\n", desde + i as u64);
+                }
+            }
+        }
+        std::fs::write(&ruta, t).expect("no pude escribir el crudo");
+    }
+    tabla(ticks, &resto[2], &resto[3], va, vb);
+}
+
+fn tabla(ticks: i64, a: &str, b: &str, va: &[Metricas], vb: &[Metricas]) {
+    let n = va.len();
     let nombre = |t: &str| if t.is_empty() { "(config actual)".to_string() } else { t.to_string() };
-    println!("{n} pares de {ticks} ticks\nA: {}\nB: {}\n", nombre(&resto[2]), resto[3]);
+    println!("{n} pares de {ticks} ticks\nA: {}\nB: {}\n", nombre(a), b);
     println!("{:<12} {:>9} {:>9} {:>9} {:>8} {:>6}", "métrica", "A", "B", "B−A", "e.e.", "z");
     for (k, _) in &va[0] {
         let pares: Vec<(f64, f64)> = va.iter().zip(vb)
@@ -154,4 +191,52 @@ pub fn comparar(args: &[String]) {
         let xb: Vec<f64> = pares.iter().map(|p| p.1).collect();
         println!("{:<12} {:>9.3} {:>9.3} {:>9.3} {:>8.3} {:>6.1}", k, media(&xa), media(&xb), media(&d), ee, z);
     }
+}
+
+/// angri juntar CRUDO... : junta los crudos de varias porciones de `comparar --crudo`
+/// (mismos TICKS, A y B) y saca la misma tabla que una sola corrida con todos los pares.
+pub fn juntar(args: &[String]) {
+    if args.is_empty() {
+        eprintln!("uso: angri juntar CRUDO.tsv [CRUDO.tsv ...]");
+        std::process::exit(1);
+    }
+    let mut cab: Option<(String, String, String)> = None;
+    // semilla -> (métricas A, métricas B), en orden de semilla
+    let mut porsem: std::collections::BTreeMap<u64, (Metricas, Metricas)> = Default::default();
+    for ruta in args {
+        let texto = std::fs::read_to_string(ruta).unwrap_or_else(|e| panic!("{ruta}: {e}"));
+        let (mut tk, mut a, mut b) = (String::new(), String::new(), String::new());
+        let mut vistas = std::collections::BTreeSet::new();
+        for l in texto.lines() {
+            let c: Vec<&str> = l.split('\t').collect();
+            match c[0] {
+                "ticks" => tk = c.get(1).unwrap_or(&"").to_string(),
+                "A" => a = c[1..].join("\t"),
+                "B" => b = c[1..].join("\t"),
+                "v" if c.len() == 5 => {
+                    let s: u64 = c[1].parse().expect("semilla");
+                    let x: f64 = c[4].parse().unwrap_or(f64::NAN);
+                    if vistas.insert(s) && porsem.contains_key(&s) {
+                        panic!("{ruta}: la semilla {s} ya estaba en otro crudo");
+                    }
+                    let e = porsem.entry(s).or_default();
+                    let m = if c[2] == "A" { &mut e.0 } else { &mut e.1 };
+                    m.push((c[3].to_string(), x));
+                }
+                _ => {}
+            }
+        }
+        let esta = (tk, a, b);
+        match &cab {
+            None => cab = Some(esta),
+            Some(c0) if *c0 != esta => panic!("{ruta}: TICKS, A o B distintos de los otros crudos"),
+            _ => {}
+        }
+    }
+    let (tk, a, b) = cab.unwrap();
+    if porsem.is_empty() {
+        panic!("los crudos no tienen pares");
+    }
+    let (va, vb): (Vec<Metricas>, Vec<Metricas>) = porsem.into_values().unzip();
+    tabla(tk.parse().expect("ticks"), &a, &b, &va, &vb);
 }

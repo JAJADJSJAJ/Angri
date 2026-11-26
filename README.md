@@ -71,6 +71,22 @@ poca comida (tope de 10) y 5 peligros que deambulan.
 La comida ahora crece alrededor de 3 **fuentes fijas** (como árboles frutales), así que el mundo tiene
 estructura que vale la pena aprender.
 
+### Medir en GitHub Actions
+
+Como el repo es público, GitHub presta gratis runners de 4 núcleos: `.github/workflows/medir.yml`
+reparte un `angri comparar` en hasta 20 porciones en paralelo (cada una con `--desde` y `-j 4`, con
+`nice`), cada porción guarda sus resultados crudos por par (`--crudo parte.tsv`) y un último trabajo los
+junta con `angri juntar crudos/*.tsv`. **Juntar da exactamente la misma tabla que una sola corrida** con
+los mismos pares (el número se guarda con todos sus decimales y los pares se ordenan por semilla:
+probado con 16 pares de 20.000 ticks en 1 porción contra 4). La tabla sale en el resumen de la corrida y
+como artifact `tabla`.
+
+    rust/medir-actions.sh 300000 256 "" "MUNDO=bosque" 16      # lanza, espera y baja la tabla
+    gh workflow run medir.yml -f ticks=300000 -f pares=256 -f variante_b="MUNDO=bosque" -f partes=16
+
+Por qué: así las mediciones grandes no ocupan la PC ni el i5. El i5 queda de respaldo (y para vidas
+de más de ~5 h por porción, el tope de un trabajo de Actions).
+
 ## Etapa 2 — estado
 
 Funciona: sin saber qué es la comida ni el peligro, aprende solo y **en vidas largas supera a los reflejos innatos**.
