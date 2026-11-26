@@ -1715,3 +1715,35 @@ que aprende es "a qué franja de salida lleva este movimiento", y la salida más
 peso 1 está en otra escala que el empuje de `PREDICE_ACTOR`. La variante 1 no se midió. **Queda apagado
 (`SALIDA_LEJOS = 0`)**; la vida por defecto no cambia, la referencia no se regenera, y `angri retomar` con la propia da
 `IDÉNTICO` (con 0 y con 2).
+
+### Aprender las recetas, cierre 2: mano contra propia con todo lo prendido (2026-11-26)
+
+Igual que el cierre anterior (A = mano, B = propia, `angri comparar 200000 512 "MUNDO=bosque OBJETOS=True"
+"... RASGOS=propios"`, `--desde 31000` y `--desde 1000`), ahora con todo lo que quedó prendido en la etapa
+(`PREDICE_ACTOR=16`, `SALIDA_PROPIA=3`; pasos 1, 3, 5 y 6 apagados). **Medido en GitHub Actions** (`medir.yml`, 20
+partes; runs 45901453849 y 45901457420), no en el i5: el corte de luz mató la tanda del i5. La mano da exactamente lo
+mismo que en el cierre anterior (25,7 / 25,9), así que se compara directo.
+
+| | mano 31000 | propia cierre 1 | propia cierre 2 | z | mano 1000 | propia cierre 1 | propia cierre 2 | z |
+|---|---|---|---|---|---|---|---|---|
+| % hambre | 25,7 | 39,4 | 35,5 | 9,2 | 25,9 | 37,7 | 35,9 | 9,3 |
+| % cruda < 0,15 | 29,2 | 43,2 | 40,2 | 11,9 | 29,7 | 42,4 | 40,9 | 12,0 |
+| peor 10k hambre | 75,9 | 87,4 | 85,1 | 8,0 | 77,7 | 86,5 | 84,6 | 6,3 |
+| % trabadas | 6,3 | 11,9 | 8,8 | 1,5 | 5,5 | 11,3 | 9,4 | 2,3 |
+| % sed | 23,7 | 32,9 | 31,1 | 8,4 | 23,1 | 32,7 | 31,8 | 10,3 |
+| desmayos | 30,7 | 43,9 | 37,1 | 3,5 | 31,3 | 40,9 | 37,7 | 3,4 |
+| % malestar alto | 26,3 | 39,2 | 35,0 | 7,3 | 26,7 | 37,7 | 35,8 | 7,6 |
+| malestar | 0,308 | | 0,345 | 8,3 | 0,308 | | 0,348 | 8,7 |
+| % duerme refugio propio | 1,7 | 5,7 | 5,8 | 8,9 | 1,6 | 5,7 | 6,2 | 10,9 |
+| % mal tope | 0 | 0 | 0 | | 0 | 0 | 0 | |
+
+(z = propia cierre 2 contra mano.) **Contra la vara (~16 puntos de crudas que regalan `alivia()` y "veo comida"): la
+distancia en crudas bajó de 16,5 (revisión) → 14,0 / 12,7 (cierre 1) → 11,0 / 11,2 ahora.** En hambre, de 16,3 →
+13,7 / 11,7 → 9,8 / 9,9. O sea, la propia ganó sola ~5,5 de los ~16 puntos: un tercio de la vara. El paso 4 ("hay
+salida a la vista") se nota sobre todo en una semilla (31000: hambre −3,9, desmayos −7) y en las trabadas (que ya no
+son claramente más que en la mano: z 1,5 / 2,3). El malestar nunca tocó el tope. Quedan ~11 puntos: sigue comiendo
+mucho menos seguido que la mano (1.033 contra 2.680 comidas) y aprende más lento el primer año (malestar año 1
+0,38 contra 0,32, z 13; en el año 2 ya casi igual, z ~3).
+
+Qué sigue: vidas largas (5 M de ticks, 128 pares, `--desde 60000`) mano contra propia con esto prendido, en Actions
+(run 45901483641), para ver si la propia pasa a la mano antes del año 16.
