@@ -1803,3 +1803,18 @@ apaga; las recetas fijas no siguen al bosque que cambia. La propia divide por un
 
 Dividir el ritmo la deja sin aprender: apagado. El decaimiento destraba vidas y baja algo el hambre, pero olvida cuidarse
 (heridas +45 % / ×3). Queda apagado hasta ver vidas largas (5 M × 128) con 1e-5 y 1e-6.
+
+**Vidas largas** (5 M × 128 pares, Actions, mano sin atajos, `--desde 60000`):
+
+| | sin freno | `DECAE_ACTOR=1e-6` | `DECAE_ACTOR=1e-5` |
+|---|---|---|---|
+| malestar año 1 → 50 | 0,419 → 0,510 | 0,410 → 0,444 | 0,402 → 0,402 |
+| % hambre | 68,1 | 51,2 | 42,5 (z −11) |
+| % trabadas | 68,0 | 32,0 | 3,9 (z −14) |
+| desmayos | 2.365 | 1.793 | 1.342 |
+| heridas | 336 | 582 | 1.200 (×3,6) |
+
+**Con 1e-5 la mano deja de empeorar con los años**: el malestar queda plano 50 años. Confirma que la degradación era
+pérdida de plasticidad (pesos sin freno). Pero se lastima 3,6 veces más: lo que olvida incluye cuidarse. Sigue peor que
+la propia (0,27 a los 50 años). Queda apagado por ahora (ver docs/proxima-etapa.md): falta un freno que no borre el
+cuidado (decaer solo los rasgos-sesgo, o reiniciar como la propia).
