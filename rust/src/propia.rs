@@ -48,9 +48,14 @@ pub struct Unidad {
     pub q: [f64; NPRED], // (PREDICE_PROPIO) lo que predice de los cambios del cuerpo
 }
 
-/// lo que predicen las unidades: suba y baja de energía, integridad y calor
-pub const NPRED: usize = 6;
-const PREDICE: [usize; 3] = [crate::mente::ENERGIA, crate::mente::INTEGRIDAD, crate::mente::CALOR];
+/// lo que predicen las unidades: suba y baja de cada necesidad. Las primeras 3 (energía, integridad,
+/// calor) siempre; (PREDICE_TODAS, paso 5) 1 suma el agua, 2 suma todas. Las que no se usan quedan en 0
+/// y los bucles van solo hasta `np`, así con PREDICE_TODAS = 0 la cuenta es la misma de antes.
+pub const NPRED: usize = 14;
+const PREDICE: [usize; 7] = [crate::mente::ENERGIA, crate::mente::INTEGRIDAD, crate::mente::CALOR, crate::mente::AGUA_N, crate::mente::CANSANCIO, crate::mente::CURIOSIDAD, crate::mente::ESTRES];
+fn npred(c: &Config) -> usize {
+    match c.predice_todas { 0 => 3, 1 => 4, _ => 7 }
+}
 const GAMMA_PRED: f64 = 0.9;
 
 impl Unidad {
@@ -285,7 +290,7 @@ impl Propia {
         if c.predice_actor > 0.0 {
             // cuánto vale cada suba/baja predicha: lo que acercaría esa necesidad a su equilibrio
             let mut gusto = [0.0; NPRED];
-            for (j, &k) in PREDICE.iter().enumerate() {
+            for (j, &k) in PREDICE[..npred(c)].iter().enumerate() {
                 let falta = c.peso[k] * (c.equilibrio[k] - cuerpo[k]);
                 gusto[2 * j] = falta;
                 gusto[2 * j + 1] = -falta;
@@ -293,7 +298,7 @@ impl Propia {
             for &(u, m) in &act {
                 if m != DEL_ESTADO {
                     let un = &self.unidades[u as usize];
-                    let x: f64 = (0..NPRED).map(|i| gusto[i] * un.q[i]).sum::<f64>() * c.predice_actor;
+                    let x: f64 = (0..2 * npred(c)).map(|i| gusto[i] * un.q[i]).sum::<f64>() * c.predice_actor;
                     for a in 0..5 {
                         if m >> a & 1 == 1 {
                             h[a] += x;
@@ -369,7 +374,7 @@ impl Propia {
     pub fn salida_de(&self, act: &[(u32, u8)], cuerpo: &[f64; 7], c: &Config) -> u32 {
         let mut gusto = [0.0; NPRED];
         let mut lejos = 0.0;
-        for (j, &k) in PREDICE.iter().enumerate() {
+        for (j, &k) in PREDICE[..npred(c)].iter().enumerate() {
             let d = c.equilibrio[k] - cuerpo[k];
             let falta = c.peso[k] * d;
             lejos += falta * d;
@@ -380,7 +385,7 @@ impl Propia {
         for &(u, m) in act {
             if m != DEL_ESTADO {
                 let un = &self.unidades[u as usize];
-                let x: f64 = (0..NPRED).map(|i| gusto[i] * un.q[i]).sum::<f64>();
+                let x: f64 = (0..2 * npred(c)).map(|i| gusto[i] * un.q[i]).sum::<f64>();
                 for a in 0..5 {
                     if m >> a & 1 == 1 {
                         al[a] += x;
@@ -417,12 +422,12 @@ impl Propia {
         v
     }
 
-    fn predicho(&self, act: &[(u32, u8)]) -> [f64; NPRED] {
+    fn predicho(&self, act: &[(u32, u8)], np: usize) -> [f64; NPRED] {
         let mut q = [0.0; NPRED];
         for &(u, m) in act {
             if m == DEL_ESTADO {
                 let un = &self.unidades[u as usize];
-                for i in 0..NPRED {
+                for i in 0..np {
                     q[i] += un.q[i];
                 }
             }
@@ -432,21 +437,22 @@ impl Propia {
 
     /// las unidades aprenden a predecir los cambios del cuerpo (TD con sus propias huellas de estado)
     fn predecir(&mut self, cuerpo: &[f64; 7], n: f64, c: &Config) {
+        let np = 2 * npred(c);
         let antes = self.cuerpo_antes;
         self.cuerpo_antes = *cuerpo;
         if antes[0].is_nan() {
             return;
         }
         let mut cum = [0.0; NPRED];
-        for (j, &k) in PREDICE.iter().enumerate() {
+        for (j, &k) in PREDICE[..npred(c)].iter().enumerate() {
             let d = (cuerpo[k] - antes[k]) * 10.0;
             cum[2 * j] = d.max(0.0).min(1.0);
             cum[2 * j + 1] = (-d).max(0.0).min(1.0);
         }
-        let q1 = self.predicho(&self.activas);
-        let q2 = self.predicho(&self.activas2);
+        let q1 = self.predicho(&self.activas, np);
+        let q2 = self.predicho(&self.activas2, np);
         let mut d = [0.0; NPRED];
-        for i in 0..NPRED {
+        for i in 0..np {
             d[i] = c.aprende_propio_critico / n * (cum[i] + GAMMA_PRED * q2[i] - q1[i]);
         }
         for &u in &self.huella {
@@ -454,7 +460,7 @@ impl Propia {
             let e = self.ev[u];
             if e != 0.0 {
                 let un = &mut self.unidades[u];
-                for i in 0..NPRED {
+                for i in 0..np {
                     un.q[i] += d[i] * e;
                 }
             }
@@ -467,7 +473,7 @@ impl Propia {
             for &(u, m) in &self.activas {
                 if m != DEL_ESTADO && m >> a & 1 == 1 {
                     na += 1.0;
-                    for i in 0..NPRED {
+                    for i in 0..np {
                         qa[i] += self.unidades[u as usize].q[i];
                     }
                 }
@@ -475,14 +481,14 @@ impl Propia {
             if na > 0.0 {
                 let r = c.aprende_propio_critico / na;
                 let mut e = [0.0; NPRED];
-                for i in 0..NPRED {
+                for i in 0..np {
                     e[i] = r * (cum[i] + GAMMA_PRED * q2[i] - qa[i]);
                 }
                 for k in 0..self.activas.len() {
                     let (u, m) = self.activas[k];
                     if m != DEL_ESTADO && m >> a & 1 == 1 {
                         let un = &mut self.unidades[u as usize];
-                        for i in 0..NPRED {
+                        for i in 0..np {
                             un.q[i] += e[i];
                         }
                     }
