@@ -1565,6 +1565,45 @@ gana ahí (pasar de ver solo el foco a ver todo) la propia ya lo tenía por las 
 se ve el cuerpo sino en "hay salida a la vista". **Queda `CRITICO_CUERPO_PROPIO = 0` (apagado)**; la vida por defecto
 no cambia y `rust/pruebas/referencia.txt` no se regenera.
 
+## Aprender las recetas, paso 4: "hay salida a la vista" aprendida (2026-11-26) — sirve, prendido
+
+Idea: lo que a la mano le regala el bit "veo comida" del crítico es poder separar "estoy mal y no hay nada" de "estoy
+mal pero cerca hay algo que alivia". La propia lo arma con lo que ya aprendió en el paso 2: para cada uno de los 5
+movimientos de ahora, las unidades de movimiento (`PREDICE_ACTOR`) predicen cuánto acercaría eso el cuerpo a su
+equilibrio; se toma el mejor, se divide por lo lejos que está el cuerpo del equilibrio ("qué parte del camino cierra el
+mejor movimiento") y se corta en `SALIDA_PROPIA` franjas (umbral `SALIDA_UMBRAL = 0,03`, cada franja siguiente pide 3
+veces más; en una vida la mediana es ~0,01, el 75 % ~0,03 y el 90 % ~0,1). Esa franja entra en la clave de la tabla V
+de la propia. Nada le dice qué es comida: es lo que predicen sus unidades. Para que el estado siguiente (s2) tenga su
+franja, la propia mira s2 antes de armar la clave. La variante "como átomo" no se armó: el valor sale de las unidades
+que prenden los átomos, así que sería circular (haría falta una segunda pasada por tick).
+`angri comparar 200000 256 "MUNDO=bosque OBJETOS=True RASGOS=propios" "... SALIDA_PROPIA=<g> SALIDA_UMBRAL=0.03" -j 4`
+(medido en el i5, con todo lo prendido), B − A (z):
+
+| | G=2 (40000) | G=2 (50000) | **G=3 (40000)** | **G=3 (50000)** |
+|---|---|---|---|---|
+| base: % hambre / % cruda<0,15 | 38,4 / 42,6 | 37,0 / 41,6 | 38,4 / 42,6 | 37,0 / 41,6 |
+| malestar | −0,009 (−1,4) | −0,007 (−1,2) | **−0,015 (−2,6)** | −0,007 (−1,1) |
+| % hambre | −2,3 (−1,5) | −2,1 (−1,5) | **−4,2 (−3,0)** | −2,1 (−1,4) |
+| % cruda < 0,15 | −1,6 (−1,2) | −1,7 (−1,5) | **−2,7 (−2,3)** | −1,7 (−1,4) |
+| peor 10k hambre | −1,2 (−1,1) | −1,4 (−1,2) | −2,6 (−2,3) | −2,4 (−1,9) |
+| racha de hambre | −85 (−2,8) | −36 (−1,1) | −37 (−1,1) | −35 (−1,1) |
+| % trabadas | 12 → 10 | 9 → 9 | 12 → 8 (−1,7) | 9 → 8 |
+| desmayos | −3,6 (−1,2) | −1,4 (−0,5) | −8,1 (−3,1) | −1,7 (−0,6) |
+| % mal alto | −2,3 (−1,3) | −1,9 (−1,2) | −4,0 (−2,5) | −2,1 (−1,3) |
+| comidas | +36 (1,5) | +33 (1,6) | +62 (3,0) | +32 (1,5) |
+| heridas | +1,0 | +0,9 | +0,6 | 0,0 |
+| enfermó | +2,6 (1,2) | +2,2 (1,2) | +0,3 | +3,9 (1,9) |
+| % mal tope | 0 | 0 | 0 | 0 |
+
+Las cuatro tandas van para el mismo lado: menos hambre, menos crudas, menos malestar alto, menos desmayos; el malestar
+nunca toca el tope. G=3 mejora más que G=2 (juntando las dos semillas, hambre −3,1 puntos, z ≈ −3,1; crudas −2,2,
+z ≈ −2,6). Por qué: con la franja el crítico aprende que "mal con salida" vale más que "mal sin salida", y el error TD
+premia acercarse a donde hay salida; come más seguido (+3–6 %) y se traba menos. Con 3 franjas distingue "algo alivia
+un poco" de "algo me saca del pozo", que es lo que la mano tiene gratis. Costo: se enferma algo más en una semilla
+(+3,9, z 1,9): también se anima con lo que predice que alivia y está podrido. **Queda prendido con `SALIDA_PROPIA = 3`**
+(solo propia: la vida por defecto, con la mano, no cambia y `rust/pruebas/referencia.txt` no se regenera; guardar y
+retomar con la propia dan `IDÉNTICO`).
+
 ### Aprender las recetas, cierre: mano contra propia
 
 Igual que el cierre de la revisión (A = mano, B = propia, `angri comparar 200000 512 "MUNDO=bosque OBJETOS=True"

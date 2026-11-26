@@ -98,6 +98,7 @@ pub struct Propia {
     activas: Vec<(u32, u8)>,
     elegida: usize,
     pub vs: f64, // V propio de s
+    pub salida: u32, // (paso 4) franja de "hay salida a la vista" del último sentir mirado (no se guarda: se recalcula)
     pub t: i64,
     pub nacidas: i64,
     pub reiniciadas: i64,
@@ -210,7 +211,7 @@ impl Propia {
         Propia {
             rng: Azar::new(semilla ^ 0x14_0b5e55), unidades, indice: vec![vec![]; N_ATOMOS], forma, previa: None,
             ev: vec![0.0; n], ew: vec![[0.0; NACC]; n], marca: vec![false; n], huella: vec![],
-            cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0,
+            cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0, salida: 0,
             t: 0, nacidas: 0, reiniciadas: 0, molde: Sentir::default(), molde_a: 4, molde_d: 0.0,
             activas2: vec![], cuerpo_antes: [f64::NAN; 7],
         }
@@ -301,6 +302,7 @@ impl Propia {
                 }
             }
         }
+        self.salida = if c.salida_propia > 0 { self.salida_de(&act, cuerpo, c) } else { 0 };
         self.vs = self.valor(&act);
         self.ahora = s;
         self.activas = act;
@@ -361,9 +363,53 @@ impl Propia {
     }
 
     /// V propio de s2 (para el error TD)
-    pub fn valor_de(&mut self, s: &Sentir, c: &Config) -> f64 {
+    /// (aprender las recetas, paso 4) "hay salida a la vista": el mejor alivio que predicen las unidades
+    /// de movimiento entre los 5 movimientos de ahora, como fracción de lo lejos que está el cuerpo de su
+    /// equilibrio, en SALIDA_PROPIA franjas (0 = ninguna salida). Nada dice qué es comida: es lo que predicen.
+    pub fn salida_de(&self, act: &[(u32, u8)], cuerpo: &[f64; 7], c: &Config) -> u32 {
+        let mut gusto = [0.0; NPRED];
+        let mut lejos = 0.0;
+        for (j, &k) in PREDICE.iter().enumerate() {
+            let d = c.equilibrio[k] - cuerpo[k];
+            let falta = c.peso[k] * d;
+            lejos += falta * d;
+            gusto[2 * j] = falta;
+            gusto[2 * j + 1] = -falta;
+        }
+        let mut al = [0.0f64; 5];
+        for &(u, m) in act {
+            if m != DEL_ESTADO {
+                let un = &self.unidades[u as usize];
+                let x: f64 = (0..NPRED).map(|i| gusto[i] * un.q[i]).sum::<f64>();
+                for a in 0..5 {
+                    if m >> a & 1 == 1 {
+                        al[a] += x;
+                    }
+                }
+            }
+        }
+        let mejor = al.iter().cloned().fold(f64::MIN, f64::max);
+        if lejos < 1e-4 || mejor <= 0.0 {
+            return 0;
+        }
+        let r = mejor / lejos;
+        if c.salida_debug {
+            eprintln!("salida {r:.5} {mejor:.6} {lejos:.6}");
+        }
+        let g = c.salida_propia as u32;
+        let mut f = 0;
+        let mut u = c.salida_umbral;
+        while f + 1 < g && r >= u {
+            f += 1;
+            u *= 3.0;
+        }
+        f
+    }
+
+    pub fn valor_de(&mut self, s: &Sentir, cuerpo: &[f64; 7], c: &Config) -> f64 {
         let act = self.activas_de(s);
         let v = self.valor(&act);
+        self.salida = if c.salida_propia > 0 { self.salida_de(&act, cuerpo, c) } else { 0 };
         if c.predice_propio > 0.0 || c.predice_actor > 0.0 {
             self.activas2 = act.clone();
         }
@@ -726,7 +772,7 @@ impl crate::guardar::Pieza for Propia {
         let forma = g.unidades.iter().map(Forma::de).collect();
         Propia {
             rng: g.rng, unidades: g.unidades, indice: g.indice, forma, previa: None, ev: g.ev, ew: g.ew, marca: g.marca,
-            huella: g.huella, cuenta: g.cuenta, ahora: g.ahora, activas: g.activas, elegida: g.elegida, vs: g.vs,
+            huella: g.huella, cuenta: g.cuenta, ahora: g.ahora, activas: g.activas, elegida: g.elegida, vs: g.vs, salida: 0,
             t: g.t, nacidas: g.nacidas, reiniciadas: g.reiniciadas, molde: g.molde, molde_a: g.molde_a,
             molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes,
         }

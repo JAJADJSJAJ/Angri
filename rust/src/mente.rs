@@ -462,9 +462,14 @@ impl Ganglios {
         } else {
             (((n as u32 * 64 + Self::franja(cuerpo[ENERGIA], c)) * 64 + Self::franja(cuerpo[INTEGRIDAD], c)) * 8 + celda) * 2 + come
         };
-        match tacto {
+        let s = match tacto {
             None => s,
             Some(t) => s * 4 + t.lleva.is_some() as u32 * 2 + t.cubierto as u32,
+        };
+        // (aprender las recetas, paso 4) la propia: "hay salida a la vista" aprendida (SALIDA_PROPIA)
+        match &self.propia {
+            Some(p) if c.salida_propia > 0 => s * c.salida_propia as u32 + p.salida,
+            _ => s,
         }
     }
 
@@ -576,9 +581,6 @@ impl Ganglios {
         if recompensa > c.umbral_recuerdo {
             self.lugares[self.necesidad].poner(pos, 1.0);
         }
-        let s2 = self.resumen(vista, cuerpo, n, ncuerpo, tacto, c);
-        self.ultimo = Some(Momento { s, rasgos: self.rasgos, a: self.a, r: recompensa, s2, pos,
-                                     necesidad: self.necesidad, p: self.probs[self.a], temp: self.temp });
         if c.borrar_lugar_vacio && c.atajo_alivia {
             let objetivo = alivia(n);
             if objetivo != 255 && self.lugares[n].get(pos).is_some()
@@ -591,14 +593,23 @@ impl Ganglios {
         let tabla = !(self.propia.is_some() && c.critico_propio == 2);
         let v = if tabla { *self.v.get(&s).unwrap_or(&0.0) } else { 0.0 };
         let dr = if self.propia.is_some() && c.atajo_lugares { self.recuerdo(n, pos) } else if self.propia.is_some() { 99 } else { 0 };
+        // la propia mira s2 antes de armar la clave (SALIDA_PROPIA la usa)
+        let at2 = match &mut self.propia {
+            None => None,
+            Some(p) => {
+                let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, 4, tacto, clima, c.distancia_fina);
+                let vp2 = p.valor_de(&at, cuerpo, c);
+                Some((at, vp2))
+            }
+        };
+        let s2 = self.resumen(vista, cuerpo, n, ncuerpo, tacto, c);
+        self.ultimo = Some(Momento { s, rasgos: self.rasgos, a: self.a, r: recompensa, s2, pos,
+                                     necesidad: self.necesidad, p: self.probs[self.a], temp: self.temp });
         let v2_tabla = if tabla { *self.v.get(&s2).unwrap_or(&0.0) } else { 0.0 };
         // desmayo como final de episodio: no hay "después" que valga
         let g2 = if fin { 0.0 } else { c.serotonina };
-        let delta = match &mut self.propia {
-            None => recompensa + g2 * v2_tabla - v,
-            Some(p) => {
-                let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, 4, tacto, clima, c.distancia_fina);
-                let vp2 = p.valor_de(&at, c);
+        let delta = match (&mut self.propia, at2) {
+            (Some(p), Some((at, vp2))) => {
                 let (vp, vp2) = if c.critico_propio == 1 { (0.0, 0.0) } else { (p.vs, vp2) };
                 let d = recompensa + g2 * (v2_tabla + vp2) - (v + vp);
                 if c.repaso_propio {
@@ -606,6 +617,7 @@ impl Ganglios {
                 }
                 d
             }
+            _ => recompensa + g2 * v2_tabla - v,
         };
         self.dopamina = delta;
         let decae = c.serotonina * c.huella;
