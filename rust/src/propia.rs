@@ -122,6 +122,8 @@ pub struct Propia {
     cuerpo_antes: [f64; 7],
     /// (DUDA_PROPIA) último paso en que cada unidad de movimiento estuvo activa para el movimiento hecho
     probada: Vec<i64>,
+    /// (VALE_LA_PENA) qué pasos hacia una espina valen la pena por lo de detrás (no se guarda: se recalcula al elegir)
+    pub vale: [bool; 5],
 }
 
 #[inline]
@@ -226,7 +228,7 @@ impl Propia {
             ev: vec![0.0; n], ew: vec![[0.0; NACC]; n], marca: vec![false; n], huella: vec![],
             cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0, salida: 0,
             t: 0, nacidas: 0, reiniciadas: 0, molde: Sentir::default(), molde_a: 4, molde_d: 0.0,
-            activas2: vec![], cuerpo_antes: [f64::NAN; 7], probada: vec![0; n],
+            activas2: vec![], cuerpo_antes: [f64::NAN; 7], probada: vec![0; n], vale: [false; 5],
         }
     }
 
@@ -347,6 +349,54 @@ impl Propia {
         self.vs = self.valor(&act);
         self.ahora = s;
         self.activas = act;
+    }
+
+    /// (VALE_LA_PENA) mirar un paso más allá de cada espina vecina: lo que las unidades ya aprendidas dirían del
+    /// mismo movimiento si estuviera parado en la espina (la vista corrida una celda, sin tacto: no sabe alturas
+    /// de allá). Solo suma (el miedo ya lo pesa el paso normal) y marca en `vale` los pasos donde sumó.
+    /// Se llama después de `preferencias`; no toca el azar ni nada que se guarde.
+    pub fn mirar_detras(&mut self, vista: &Vista, cuerpo: &[f64; 7], ncuerpo: usize, n: usize, clima: u8,
+                        h: &mut [f64; NACC], c: &Config) {
+        self.vale = [false; 5];
+        let mut gusto = [0.0; NPRED];
+        if c.predice_actor > 0.0 {
+            for (j, &k) in PREDICE[..npred(c)].iter().enumerate() {
+                let falta = c.peso[k] * (c.equilibrio[k] - cuerpo[k]);
+                gusto[2 * j] = falta;
+                gusto[2 * j + 1] = -falta;
+            }
+        }
+        for a in 0..4 {
+            let (mx, my) = MOVIMIENTOS[a];
+            if vista.get((mx, my)) != Some(PELIGRO) {
+                continue;
+            }
+            let v2 = Vista { v: vista.v.iter().map(|&((x, y), k)| ((x - mx, y - my), k)).collect() };
+            let mut s2 = sentir(&v2, cuerpo, ncuerpo, n, 99, 99, None, clima, c.distancia_fina);
+            // el estado es el de ahora (sigue con hambre); de los movimientos, solo el que sigue derecho
+            s2.estado = self.ahora.estado.clone();
+            for b in 0..5 {
+                if b != a {
+                    s2.mover[b].clear();
+                }
+            }
+            let mut x = 0.0;
+            for (u, m) in self.activas_de(&s2) {
+                if m == DEL_ESTADO || m >> a & 1 == 0 {
+                    continue;
+                }
+                let un = &self.unidades[u as usize];
+                let f = self.confianza(u as usize, c);
+                x += f * un.w[0];
+                if c.predice_actor > 0.0 {
+                    x += (0..2 * npred(c)).map(|i| gusto[i] * un.q[i]).sum::<f64>() * c.predice_actor * f;
+                }
+            }
+            if x > 0.0 {
+                h[a] += c.vale_la_pena * x;
+                self.vale[a] = true;
+            }
+        }
     }
 
     /// el sentir de s (para que el hipocampo lo guarde)
@@ -916,7 +966,7 @@ impl crate::guardar::Pieza for Propia {
             rng: g.rng, unidades: g.unidades, indice: g.indice, forma, previa: None, ev: g.ev, ew: g.ew, marca: g.marca,
             huella: g.huella, cuenta: g.cuenta, ahora: g.ahora, activas: g.activas, elegida: g.elegida, vs: g.vs, salida: 0,
             t: g.t, nacidas: g.nacidas, reiniciadas: g.reiniciadas, molde: g.molde, molde_a: g.molde_a,
-            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes, probada,
+            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes, probada, vale: [false; 5],
         }
     }
 }

@@ -575,6 +575,9 @@ impl Ganglios {
         if let Some(p) = &mut self.propia {
             let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, dicha, tacto, clima, c.distancia_fina);
             p.preferencias(at, &mut h, na, cuerpo, c);
+            if c.vale_la_pena > 0.0 {
+                p.mirar_detras(vista, cuerpo, ncuerpo, n, clima, &mut h, c);
+            }
         }
         let mut tm = c.temperatura_malestar * malestar;
         if c.temperatura_malestar_tope > 0.0 {
@@ -602,6 +605,10 @@ impl Ganglios {
                             let f = p.confianza(crate::propia::N_ESTADO + PELIGRO as usize, c);
                             temp[b] = temp[b].max(t0 + (t_todo - t0) * (1.0 - f));
                         }
+                    }
+                    // (VALE_LA_PENA) si lo de detrás suma, el paso recupera la temperatura del malestar
+                    if c.vale_la_pena > 0.0 && self.propia.as_ref().map_or(false, |p| p.vale[b]) {
+                        temp[b] = t_todo;
                     }
                 }
             }
