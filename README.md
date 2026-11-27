@@ -1959,3 +1959,36 @@ PELIGRO se afloja igual), semillas 60000: D=200 heridas 451 → 814 (z +14), mal
 temperatura; se toma la mayor): malestar +0,017, trabadas 10,2 %, año 2 peor (z +4,1). **Apagadas.** Runs: 45995071744,
 45995087539, 45995103665, 46015646526. Ninguna de las cinco llaves de esta vuelta destraba de forma que se confirme:
 las trabadas (7–11 %) siguen; lo que sí se sostiene es que `PELIGRO_DESESPERA` baja heridas un tercio.
+
+### Trabadas: ¿la espina de la puerta se corre? y `VALE_LA_PENA` (2026-11-27)
+
+Diagnóstico nuevo en comparar (`dg bols ...`, solo mira, misma vida): un **bolsillo** es donde, sin pisar espinas, llega
+a 3 celdas o menos, pero pisándolas sale. Cuenta entradas, **aperturas** (la espina se corre sola y queda salida
+libre), salidas por esa apertura, cruces pisando la espina, racha, desmayos y comida a la vista. 64 vidas × 5 M,
+semillas 60000 (run 46028117693), separando por vida:
+
+| | sanas (55) | trabadas (9) |
+|---|---|---|
+| % hambre | 10,8 | 94,8 |
+| % del tiempo en bolsillo | 0,0 | 32,3 |
+| entradas a bolsillo | 18,2 | 1,1 |
+| aperturas (la espina se corre) | 1,3 | **0,0** |
+| salidas por apertura | 1,3 | 0,0 |
+| cruces pisando la espina | 14,4 | 0,8 |
+| racha máxima en bolsillo (ticks) | 388 | 1,6 M |
+| desmayos en bolsillo | 0 | 987 |
+
+Lecturas: 1) las sanas entran a bolsillos seguido y salen enseguida, **casi siempre pisando la espina** (14 de 18);
+cuando la espina se corre, salen siempre. 2) en las trabadas la espina de la puerta **nunca se corre** (solo se mueve
+a celdas vacías y una al azar de todas por vez): la pregunta "si se corre, ¿por qué no sale?" no aplica, nunca tuvo la
+salida libre. 3) **las trabadas pasan solo ~1/3 del tiempo en el bolsillo**: el otro ~60 % están con hambre afuera. El
+bolsillo es una parte, no toda la traba.
+
+`VALE_LA_PENA` (propia; al paso hacia PELIGRO se le suma lo que sus unidades ya aprendidas dirían del paso siguiente
+en la misma dirección, mirando desde la espina; si suma, ese paso recupera la temperatura del malestar), 1, 128 pares
+× 5 M, semillas 60000 (run 46028985424): en las trabadas el tiempo en bolsillo **41 → 8 %**, la racha 2,1 M → 0,26 M,
+desmayos en bolsillo 1.274 → 245: **sí las saca del bolsillo**. Pero trabadas 10,9 → 9,4 % (z −0,4), malestar +0,006
+(z 0,4), hambre de las sanas 10,7 → 13,3 %, novedades −126 (z −6,4), quieta +5 puntos (z 2,9), peor 10k hambre
+z +2,8. Salen del bolsillo y quedan con hambre afuera. **Apagada.**
+
+Sigue: entender el ~60 % de la traba que no es bolsillo (dónde está y qué hace la vida trabada con hambre afuera).
