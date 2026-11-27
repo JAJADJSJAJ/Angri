@@ -206,6 +206,10 @@ pub const ATAR: usize = 8;
 pub const GOLPEAR: usize = 9;
 pub const FROTAR: usize = 10;
 const N_RASGOS: usize = 764;
+/// (RASGO_ALREDEDOR) rasgos 764 + tipo*7 + n: qué hay alrededor del destino. Los vectores solo crecen
+/// a este tamaño con la llave prendida, así apagada la vida y lo guardado no cambian.
+const BASE_ALREDEDOR: usize = 764;
+const N_RASGOS_ALREDEDOR: usize = BASE_ALREDEDOR + 7 * 7;
 
 #[derive(Clone, Copy)]
 pub struct Rasgos {
@@ -236,7 +240,7 @@ fn posibles(t: &Tacto) -> u16 {
 }
 
 /// rasgos por acción: 8 de siempre + 8 de PALABRA_SUELTA + 28 de FRASE
-pub const MAXR: usize = 44;
+pub const MAXR: usize = 52;
 
 impl Default for Rasgos {
     fn default() -> Rasgos {
@@ -326,6 +330,27 @@ fn rasgos_de(vista: &Vista, n: usize, dc: usize, d_o: usize, dr: usize, a: usize
             }
         }
         if a == dd { push(417 + n); }
+    }
+    k as u8
+}
+
+/// (RASGO_ALREDEDOR) para cada tipo de celda que hay en alguna vecina del destino de `a` (sin contar
+/// la celda donde está ahora), un rasgo tipo×necesidad. No dice qué tipo es malo: solo qué hay cerca.
+fn rasgos_alrededor(vista: &Vista, n: usize, a: usize, out: &mut [u16; MAXR], k0: u8) -> u8 {
+    let mut k = k0 as usize;
+    let (dx, dy) = MOVIMIENTOS[a];
+    let mut vistos = 0u8;
+    for &(mx, my) in &MOVIMIENTOS[..4] {
+        let p = (dx + mx, dy + my);
+        if p == (0, 0) { continue; }
+        if let Some(t) = vista.get(p) {
+            let t = t as usize;
+            if t < 7 && vistos & (1 << t) == 0 {
+                vistos |= 1 << t;
+                out[k] = (BASE_ALREDEDOR + t * 7 + n.min(6)) as u16;
+                k += 1;
+            }
+        }
     }
     k as u8
 }
@@ -516,11 +541,20 @@ impl Ganglios {
         if let Some(t) = tacto {
             rasgos.posibles = posibles(t);
         }
+        if c.rasgo_alrededor && self.w.len() < N_RASGOS_ALREDEDOR {
+            self.w.resize(N_RASGOS_ALREDEDOR, 0.0);
+            self.exp_w.resize(N_RASGOS_ALREDEDOR, 0);
+            self.huella_w.resize(N_RASGOS_ALREDEDOR, 0.0);
+            self.activo.resize(N_RASGOS_ALREDEDOR, false);
+        }
         if c.rasgos_mano {
             for a in 0..5 {
                 rasgos.n[a] = rasgos_de(vista, n, dc, d_o, dr, a, dicha, palabras, c, &mut rasgos.idx[a]);
                 if let Some(t) = tacto {
                     rasgos.n[a] = rasgos_mover(t, n, a, &mut rasgos.idx[a], rasgos.n[a]);
+                }
+                if c.rasgo_alrededor {
+                    rasgos.n[a] = rasgos_alrededor(vista, n, a, &mut rasgos.idx[a], rasgos.n[a]);
                 }
             }
             if let Some(t) = tacto {
