@@ -210,6 +210,12 @@ const N_RASGOS: usize = 764;
 /// a este tamaño con la llave prendida, así apagada la vida y lo guardado no cambian.
 const BASE_ALREDEDOR: usize = 764;
 const N_RASGOS_ALREDEDOR: usize = BASE_ALREDEDOR + 7 * 7;
+/// (RASGO_MOVIL) 813 + tipo*7 + n: un tipo llegó a una vecina del destino desde el tick anterior;
+/// 862 + tipo*7 + n: la acción aleja del más cercano de ese tipo; 911 + tipo*7 + n: lo acerca.
+const BASE_LLEGA: usize = N_RASGOS_ALREDEDOR;
+const BASE_ALEJO: usize = BASE_LLEGA + 7 * 7;
+const BASE_ACERCO: usize = BASE_ALEJO + 7 * 7;
+const N_RASGOS_MOVIL: usize = BASE_ACERCO + 7 * 7;
 
 #[derive(Clone, Copy)]
 pub struct Rasgos {
@@ -239,8 +245,10 @@ fn posibles(t: &Tacto) -> u16 {
     p
 }
 
-/// rasgos por acción: 8 de siempre + 8 de PALABRA_SUELTA + 28 de FRASE
-pub const MAXR: usize = 52;
+/// rasgos por acción: 8 de siempre + 8 de PALABRA_SUELTA + 28 de FRASE (44), + 4 de objetos, + 4 de
+/// RASGO_ALREDEDOR = 52. Con RASGO_MOVIL, en un movimiento (a < 4, sin los 2 de quedarse): 42 + 4 + 3
+/// de alrededor + 3 de "llegó" (3 vecinas) + 7 de alejo/acerco (uno por tipo) = 59. Margen: 64.
+pub const MAXR: usize = 64;
 
 impl Default for Rasgos {
     fn default() -> Rasgos {
@@ -355,6 +363,52 @@ fn rasgos_alrededor(vista: &Vista, n: usize, a: usize, out: &mut [u16; MAXR], k0
     k as u8
 }
 
+/// (RASGO_MOVIL) para el movimiento `a` (< 4): (a) cada tipo que ahora está en una vecina del destino y
+/// en el tick anterior no estaba en esa celda (algo llegó cerca); (b) para cada tipo a la vista, si el
+/// paso aleja o acerca del más cercano de ese tipo. Genérico: no dice qué tipo es malo.
+/// `previa`: la vista del tick anterior en coordenadas absolutas; `pos`: dónde está ahora.
+fn rasgos_movil(vista: &Vista, previa: &[((i64, i64), u8)], pos: (i64, i64), n: usize, a: usize,
+                out: &mut [u16; MAXR], k0: u8) -> u8 {
+    let mut k = k0 as usize;
+    let n = n.min(6);
+    let (dx, dy) = MOVIMIENTOS[a];
+    let mut vistos = 0u8;
+    for &(mx, my) in &MOVIMIENTOS[..4] {
+        let p = (dx + mx, dy + my);
+        if p == (0, 0) { continue; }
+        if let Some(t) = vista.get(p) {
+            let t = t as usize;
+            if t >= 7 || vistos & (1 << t) != 0 { continue; }
+            let abs = (pos.0 + p.0, pos.1 + p.1);
+            let antes = previa.iter().find(|(q, _)| *q == abs).map(|(_, c)| *c as usize);
+            if matches!(antes, Some(b) if b != t) {
+                vistos |= 1 << t;
+                out[k] = (BASE_LLEGA + t * 7 + n) as u16;
+                k += 1;
+            }
+        }
+    }
+    let mut d_ahora = [i64::MAX; 7];
+    let mut d_dest = [i64::MAX; 7];
+    for &((x, y), t) in &vista.v {
+        let t = t as usize;
+        if t >= 7 || (x, y) == (0, 0) { continue; }
+        d_ahora[t] = d_ahora[t].min(x.abs() + y.abs());
+        d_dest[t] = d_dest[t].min((x - dx).abs() + (y - dy).abs());
+    }
+    for t in 0..7 {
+        if d_ahora[t] == i64::MAX { continue; }
+        if d_dest[t] > d_ahora[t] {
+            out[k] = (BASE_ALEJO + t * 7 + n) as u16;
+            k += 1;
+        } else if d_dest[t] < d_ahora[t] {
+            out[k] = (BASE_ACERCO + t * 7 + n) as u16;
+            k += 1;
+        }
+    }
+    k as u8
+}
+
 /// (etapa 13b) lo que siente de los objetos al moverse hacia `a`
 fn rasgos_mover(t: &Tacto, n: usize, a: usize, out: &mut [u16; MAXR], k0: u8) -> u8 {
     let mut k = k0 as usize;
@@ -452,6 +506,8 @@ pub struct Ganglios {
     pub propia: Option<crate::propia::Propia>, // etapa 14
     /// (con REPASO_PROPIO) lo que sintió en s y en s2 del último paso, para el hipocampo
     pub ultimo_sentir: Option<(crate::propia::Sentir, crate::propia::Sentir)>,
+    /// (RASGO_MOVIL) la vista del tick anterior en coordenadas absolutas (vacía con la llave apagada)
+    vista_previa: Vec<((i64, i64), u8)>,
 }
 
 impl Ganglios {
@@ -461,7 +517,7 @@ impl Ganglios {
             w: vec![0.0; N_RASGOS], exp_w: vec![0; N_RASGOS], lugares: Default::default(),
             huella_v: vec![], huella_w: vec![0.0; N_RASGOS], activo: vec![false; N_RASGOS],
             activos: vec![], prediccion: None, s: None, a: 0, rasgos: Rasgos::default(),
-            probs: [0.0; NACC], temp: [0.0; NACC], necesidad: 0, dopamina: 0.0, ultimo: None, propia: None, ultimo_sentir: None,
+            probs: [0.0; NACC], temp: [0.0; NACC], necesidad: 0, dopamina: 0.0, ultimo: None, propia: None, ultimo_sentir: None, vista_previa: vec![],
         }
     }
 
@@ -547,6 +603,12 @@ impl Ganglios {
             self.huella_w.resize(N_RASGOS_ALREDEDOR, 0.0);
             self.activo.resize(N_RASGOS_ALREDEDOR, false);
         }
+        if c.rasgo_movil && self.w.len() < N_RASGOS_MOVIL {
+            self.w.resize(N_RASGOS_MOVIL, 0.0);
+            self.exp_w.resize(N_RASGOS_MOVIL, 0);
+            self.huella_w.resize(N_RASGOS_MOVIL, 0.0);
+            self.activo.resize(N_RASGOS_MOVIL, false);
+        }
         if c.rasgos_mano {
             for a in 0..5 {
                 rasgos.n[a] = rasgos_de(vista, n, dc, d_o, dr, a, dicha, palabras, c, &mut rasgos.idx[a]);
@@ -556,6 +618,14 @@ impl Ganglios {
                 if c.rasgo_alrededor {
                     rasgos.n[a] = rasgos_alrededor(vista, n, a, &mut rasgos.idx[a], rasgos.n[a]);
                 }
+                if c.rasgo_movil && a < 4 {
+                    rasgos.n[a] = rasgos_movil(vista, &self.vista_previa, pos, n, a, &mut rasgos.idx[a],
+                                               rasgos.n[a]);
+                }
+            }
+            if c.rasgo_movil {
+                self.vista_previa.clear();
+                self.vista_previa.extend(vista.v.iter().map(|&((x, y), t)| ((pos.0 + x, pos.1 + y), t)));
             }
             if let Some(t) = tacto {
                 for a in 5..NACC {
@@ -919,7 +989,7 @@ crate::pieza!(Quimica { adenosina, cortisol, dopamina, noradrenalina, previo });
 crate::pieza!(Momento { s, rasgos, a, r, s2, pos, necesidad, p, temp });
 crate::pieza!(Lugares { v });
 crate::pieza!(Ganglios { rng, v, exp_v, w, exp_w, lugares, huella_v, huella_w, activo, activos, prediccion,
-                        s, a, rasgos, probs, temp, necesidad, dopamina, ultimo, propia, ultimo_sentir });
+                        s, a, rasgos, probs, temp, necesidad, dopamina, ultimo, propia, ultimo_sentir, vista_previa });
 crate::pieza!(Hipocampo { dia, sentires });
 
 /// Rasgos: solo los índices usados de cada acción (el resto es relleno).

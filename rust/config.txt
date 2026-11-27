@@ -84,6 +84,7 @@ FUEGO_TICKS = 120             # cuánto dura el fuego por cada unidad de largo q
 # (contra la pérdida de plasticidad). Solo se tocan las activas.
 RASGOS = 'mano'
 RASGO_ALREDEDOR = False       # (mano) rasgo tipo-de-celda x necesidad por cada tipo que hay alrededor del destino de cada movimiento (apagado: la vida de siempre)
+RASGO_MOVIL = False           # (mano) en cada movimiento: qué tipo llegó cerca del destino desde el tick anterior, y si el paso aleja o acerca del más cercano de cada tipo (apagado: la vida de siempre)
 PROPIOS = 4096                # unidades del banco (además de un átomo por unidad)
 NUEVOS_POR_TICK = 4           # mientras el banco no está lleno
 REEMPLAZO_CADA = 100          # cada cuántos pasos de aprendizaje mira cuáles reiniciar

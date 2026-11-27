@@ -60,15 +60,15 @@ pub struct Config {
     pub objetos: bool, pub objetos_iniciales: i64, pub objetos_maximo: i64, pub prob_objeto: f64,
     pub fuerza: f64, pub calor_fuego: f64, pub corta_viento: f64, pub prob_prender: f64, pub fuego_ticks: i64,
     // mente que arma sus rasgos (etapa 14)
-    pub propia: bool, pub rasgos_mano: bool, pub rasgo_alrededor: bool, pub propios: i64, pub nuevos_por_tick: i64,
+    pub propia: bool, pub rasgos_mano: bool, pub rasgo_alrededor: bool, pub rasgo_movil: bool, pub propios: i64, pub nuevos_por_tick: i64,
     pub reemplazo_cada: i64, pub reemplazo_fraccion: f64, pub madurez_propio: i64,
     pub aprende_propio_actor: f64, pub aprende_propio_critico: f64, pub tope_activa: f64, pub ritmo_raro: f64,
     pub repaso_propio: bool, pub nacer_sorpresa: bool, pub repaso_propio_cada: i64, pub predice_propio: f64, pub predice_actor: f64, pub predice_todas: i64, pub critico_cuerpo_propio: i64, pub salida_propia: i64, pub salida_umbral: f64, pub salida_debug: bool, pub salida_lejos: i64, pub salida_lejos_peso: f64, pub critico_vecinos: bool,
 }
 
 /// Claves que pueden faltar (configs viejas): valen lo de por defecto.
-const OPCIONALES: [(&str, &str); 53] = [
-    ("CRITICO_VECINOS", "False"), ("RASGO_ALREDEDOR", "False"),
+const OPCIONALES: [(&str, &str); 54] = [
+    ("CRITICO_VECINOS", "False"), ("RASGO_ALREDEDOR", "False"), ("RASGO_MOVIL", "False"),
     ("RITMO_RARO", "1"), ("REPASO_PROPIO", "True"), ("NACER_SORPRESA", "False"), ("REPASO_PROPIO_CADA", "1"), ("PREDICE_PROPIO", "0"), ("PREDICE_ACTOR", "0"), ("PREDICE_TODAS", "0"), ("CRITICO_CUERPO_PROPIO", "0"), ("SALIDA_PROPIA", "0"), ("SALIDA_UMBRAL", "0.03"), ("SALIDA_DEBUG", "False"), ("SALIDA_LEJOS", "0"), ("SALIDA_LEJOS_PESO", "1"),
     ("TOPE_ACTIVA", "0.2"),
     ("RASGOS", "'mano'"), ("PROPIOS", "4096"), ("NUEVOS_POR_TICK", "4"), ("REEMPLAZO_CADA", "100"),
@@ -292,7 +292,7 @@ impl Config {
             objetos_maximo: c.i("OBJETOS_MAXIMO"), prob_objeto: c.f("PROB_OBJETO"), fuerza: c.f("FUERZA"),
             calor_fuego: c.f("CALOR_FUEGO"), corta_viento: c.f("CORTA_VIENTO"),
             prob_prender: c.f("PROB_PRENDER"), fuego_ticks: c.i("FUEGO_TICKS"),
-            propia: rasgos != "mano" && mente == "aprende", rasgos_mano: rasgos != "propios", rasgo_alrededor: c.b("RASGO_ALREDEDOR"),
+            propia: rasgos != "mano" && mente == "aprende", rasgos_mano: rasgos != "propios", rasgo_alrededor: c.b("RASGO_ALREDEDOR"), rasgo_movil: c.b("RASGO_MOVIL"),
             propios: c.i("PROPIOS"), nuevos_por_tick: c.i("NUEVOS_POR_TICK"),
             reemplazo_cada: c.i("REEMPLAZO_CADA").max(1), reemplazo_fraccion: c.f("REEMPLAZO_FRACCION"),
             madurez_propio: c.i("MADUREZ_PROPIO"), aprende_propio_actor: c.f("APRENDE_PROPIO_ACTOR"),
