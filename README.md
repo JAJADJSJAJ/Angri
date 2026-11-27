@@ -1883,3 +1883,21 @@ llegó cerca del destino" y "este paso me aleja / acerca del k más cercano", pa
 contra la vida de hoy: **mordidas 16,2 → 13,0 (z −10,8)**, % huye +2,5, pero malestar +0,019 (z 8,1), hambre +3,5,
 desmayos +10, heridas por tick expuesta +57 %: neto peor. Aprende a esquivar al predador, pero con ~150 rasgos más por
 movimiento aprende más lento lo demás. Apagado.
+
+### ¿Arreglar la mano o pasar a la propia? (2026-11-26)
+
+Vidas largas (5 M × 128, `--desde 60000`), las dos sin recetas: mano sin atajos y con freno contra la propia.
+
+| | mano sin atajos + freno | propia |
+|---|---|---|
+| malestar | 0,359 | **0,268** (z −9) |
+| malestar año 1 → 50 | 0,38 → 0,36 | 0,40 → 0,27 |
+| % hambre | 34,5 | **19,7** |
+| % malestar alto | 38,8 | **17,8** |
+| desmayos | 1.025 | **531** |
+| heridas / mordidas | 662 / 270 | **451 / 226** |
+| % trabadas | **0** | 10,9 |
+
+Sin recetas, la propia le gana a la mano en todo salvo las vidas trabadas, y empata con la mano **con** recetas
+(0,269). La propia aprende sola lo que a la mano hay que regalarle. Lo que le queda a la propia: 11 % de vidas
+trabadas y mordidas por tick cerca del predador más altas (65 contra 20 por mil).
