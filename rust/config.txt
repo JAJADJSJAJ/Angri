@@ -82,7 +82,7 @@ FUEGO_TICKS = 120             # cuánto dura el fuego por cada unidad de largo q
 # unidades: cada átomo solo y un banco de conjunciones de 2-3 átomos nacidas de lo vivido.
 # "ambos": las dos cosas sumadas. Las unidades maduras que menos sirven se reinician de a poco
 # (contra la pérdida de plasticidad). Solo se tocan las activas.
-RASGOS = 'mano'
+RASGOS = 'propios'
 RASGO_ALREDEDOR = False       # (mano) rasgo tipo-de-celda x necesidad por cada tipo que hay alrededor del destino de cada movimiento (apagado: la vida de siempre)
 PROPIOS = 4096                # unidades del banco (además de un átomo por unidad)
 NUEVOS_POR_TICK = 4           # mientras el banco no está lleno

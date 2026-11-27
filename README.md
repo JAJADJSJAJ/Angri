@@ -1901,3 +1901,11 @@ Vidas largas (5 M × 128, `--desde 60000`), las dos sin recetas: mano sin atajos
 Sin recetas, la propia le gana a la mano en todo salvo las vidas trabadas, y empata con la mano **con** recetas
 (0,269). La propia aprende sola lo que a la mano hay que regalarle. Lo que le queda a la propia: 11 % de vidas
 trabadas y mordidas por tick cerca del predador más altas (65 contra 20 por mil).
+
+### La propia pasa a ser la mente por defecto (2026-11-26)
+
+`RASGOS = 'propios'` en `config.txt`. En la grilla (el mundo por defecto), 512 × 300 k contra la mano con recetas:
+malestar 0,118 contra 0,118 (z 0,4), malestar final 0,103 contra 0,115 (z −7,5), pero hambre 1,3 → 5,0 % y heridas
+19 → 47: la mano con recetas casi resuelve ese mundo chico. En el bosque con objetos, sin recetas, la propia le gana a
+la mano (vidas largas 0,268 contra 0,359). La mano queda con `RASGOS='mano'` y sigue con su freno prendido. Las
+configs de prueba no cambian (referencia igual).
