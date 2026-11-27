@@ -639,6 +639,9 @@ impl Propia {
                 un.w[0] += r * aa * e[0];
             } else {
                 un.v += r * ac * self.ev[u];
+                if c.tope_v_propio > 0.0 {
+                    un.v = un.v.clamp(-c.tope_v_propio, c.tope_v_propio);
+                }
                 if u != 0 {
                     for b in 0..na {
                         un.w[b] += r * aa * e[b];
