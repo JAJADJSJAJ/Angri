@@ -2007,3 +2007,22 @@ una medición vieja. **El crítico de la propia se desboca** cerca de la decisi�
 actor de las unidades de movimiento (sin freno) y dejan h(moverse) ≈ −460 a −1.060 contra h(quedarse) ≈ −170: con
 p = 1 el gradiente de lo elegido es 0 y lo demás no se sortea nunca más. Punto fijo sin salida. Falta confirmar en
 las otras tres.
+
+`TOPE_DELTA_PROPIO` (tope al error TD cuando la mente es la propia; 17 ≈ MALESTAR_MAXIMO/(1−γ)). Diagnóstico nuevo:
+`dg td max`, `dg td >100 tick`, `dg % p>=0.999`. Semillas 60000, 128 pares × 5 M (run 46057470365): sin tope, 8 de
+128 vidas tienen |delta| > 100 (hasta 1,6 M), **todas las congeladas** (60013, 60014, 60025, 60042, más 60075 y
+60120); en las sanas nunca pasa de ~25. Con tope: 60013 hambre 94 → 8 %, 60014 95 → 6, 60120 95 → 13, 60075 72 → 7,
+60025 95 → 33, 60042 95 → 80 (se descongela pero cae en un bolsillo); congelada (p ≥ 0,999) 81 % → 0–3 %.
+
+| | semillas 60000 | semillas 90000 (run 46061266930) |
+|---|---|---|
+| malestar | 0,268 → 0,253 (z −2,2) | 0,253 → 0,243 (z −1,8) |
+| % hambre | 19,7 → 16,3 (z −2,2) | 15,7 → 13,5 (z −1,7) |
+| % trabadas | 10,9 → 7,8 (z −1,6) | 7,0 → 3,9 (z −2,0) |
+| desmayos | 531 → 393 (z −2,3) | 392 → 310 (z −1,7) |
+| heridas | 451 → 471 (z 1,6) | 467 → 488 (z 1,5) |
+| vidas con \|delta\| > 100 | 8 → 0 | 5 → 0 |
+
+Las dos corridas van para el mismo lado (256 pares juntos: malestar z ≈ −2,8, trabadas z ≈ −2,6); heridas +4 %.
+**Prendido** (`TOPE_DELTA_PROPIO = 17`). La referencia no cambia (en las vidas cortas de prueba el delta nunca pasa
+de 17). Las trabadas que quedan son casi todas de bolsillo (la espina por puerta).
