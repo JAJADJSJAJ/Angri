@@ -1909,3 +1909,24 @@ malestar 0,118 contra 0,118 (z 0,4), malestar final 0,103 contra 0,115 (z −7,5
 19 → 47: la mano con recetas casi resuelve ese mundo chico. En el bosque con objetos, sin recetas, la propia le gana a
 la mano (vidas largas 0,268 contra 0,359). La mano queda con `RASGOS='mano'` y sigue con su freno prendido. Las
 configs de prueba no cambian (referencia igual).
+
+### Vidas trabadas de la propia: el reparto del crítico (2026-11-27)
+
+Diagnóstico (métricas `dg ...`, 128 vidas × 5 M en el bosque con objetos): las vidas trabadas pasan 92–97 % del
+tiempo quietas (las sanas 53 %), se desmayan ~3.200 veces (sanas ~200) y el valor de sus unidades del estado está en
++227 (sanas −3,9). La tabla V y las unidades aprenden del mismo error TD: el aprendizaje fija la suma, no el reparto, y
+en las trabadas el reparto deriva (unidades +227, tabla ~−240). De paso, un bug chico: tras un desmayo el hipocampo
+reanotaba el momento viejo y esa noche la propia no repasaba.
+
+Dos llaves, apagadas (misma vida con ellas en 0):
+- `ANCLA_V` (achica de a poco el valor de las unidades activas del estado). 0,001: malestar 0,268 → 0,250 (z −2,1),
+  trabadas 10,9 → 5,5 % (z −2,4), heridas +6 % (z +1,9). Confirmación con otras 128 semillas (`--desde 90000`):
+  malestar −0,009 (z −1,0), trabadas 7,0 → 4,7 % (z −1,0), solo el año 2 mejora claro (z −3,5). Y en las dos
+  corridas alguna vida tiene el V de las unidades desbocado (`dg V` medio 2·10¹¹; con 0,005 llega a −1·10³⁸): anclar
+  solo las unidades deja que la tabla compense sin freno. **Apagada**: la mejora no se confirma y abre una deriva.
+- `OLVIDAR_ULTIMO` (no reanotar el momento viejo tras un desmayo): malestar −0,006 (z −0,6), trabadas neutras.
+  **Apagada** (el arreglo es correcto pero no se nota).
+
+Runs de Actions: 45935434601, 45935445776, 45935456456, 45943106019. Sigue: atacar el reparto en la raíz (que la
+tabla y las unidades no puedan derivar en direcciones opuestas, por ejemplo una sola V con la tabla como sesgo, o
+acotar el valor de las unidades), mirando siempre que `dg V` quede finito.
