@@ -1951,3 +1951,11 @@ destraba ni mejora el malestar. Runs: 45948405250, 45948414390, 45960104771, 459
 Sigue: `DUDA_PROPIA` (lo que no se prueba se pone en duda: el peso y la predicción de una unidad de movimiento pierden
 confianza con el tiempo sin probarla). En vidas sueltas liberó las 6 trabadas probadas (hambre ~90 → 15–23 %, sanas
 igual) con heridas +30–50 %; falta guardarla en el formato de guardado y medirla en pares.
+
+`DUDA_PROPIA` (peso y predicción de cada unidad de movimiento × D/(D + pasos sin probarla), y el miedo innato a
+PELIGRO se afloja igual), semillas 60000: D=200 heridas 451 → 814 (z +14), malestar peor; D=500 trabadas 4,7 %
+(z −1,9), heridas → 743 (z +13), año 2 peor; D=2000 trabadas 5,5 % (z −1,6), malestar −0,010 (z −0,8), heridas → 596
+(z +7). Duda también de los peligros bien aprendidos. Con `PELIGRO_DESESPERA=0,5` (tras arreglar que DUDA pisaba su
+temperatura; se toma la mayor): malestar +0,017, trabadas 10,2 %, año 2 peor (z +4,1). **Apagadas.** Runs: 45995071744,
+45995087539, 45995103665, 46015646526. Ninguna de las cinco llaves de esta vuelta destraba de forma que se confirme:
+las trabadas (7–11 %) siguen; lo que sí se sostiene es que `PELIGRO_DESESPERA` baja heridas un tercio.
