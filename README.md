@@ -2026,3 +2026,28 @@ las otras tres.
 Las dos corridas van para el mismo lado (256 pares juntos: malestar z ≈ −2,8, trabadas z ≈ −2,6); heridas +4 %.
 **Prendido** (`TOPE_DELTA_PROPIO = 17`). La referencia no cambia (en las vidas cortas de prueba el delta nunca pasa
 de 17). Las trabadas que quedan son casi todas de bolsillo (la espina por puerta).
+
+### Trabadas de bolsillo: por qué no vuelve a cruzar, y `TOPE_ACTOR` (2026-11-27)
+
+Vidas sueltas instrumentadas (60035, 60116 y sanas): **entra al bolsillo pisando la espina desde afuera** (la
+espina no se mueve atrás suyo, no hay desmayo). Adentro, el paso a la espina es el único evaluado sin la temperatura
+del malestar (0,3 contra 4–5,4, por `PELIGRO_SIN_MALESTAR`) y `PREDICE_ACTOR` le pone −3 a −9: entra pinchada, la
+integridad no vuelve mientras pasa hambre, y con `gusto = peso × (equilibrio − cuerpo)` la pérdida de integridad
+predicha pesa más cuanto menos le queda. p(espina) ≈ 1e−7 a 1e−13, y empeora con el tiempo. Las sanas que cruzan
+llegan enteras (el −9 casi no está) y ya aprendieron un término positivo para esa dirección (+3 a +6,5).
+
+`TOPE_ACTOR` (tope ±T a lo que `PREDICE_ACTOR` suma o resta a cada movimiento), T=2, 128 pares × 5 M:
+
+| | semillas 60000 (run 46072513643) | semillas 90000 (run 46072517084) |
+|---|---|---|
+| malestar | 0,253 → 0,257 (z 0,5) | 0,243 → 0,246 (z 0,3) |
+| % trabadas | 7,8 → 7,8 | 3,9 → 5,5 (z 0,6) |
+| % en bolsillo | 5,7 → 3,0 (z −2,0) | 2,7 → 1,7 |
+| cruces de espina | 14,7 → 24,1 (z 5,0) | 14,0 → 18,6 (z 2,5) |
+| heridas | 471 → 590 (z 5,3) | 488 → 598 (z 2,5) |
+
+Vida por vida: **libera muchas de bolsillo** (60035 hambre 95 → 13 %, 60105 93 → 11, 60116 96 → 17, 60117 79 → 7,
+90064 87 → 25), **pero traba otras nuevas en campo abierto** (60013 8 → 95, 60070 3 → 88, 90046 10 → 95, 90061
+5 → 95; quietas 50–70 %, sin congelarse). El tope achica también el alivio predicho que la lleva a comer. Neto: nada,
+y +24 % de heridas. **Apagada.** Lección: el tope tiene que tocar solo el costo predicho (el lado negativo), no el
+alivio.
