@@ -1930,3 +1930,24 @@ Dos llaves, apagadas (misma vida con ellas en 0):
 Runs de Actions: 45935434601, 45935445776, 45935456456, 45943106019. Sigue: atacar el reparto en la raíz (que la
 tabla y las unidades no puedan derivar en direcciones opuestas, por ejemplo una sola V con la tabla como sesgo, o
 acotar el valor de las unidades), mirando siempre que `dg V` quede finito.
+
+`TOPE_V_PROPIO` (tope a |v| de las unidades, 5 y 20): trabadas 10,9 → 10,9 %, casi la misma vida. Mirando vida por
+vida, solo 5 de las 14 trabadas tienen V desbocado; las otras 9 tienen V ≈ −0,5. **La deriva de V es síntoma de
+unas pocas, no la causa. Apagada.**
+
+**Causa real (workflow de 3 lentes con vidas sueltas instrumentadas):** la vida trabada no elige quedarse: está en un
+bolsillo de 1–3 celdas (cueva o borde) cuya única salida es una espina (PELIGRO), y choca contra la roca miles de veces
+(60105: 30.321 choques, 0 pasos libres); la comida está a la vista en el 61–91 % de los ticks con hambre. Con
+`PELIGRO_SIN_MALESTAR` el paso hacia PELIGRO no recibe la temperatura del malestar, y PREDICE_ACTOR le da ≈ −9 (la
+integridad baja con el hambre y eso agranda lo que predice perder). Como nunca la cruza, nunca aprende que pincharse
+es menos grave que morirse de hambre; el desmayo la despierta en el mismo lugar.
+
+`PELIGRO_DESESPERA` (fracción de la temperatura por malestar que vuelve al paso hacia PELIGRO). Semillas 60000:
+0,25 trabadas 5,5 %, heridas 451 → 348; **0,5 trabadas 4,7 % (z −1,9), heridas → 304 (z −8,7), malestar −0,015**;
+1 malestar peor (año 2 z +4,7). Confirmación de 0,5 con semillas 90000: **heridas 467 → 299 (z −10,8)** pero
+trabadas 7,0 → 7,0 %, malestar +0,010 (z 0,9) y año 2 peor (z +3,7). **Apagada**: baja mucho las heridas pero no
+destraba ni mejora el malestar. Runs: 45948405250, 45948414390, 45960104771, 45960116662, 45960127931, 45970523103.
+
+Sigue: `DUDA_PROPIA` (lo que no se prueba se pone en duda: el peso y la predicción de una unidad de movimiento pierden
+confianza con el tiempo sin probarla). En vidas sueltas liberó las 6 trabadas probadas (hambre ~90 → 15–23 %, sanas
+igual) con heridas +30–50 %; falta guardarla en el formato de guardado y medirla en pares.
