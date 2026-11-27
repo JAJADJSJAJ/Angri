@@ -124,6 +124,9 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     let (mut hh_dorm, mut hh_quieta, mut hh_pegada, mut hh_cueva, mut hh_come) = (0i64, 0i64, 0i64, 0i64, 0i64);
     let (mut caja, mut caja_h) = ((i64::MAX, i64::MAX, i64::MIN, i64::MIN), 0i64);
     let (mut hh_lado, mut hh_lado_n) = (0f64, 0i64);
+    // quieta despierta con hambre afuera: probabilidad media de moverse a celda libre, de chocar (a roca, borde o
+    // pila), de pisar espina, de quedarse y de hacer algo (agarrar, golpear...); y la entropía
+    let (mut hq_n, mut hq_p) = (0i64, [0f64; 5]);
     for t in 0..ticks {
         a.evento = Evento::Nada;
         let cambios = match &a.mundo { Mundo::G(g) => g.cambios, _ => 0 };
@@ -228,6 +231,18 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
                     }
                     hh_dorm += (!a.despierto) as i64;
                     hh_quieta += (a.despierto && a.x == x0 && a.y == y0) as i64;
+                    if a.despierto && a.x == x0 && a.y == y0 {
+                        let pr = a.mente.probs_ahora();
+                        hq_n += 1;
+                        for (k, &p) in pr.iter().enumerate() {
+                            let j = if k < 4 {
+                                let (dx, dy) = MOVIMIENTOS[k];
+                                let (nx, ny) = (a.x + dx, a.y + dy);
+                                if !b.transitable(nx, ny) { 1 } else if b.en(nx, ny) == PELIGRO { 2 } else { 0 }
+                            } else if k == 4 { 3 } else { 4 };
+                            hq_p[j] += p;
+                        }
+                    }
                     hh_pegada += [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)].iter()
                         .any(|&(dx, dy)| { let (x, y) = (a.x + dx, a.y + dy); x >= 0 && y >= 0 && x < mw && y < mh && b.en(x, y) == COMIDA }) as i64;
                     hh_cueva += (b.zona_en(a.x, a.y) == Z_CUEVA) as i64;
@@ -432,6 +447,9 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
             f("dg hh % cueva", p(hh_cueva));
             f("dg hh come/1k", num(1000.0 * m(hh_come as f64, 10 * hh_n)));
             f("dg hh lado 1k", num(m(hh_lado, hh_lado_n)));
+            for (j, k) in ["libre", "choca", "espina", "queda", "hace"].iter().enumerate() {
+                f(&format!("dg hq p {k}"), num(m(hq_p[j], hq_n)));
+            }
         }
     }
     if let Some(p) = &a.mente.propia {
