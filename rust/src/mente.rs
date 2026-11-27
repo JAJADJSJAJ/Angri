@@ -600,7 +600,7 @@ impl Ganglios {
                     if c.duda_propia > 0.0 {
                         if let Some(p) = &self.propia {
                             let f = p.confianza(crate::propia::N_ESTADO + PELIGRO as usize, c);
-                            temp[b] = t0 + (t_todo - t0) * (1.0 - f);
+                            temp[b] = temp[b].max(t0 + (t_todo - t0) * (1.0 - f));
                         }
                     }
                 }
