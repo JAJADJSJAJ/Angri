@@ -29,15 +29,24 @@ impl Escritor {
 }
 
 pub struct Lector<'a> {
-    it: std::str::SplitAsciiWhitespace<'a>,
+    it: std::iter::Peekable<std::str::SplitAsciiWhitespace<'a>>,
 }
 
 impl<'a> Lector<'a> {
     pub fn new(s: &'a str) -> Lector<'a> {
-        Lector { it: s.split_ascii_whitespace() }
+        Lector { it: s.split_ascii_whitespace().peekable() }
     }
     pub fn tok(&mut self) -> &'a str {
         self.it.next().expect("la mente guardada está cortada")
+    }
+    /// si lo que sigue es este campo, lo consume y da true (campos nuevos al final: los archivos viejos siguen sirviendo)
+    pub fn campo_opcional(&mut self, nombre: &str) -> bool {
+        if self.it.peek() == Some(&nombre) {
+            self.it.next();
+            true
+        } else {
+            false
+        }
     }
     pub fn campo(&mut self, nombre: &str) {
         let t = self.tok();

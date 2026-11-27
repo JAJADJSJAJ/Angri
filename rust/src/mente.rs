@@ -525,6 +525,11 @@ impl Ganglios {
     }
 
     /// Elige una acción: 0..5 son MOVIMIENTOS; con `tacto` (OBJETOS) también AGARRAR..FROTAR.
+    /// (diagnóstico, solo mira) las probabilidades de la última elección
+    pub fn probs_ahora(&self) -> &[f64] {
+        &self.probs[..self.rasgos.na as usize]
+    }
+
     pub fn elegir(&mut self, vista: &Vista, cuerpo: &[f64; 7], n: usize, pos: (i64, i64),
                   noradrenalina: f64, malestar: f64, palabras: &[usize], dicha: usize,
                   tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, c: &Config) -> usize {
@@ -586,10 +591,18 @@ impl Ganglios {
         if c.margen_explorar != 0.0 || c.peligro_sin_malestar {
             let t0 = c.temperatura_base + c.temperatura_sorpresa * noradrenalina;
             for b in 0..na {
-                if (c.margen_explorar != 0.0 && h[b] < m - c.margen_explorar)
-                    || (c.peligro_sin_malestar && b < 5 && vista.get(MOVIMIENTOS[b]) == Some(PELIGRO))
-                {
+                if c.margen_explorar != 0.0 && h[b] < m - c.margen_explorar {
                     temp[b] = t0;
+                } else if c.peligro_sin_malestar && b < 5 && vista.get(MOVIMIENTOS[b]) == Some(PELIGRO) {
+                    // el miedo innato a lo que lastima se ablanda con el malestar en esta fracción
+                    temp[b] = t0 + c.peligro_desespera * tm;
+                    // (DUDA_PROPIA) el miedo que hace mucho no se prueba también se pone en duda
+                    if c.duda_propia > 0.0 {
+                        if let Some(p) = &self.propia {
+                            let f = p.confianza(crate::propia::N_ESTADO + PELIGRO as usize, c);
+                            temp[b] = temp[b].max(t0 + (t_todo - t0) * (1.0 - f));
+                        }
+                    }
                 }
             }
         }

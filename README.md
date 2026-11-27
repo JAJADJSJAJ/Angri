@@ -1909,3 +1909,53 @@ malestar 0,118 contra 0,118 (z 0,4), malestar final 0,103 contra 0,115 (z −7,5
 19 → 47: la mano con recetas casi resuelve ese mundo chico. En el bosque con objetos, sin recetas, la propia le gana a
 la mano (vidas largas 0,268 contra 0,359). La mano queda con `RASGOS='mano'` y sigue con su freno prendido. Las
 configs de prueba no cambian (referencia igual).
+
+### Vidas trabadas de la propia: el reparto del crítico (2026-11-27)
+
+Diagnóstico (métricas `dg ...`, 128 vidas × 5 M en el bosque con objetos): las vidas trabadas pasan 92–97 % del
+tiempo quietas (las sanas 53 %), se desmayan ~3.200 veces (sanas ~200) y el valor de sus unidades del estado está en
++227 (sanas −3,9). La tabla V y las unidades aprenden del mismo error TD: el aprendizaje fija la suma, no el reparto, y
+en las trabadas el reparto deriva (unidades +227, tabla ~−240). De paso, un bug chico: tras un desmayo el hipocampo
+reanotaba el momento viejo y esa noche la propia no repasaba.
+
+Dos llaves, apagadas (misma vida con ellas en 0):
+- `ANCLA_V` (achica de a poco el valor de las unidades activas del estado). 0,001: malestar 0,268 → 0,250 (z −2,1),
+  trabadas 10,9 → 5,5 % (z −2,4), heridas +6 % (z +1,9). Confirmación con otras 128 semillas (`--desde 90000`):
+  malestar −0,009 (z −1,0), trabadas 7,0 → 4,7 % (z −1,0), solo el año 2 mejora claro (z −3,5). Y en las dos
+  corridas alguna vida tiene el V de las unidades desbocado (`dg V` medio 2·10¹¹; con 0,005 llega a −1·10³⁸): anclar
+  solo las unidades deja que la tabla compense sin freno. **Apagada**: la mejora no se confirma y abre una deriva.
+- `OLVIDAR_ULTIMO` (no reanotar el momento viejo tras un desmayo): malestar −0,006 (z −0,6), trabadas neutras.
+  **Apagada** (el arreglo es correcto pero no se nota).
+
+Runs de Actions: 45935434601, 45935445776, 45935456456, 45943106019. Sigue: atacar el reparto en la raíz (que la
+tabla y las unidades no puedan derivar en direcciones opuestas, por ejemplo una sola V con la tabla como sesgo, o
+acotar el valor de las unidades), mirando siempre que `dg V` quede finito.
+
+`TOPE_V_PROPIO` (tope a |v| de las unidades, 5 y 20): trabadas 10,9 → 10,9 %, casi la misma vida. Mirando vida por
+vida, solo 5 de las 14 trabadas tienen V desbocado; las otras 9 tienen V ≈ −0,5. **La deriva de V es síntoma de
+unas pocas, no la causa. Apagada.**
+
+**Causa real (workflow de 3 lentes con vidas sueltas instrumentadas):** la vida trabada no elige quedarse: está en un
+bolsillo de 1–3 celdas (cueva o borde) cuya única salida es una espina (PELIGRO), y choca contra la roca miles de veces
+(60105: 30.321 choques, 0 pasos libres); la comida está a la vista en el 61–91 % de los ticks con hambre. Con
+`PELIGRO_SIN_MALESTAR` el paso hacia PELIGRO no recibe la temperatura del malestar, y PREDICE_ACTOR le da ≈ −9 (la
+integridad baja con el hambre y eso agranda lo que predice perder). Como nunca la cruza, nunca aprende que pincharse
+es menos grave que morirse de hambre; el desmayo la despierta en el mismo lugar.
+
+`PELIGRO_DESESPERA` (fracción de la temperatura por malestar que vuelve al paso hacia PELIGRO). Semillas 60000:
+0,25 trabadas 5,5 %, heridas 451 → 348; **0,5 trabadas 4,7 % (z −1,9), heridas → 304 (z −8,7), malestar −0,015**;
+1 malestar peor (año 2 z +4,7). Confirmación de 0,5 con semillas 90000: **heridas 467 → 299 (z −10,8)** pero
+trabadas 7,0 → 7,0 %, malestar +0,010 (z 0,9) y año 2 peor (z +3,7). **Apagada**: baja mucho las heridas pero no
+destraba ni mejora el malestar. Runs: 45948405250, 45948414390, 45960104771, 45960116662, 45960127931, 45970523103.
+
+Sigue: `DUDA_PROPIA` (lo que no se prueba se pone en duda: el peso y la predicción de una unidad de movimiento pierden
+confianza con el tiempo sin probarla). En vidas sueltas liberó las 6 trabadas probadas (hambre ~90 → 15–23 %, sanas
+igual) con heridas +30–50 %; falta guardarla en el formato de guardado y medirla en pares.
+
+`DUDA_PROPIA` (peso y predicción de cada unidad de movimiento × D/(D + pasos sin probarla), y el miedo innato a
+PELIGRO se afloja igual), semillas 60000: D=200 heridas 451 → 814 (z +14), malestar peor; D=500 trabadas 4,7 %
+(z −1,9), heridas → 743 (z +13), año 2 peor; D=2000 trabadas 5,5 % (z −1,6), malestar −0,010 (z −0,8), heridas → 596
+(z +7). Duda también de los peligros bien aprendidos. Con `PELIGRO_DESESPERA=0,5` (tras arreglar que DUDA pisaba su
+temperatura; se toma la mayor): malestar +0,017, trabadas 10,2 %, año 2 peor (z +4,1). **Apagadas.** Runs: 45995071744,
+45995087539, 45995103665, 46015646526. Ninguna de las cinco llaves de esta vuelta destraba de forma que se confirme:
+las trabadas (7–11 %) siguen; lo que sí se sostiene es que `PELIGRO_DESESPERA` baja heridas un tercio.

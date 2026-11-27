@@ -296,7 +296,9 @@ impl Angri {
                 h.aprender(self.mente.dopamina, c);
             }
             if let Some(h) = &mut self.hipocampo {
-                if let Some(m) = self.mente.ultimo {
+                // (OLVIDAR_ULTIMO) sin esto, tras un desmayo se vuelve a anotar el momento viejo y se desparejan los sentires
+                let ultimo = if c.olvidar_ultimo { self.mente.ultimo.take() } else { self.mente.ultimo };
+                if let Some(m) = ultimo {
                     h.anotar(m, self.mente.ultimo_sentir.take(), c);
                 }
             }
