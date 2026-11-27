@@ -1877,3 +1877,9 @@ peor, apagado.
 qué tipo es malo), 512 × 300 k contra la vida de hoy: malestar −0,001 (z −0,6), mordidas −0,3 (z −1), pero heridas
 +17 (z 5,3) y heridas por tick expuesta +37 %: no sirve, apagado. Con más rasgos el freno por uso reparte el olvido en
 más pesos y aprende peor qué casilla pisar.
+
+`RASGO_MOVIL` (rama `medir-movil`, no se unió: cambiaba el formato del guardado): rasgos genéricos "algo de tipo k
+llegó cerca del destino" y "este paso me aleja / acerca del k más cercano", para cualquier tipo de celda. 512 × 300 k
+contra la vida de hoy: **mordidas 16,2 → 13,0 (z −10,8)**, % huye +2,5, pero malestar +0,019 (z 8,1), hambre +3,5,
+desmayos +10, heridas por tick expuesta +57 %: neto peor. Aprende a esquivar al predador, pero con ~150 rasgos más por
+movimiento aprende más lento lo demás. Apagado.
