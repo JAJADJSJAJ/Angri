@@ -333,7 +333,7 @@ impl Propia {
                     let x: f64 = (0..2 * npred(c)).map(|i| gusto[i] * un.q[i]).sum::<f64>() * c.predice_actor * self.confianza(u as usize, c);
                     for a in 0..5 {
                         if m >> a & 1 == 1 {
-                            if c.tope_actor > 0.0 {
+                            if c.tope_actor > 0.0 || c.tope_costo > 0.0 {
                                 xa[a] += x;
                             } else {
                                 h[a] += x;
@@ -346,6 +346,11 @@ impl Propia {
             if c.tope_actor > 0.0 {
                 for a in 0..5 {
                     h[a] += xa[a].clamp(-c.tope_actor, c.tope_actor);
+                }
+            } else if c.tope_costo > 0.0 {
+                // (TOPE_COSTO) solo el costo predicho tiene tope; el alivio entra entero
+                for a in 0..5 {
+                    h[a] += xa[a].max(-c.tope_costo);
                 }
             }
         }
