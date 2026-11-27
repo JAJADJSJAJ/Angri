@@ -591,10 +591,11 @@ impl Ganglios {
         if c.margen_explorar != 0.0 || c.peligro_sin_malestar {
             let t0 = c.temperatura_base + c.temperatura_sorpresa * noradrenalina;
             for b in 0..na {
-                if (c.margen_explorar != 0.0 && h[b] < m - c.margen_explorar)
-                    || (c.peligro_sin_malestar && b < 5 && vista.get(MOVIMIENTOS[b]) == Some(PELIGRO))
-                {
+                if c.margen_explorar != 0.0 && h[b] < m - c.margen_explorar {
                     temp[b] = t0;
+                } else if c.peligro_sin_malestar && b < 5 && vista.get(MOVIMIENTOS[b]) == Some(PELIGRO) {
+                    // el miedo innato a lo que lastima se ablanda con el malestar en esta fracción
+                    temp[b] = t0 + c.peligro_desespera * tm;
                 }
             }
         }
