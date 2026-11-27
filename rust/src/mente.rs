@@ -466,6 +466,14 @@ impl Ganglios {
             None => s,
             Some(t) => s * 4 + t.lleva.is_some() as u32 * 2 + t.cubierto as u32,
         };
+        // (CRITICO_VECINOS) lo que tengo adelante: el código de la celda en la dirección del último paso
+        // (8 = me quedé quieto). Nada le dice qué celda duele: V aprende sola si lo de adelante duele.
+        let s = if c.critico_vecinos {
+            let adelante = if self.a < 4 { vista.get(MOVIMIENTOS[self.a]).unwrap_or(7) as u32 } else { 8 };
+            s * 9 + adelante
+        } else {
+            s
+        };
         // (aprender las recetas, paso 4) la propia: "hay salida a la vista" aprendida (SALIDA_PROPIA)
         match &self.propia {
             Some(p) if c.salida_propia > 0 => s * c.salida_propia as u32 + p.salida,

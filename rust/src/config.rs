@@ -63,11 +63,12 @@ pub struct Config {
     pub propia: bool, pub rasgos_mano: bool, pub propios: i64, pub nuevos_por_tick: i64,
     pub reemplazo_cada: i64, pub reemplazo_fraccion: f64, pub madurez_propio: i64,
     pub aprende_propio_actor: f64, pub aprende_propio_critico: f64, pub tope_activa: f64, pub ritmo_raro: f64,
-    pub repaso_propio: bool, pub nacer_sorpresa: bool, pub repaso_propio_cada: i64, pub predice_propio: f64, pub predice_actor: f64, pub predice_todas: i64, pub critico_cuerpo_propio: i64, pub salida_propia: i64, pub salida_umbral: f64, pub salida_debug: bool, pub salida_lejos: i64, pub salida_lejos_peso: f64,
+    pub repaso_propio: bool, pub nacer_sorpresa: bool, pub repaso_propio_cada: i64, pub predice_propio: f64, pub predice_actor: f64, pub predice_todas: i64, pub critico_cuerpo_propio: i64, pub salida_propia: i64, pub salida_umbral: f64, pub salida_debug: bool, pub salida_lejos: i64, pub salida_lejos_peso: f64, pub critico_vecinos: bool,
 }
 
 /// Claves que pueden faltar (configs viejas): valen lo de por defecto.
-const OPCIONALES: [(&str, &str); 51] = [
+const OPCIONALES: [(&str, &str); 52] = [
+    ("CRITICO_VECINOS", "False"),
     ("RITMO_RARO", "1"), ("REPASO_PROPIO", "True"), ("NACER_SORPRESA", "False"), ("REPASO_PROPIO_CADA", "1"), ("PREDICE_PROPIO", "0"), ("PREDICE_ACTOR", "0"), ("PREDICE_TODAS", "0"), ("CRITICO_CUERPO_PROPIO", "0"), ("SALIDA_PROPIA", "0"), ("SALIDA_UMBRAL", "0.03"), ("SALIDA_DEBUG", "False"), ("SALIDA_LEJOS", "0"), ("SALIDA_LEJOS_PESO", "1"),
     ("TOPE_ACTIVA", "0.2"),
     ("RASGOS", "'mano'"), ("PROPIOS", "4096"), ("NUEVOS_POR_TICK", "4"), ("REEMPLAZO_CADA", "100"),
@@ -297,7 +298,7 @@ impl Config {
             madurez_propio: c.i("MADUREZ_PROPIO"), aprende_propio_actor: c.f("APRENDE_PROPIO_ACTOR"),
             aprende_propio_critico: c.f("APRENDE_PROPIO_CRITICO"), tope_activa: c.f("TOPE_ACTIVA"), ritmo_raro: c.f("RITMO_RARO"),
             repaso_propio: c.b("REPASO_PROPIO") && c.b("HIPOCAMPO"), nacer_sorpresa: c.b("NACER_SORPRESA"),
-            repaso_propio_cada: c.i("REPASO_PROPIO_CADA"), predice_propio: c.f("PREDICE_PROPIO"), predice_actor: c.f("PREDICE_ACTOR"), predice_todas: c.f("PREDICE_TODAS") as i64, critico_cuerpo_propio: c.f("CRITICO_CUERPO_PROPIO") as i64, salida_propia: c.f("SALIDA_PROPIA") as i64, salida_umbral: c.f("SALIDA_UMBRAL"), salida_debug: c.b("SALIDA_DEBUG"), salida_lejos: c.f("SALIDA_LEJOS") as i64, salida_lejos_peso: c.f("SALIDA_LEJOS_PESO"),
+            repaso_propio_cada: c.i("REPASO_PROPIO_CADA"), predice_propio: c.f("PREDICE_PROPIO"), predice_actor: c.f("PREDICE_ACTOR"), predice_todas: c.f("PREDICE_TODAS") as i64, critico_cuerpo_propio: c.f("CRITICO_CUERPO_PROPIO") as i64, salida_propia: c.f("SALIDA_PROPIA") as i64, salida_umbral: c.f("SALIDA_UMBRAL"), salida_debug: c.b("SALIDA_DEBUG"), salida_lejos: c.f("SALIDA_LEJOS") as i64, salida_lejos_peso: c.f("SALIDA_LEJOS_PESO"), critico_vecinos: c.b("CRITICO_VECINOS"),
         }
     }
 }
