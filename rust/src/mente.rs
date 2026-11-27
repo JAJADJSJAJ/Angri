@@ -681,6 +681,13 @@ impl Ganglios {
             }
             _ => recompensa + g2 * v2_tabla - v,
         };
+        // TOPE_DELTA_PROPIO: ninguna sorpresa más grande que lo peor posible (la tabla y las unidades persiguen el
+        // mismo delta y juntas pueden corregir de más hasta desbocarse y clavar al actor)
+        let delta = if c.tope_delta_propio > 0.0 && self.propia.is_some() {
+            delta.clamp(-c.tope_delta_propio, c.tope_delta_propio)
+        } else {
+            delta
+        };
         self.dopamina = delta;
         let decae = c.serotonina * c.huella;
         self.huella_v.retain_mut(|e| {

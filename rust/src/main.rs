@@ -127,6 +127,9 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     // quieta despierta con hambre afuera: probabilidad media de moverse a celda libre, de chocar (a roca, borde o
     // pila), de pisar espina, de quedarse y de hacer algo (agarrar, golpear...); y la entropía
     let (mut hq_n, mut hq_p) = (0i64, [0f64; 5]);
+    // el error TD: el más grande en valor absoluto, cuándo pasó 100 por primera vez, y ticks despierta con una
+    // acción a p >= 0,999 (congelada)
+    let (mut td_max, mut td_100, mut p1) = (0f64, -1i64, 0i64);
     for t in 0..ticks {
         a.evento = Evento::Nada;
         let cambios = match &a.mundo { Mundo::G(g) => g.cambios, _ => 0 };
@@ -142,6 +145,12 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
             x >= 0 && y >= 0 && x < mw && y < mh && a.mundo.en(x, y) == PELIGRO
         });
         a.tick(c);
+        {
+            let d = a.mente.dopamina.abs();
+            if d.is_finite() { td_max = td_max.max(d); }
+            if td_100 < 0 && d > 100.0 { td_100 = t; }
+            if a.despierto && a.mente.probs_ahora().iter().any(|&p| p >= 0.999) { p1 += 1; }
+        }
         recorrido += (a.x - x0).abs() + (a.y - y0).abs();
         {
             let tramos: &[usize] = if t >= corte { &[0, 1] } else { &[0] };
@@ -435,6 +444,9 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
             f("dg bols % hambre", num(100.0 * m(bol_hambre as f64, bol_t)));
             f("dg bols % comida vista", num(100.0 * m(bol_comida_vista as f64, (bol_t + 9) / 10)));
             f("dg bols desmayos", bol_desm.to_string());
+            f("dg td max", num(td_max));
+            f("dg td >100 tick", td_100.to_string());
+            f("dg % p>=0.999", num((100 * p1) as f64 / tk));
             let p = |x: i64| num(100.0 * m(x as f64, hh_n));
             f("dg hh ticks", (10 * hh_n).to_string());
             for (i, k) in ["<=3", "4-15", "16-60", ">60"].iter().enumerate() {
