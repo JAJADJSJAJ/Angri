@@ -1872,3 +1872,8 @@ vienen de andar más, no de esquivar peor. Las mordidas sí: por tick con el pre
 
 `CRITICO_VECINOS` (la clave del crítico suma la celda de adelante): malestar +0,012 (z 6,4), hambre +3, recorre más:
 peor, apagado.
+
+`RASGO_ALREDEDOR` (rasgos genéricos tipo de celda × necesidad para lo que rodea el destino de cada acción; sin decir
+qué tipo es malo), 512 × 300 k contra la vida de hoy: malestar −0,001 (z −0,6), mordidas −0,3 (z −1), pero heridas
++17 (z 5,3) y heridas por tick expuesta +37 %: no sirve, apagado. Con más rasgos el freno por uso reparte el olvido en
+más pesos y aprende peor qué casilla pisar.
