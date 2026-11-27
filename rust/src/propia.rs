@@ -813,6 +813,16 @@ impl Propia {
     }
 
     /// cuántas unidades del banco viven y cuántas mezclan estado y movimiento
+    /// (diagnóstico, solo mira) las activas de s: (unidad, DEL_ESTADO o los movimientos)
+    pub fn activas_ahora(&self) -> &[(u32, u8)] {
+        &self.activas
+    }
+
+    /// (diagnóstico, solo mira) true si la marca es de una unidad del estado
+    pub fn es_del_estado(m: u8) -> bool {
+        m == DEL_ESTADO
+    }
+
     pub fn resumen(&self) -> (i64, i64) {
         let banco = &self.unidades[N_ATOMOS..];
         let vivas = banco.iter().filter(|u| u.k > 0).count() as i64;

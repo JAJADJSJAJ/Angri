@@ -525,6 +525,11 @@ impl Ganglios {
     }
 
     /// Elige una acción: 0..5 son MOVIMIENTOS; con `tacto` (OBJETOS) también AGARRAR..FROTAR.
+    /// (diagnóstico, solo mira) las probabilidades de la última elección
+    pub fn probs_ahora(&self) -> &[f64] {
+        &self.probs[..self.rasgos.na as usize]
+    }
+
     pub fn elegir(&mut self, vista: &Vista, cuerpo: &[f64; 7], n: usize, pos: (i64, i64),
                   noradrenalina: f64, malestar: f64, palabras: &[usize], dicha: usize,
                   tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, c: &Config) -> usize {

@@ -75,6 +75,11 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     let mut pendiente: Option<((i64, i64), (i64, i64), i64, i64)> = None;
     let ventana = if c.estacion != 0 { c.estacion / 2 } else { 0 };
     let r = c.radio_fuente;
+    // Diagnóstico (dg): solo miran, no tocan el azar ni el estado. [toda la vida, último 20 %]
+    let (mut dg_ent, mut dg_ent_n) = ([0.0f64; 2], [0i64; 2]);
+    let (mut dg_quieta, mut dg_desp) = ([0i64; 2], [0i64; 2]);
+    let (mut dg_v, mut dg_v_n) = ([0.0f64; 2], [0i64; 2]);
+    let (mut dg_dist, mut dg_dist_n) = ([0.0f64; 2], [0i64; 2]);
     for t in 0..ticks {
         a.evento = Evento::Nada;
         let cambios = match &a.mundo { Mundo::G(g) => g.cambios, _ => 0 };
@@ -91,6 +96,34 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
         });
         a.tick(c);
         recorrido += (a.x - x0).abs() + (a.y - y0).abs();
+        {
+            let tramos: &[usize] = if t >= corte { &[0, 1] } else { &[0] };
+            for &j in tramos {
+                if a.despierto {
+                    dg_desp[j] += 1;
+                    dg_quieta[j] += (a.x == x0 && a.y == y0) as i64;
+                    let pr = a.mente.probs_ahora();
+                    let na = pr.len();
+                    let h: f64 = pr.iter().filter(|&&p| p > 0.0).map(|&p| -p * p.ln()).sum();
+                    if na > 1 && h.is_finite() {
+                        dg_ent[j] += h / (na as f64).ln();
+                        dg_ent_n[j] += 1;
+                    }
+                }
+                if let Some(p) = &a.mente.propia {
+                    if p.vs.is_finite() {
+                        dg_v[j] += p.vs;
+                        dg_v_n[j] += 1;
+                    }
+                }
+                if let (0, Mundo::B(b)) = (t % 100, &a.mundo) {
+                    if let Some(d) = b.comida.iter().map(|e| (e.0 .0 - a.x).abs() + (e.0 .1 - a.y).abs()).min() {
+                        dg_dist[j] += d as f64;
+                        dg_dist_n[j] += 1;
+                    }
+                }
+            }
+        }
         if junto {
             expuesta += 1;
             heridas_exp += (a.evento == Evento::Lastima) as i64;
@@ -253,7 +286,33 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
         f("encuentra", num(if tardanzas.is_empty() { 0.0 } else { media_int(&tardanzas) }));
         f("ronda vieja", num(if rondas.is_empty() { 0.0 } else { media_int(&rondas) }));
     }
+    {
+        let m = |s: f64, n: i64| if n > 0 { s / n as f64 } else { f64::NAN };
+        for (j, suf) in ["", " final"].iter().enumerate() {
+            f(&format!("dg entropía{suf}"), num(m(dg_ent[j], dg_ent_n[j])));
+            f(&format!("dg quieta %{suf}"), num(100.0 * m(dg_quieta[j] as f64, dg_desp[j])));
+            if a.mente.propia.is_some() {
+                f(&format!("dg V{suf}"), num(m(dg_v[j], dg_v_n[j])));
+            }
+            if bosque {
+                f(&format!("dg dist comida{suf}"), num(m(dg_dist[j], dg_dist_n[j])));
+            }
+        }
+    }
     if let Some(p) = &a.mente.propia {
+        // al final de la vida: el banco (no-átomos) y los átomos solos
+        let (atomos, banco) = p.unidades.split_at(propia::N_ATOMOS);
+        let vivas: Vec<&propia::Unidad> = banco.iter().filter(|u| u.k > 0).collect();
+        let wabs = |u: &propia::Unidad| if u.mover { u.w[0].abs() } else { u.w.iter().map(|x| x.abs()).sum::<f64>() / NACC as f64 };
+        let mm = |xs: Vec<f64>| if xs.is_empty() { f64::NAN } else { xs.iter().sum::<f64>() / xs.len() as f64 };
+        f("dg unidades", vivas.len().to_string());
+        f("dg util", num(mm(vivas.iter().map(|u| u.util).collect())));
+        f("dg |w| átomos", num(mm(atomos.iter().map(|u| wabs(u)).collect())));
+        f("dg |w| banco", num(mm(vivas.iter().map(|u| wabs(u)).collect())));
+        // q[0] = suba de energía predicha, q[1] = baja (PREDICE[0] = ENERGIA): neto = q[0] - q[1]
+        let qe: Vec<f64> = p.activas_ahora().iter().filter(|&&(_, mk)| !propia::Propia::es_del_estado(mk))
+            .map(|&(u, _)| { let q = &p.unidades[u as usize].q; q[0] - q[1] }).collect();
+        f("dg q energía", num(mm(qe)));
         let (vivas, mezclan) = p.resumen();
         f("unidades", vivas.to_string());
         f("mezclan", mezclan.to_string());
@@ -306,7 +365,8 @@ fn una_vida(semilla: u64, ticks: i64, c: &Config) -> String {
         "% mal tope", "% hambre prim", "% hambre ver", "% hambre oto", "% hambre inv",
         // exposición vs evitación (también solo miran)
         "% expuesta", "heridas/1k exp", "recorrido", "% pred<=2", "mordidas/1k pred<=2"];
-    let partes: Vec<String> = metricas(semilla, ticks, c).iter().filter(|(k, _)| !PASO0.contains(&k.as_str())).map(|(k, v)| format!("\"{}\": {}", k, v)).collect();
+    // las de diagnóstico ("dg ...") también solo miran
+    let partes: Vec<String> = metricas(semilla, ticks, c).iter().filter(|(k, _)| !PASO0.contains(&k.as_str()) && !k.starts_with("dg ")).map(|(k, v)| format!("\"{}\": {}", k, v)).collect();
     format!("{{{}}}", partes.join(", "))
 }
 
