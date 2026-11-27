@@ -47,6 +47,36 @@ fn media_int(xs: &[i64]) -> f64 {
     xs.iter().sum::<i64>() as f64 / xs.len() as f64
 }
 
+/// Celdas a las que llega desde (x, y) sin pisar PELIGRO (con `pasa_peligro`, pisándolo), hasta `tope`.
+fn region(b: &Bosque, x: i64, y: i64, pasa_peligro: bool, tope: usize) -> Vec<(i64, i64)> {
+    let mut r = vec![(x, y)];
+    let mut i = 0;
+    while i < r.len() && r.len() <= tope {
+        let (cx, cy) = r[i];
+        i += 1;
+        for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+            let (nx, ny) = (cx + dx, cy + dy);
+            if b.transitable(nx, ny) && (pasa_peligro || b.en(nx, ny) != PELIGRO) && !r.contains(&(nx, ny)) {
+                r.push((nx, ny));
+            }
+        }
+    }
+    r
+}
+
+/// Bolsillo: sin pisar espinas llega a 3 celdas o menos, pero pisándolas sale (la espina es la puerta).
+/// Devuelve las celdas del bolsillo.
+fn bolsillo(b: &Bosque, x: i64, y: i64) -> Option<Vec<(i64, i64)>> {
+    if b.en(x, y) == PELIGRO {
+        return None;
+    }
+    let r = region(b, x, y, false, 3);
+    if r.len() > 3 || region(b, x, y, true, 3).len() <= 3 {
+        return None;
+    }
+    Some(r)
+}
+
 /// Las métricas de una vida (las de medir.py), como (nombre, número en texto).
 fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     let mut a = Angri::new(semilla, c);
@@ -80,6 +110,13 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     let (mut dg_quieta, mut dg_desp) = ([0i64; 2], [0i64; 2]);
     let (mut dg_v, mut dg_v_n) = ([0.0f64; 2], [0i64; 2]);
     let (mut dg_dist, mut dg_dist_n) = ([0.0f64; 2], [0i64; 2]);
+    // Bolsillo con espina por puerta: ticks adentro, entradas, aperturas (la espina se corre sola y queda salida
+    // sin espina), salidas por esa apertura, cruces pisando la espina, comida a la vista adentro, racha máxima
+    let mut bol_prev: Option<Vec<(i64, i64)>> = None;
+    let mut abierto: Option<(Vec<(i64, i64)>, i64)> = None; // (celdas del bolsillo que se abrió, tick)
+    let (mut bol_t, mut bol_entra, mut bol_abre, mut bol_sale_abre, mut bol_cruza) = (0i64, 0i64, 0i64, 0i64, 0i64);
+    let (mut bol_racha, mut bol_racha_max, mut bol_comida_vista, mut bol_hambre) = (0i64, 0i64, 0i64, 0i64);
+    let (mut bol_espera_abre, mut bol_desm) = (0i64, 0i64);
     for t in 0..ticks {
         a.evento = Evento::Nada;
         let cambios = match &a.mundo { Mundo::G(g) => g.cambios, _ => 0 };
@@ -123,6 +160,46 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
                     }
                 }
             }
+        }
+        if let Mundo::B(b) = &a.mundo {
+            let ahora = bolsillo(b, a.x, a.y);
+            match (&bol_prev, &ahora) {
+                (None, Some(_)) => bol_entra += 1,
+                (Some(p), None) => {
+                    if b.en(a.x, a.y) == PELIGRO {
+                        bol_cruza += 1;
+                    } else if p.contains(&(a.x, a.y)) {
+                        // sigue donde estaba pero ya no es bolsillo: la espina se corrió (o se fue la pila)
+                        bol_abre += 1;
+                        abierto = Some((p.clone(), t));
+                    }
+                }
+                _ => {}
+            }
+            if let Some(cel) = &ahora {
+                bol_t += 1;
+                bol_racha += 1;
+                bol_racha_max = bol_racha_max.max(bol_racha);
+                bol_hambre += (a.cuerpo.v[ENERGIA] < 0.3) as i64;
+                bol_desm += (a.evento == Evento::Desmaya) as i64;
+                if t % 10 == 0 {
+                    let vista = (a.x - 3..=a.x + 3).any(|x| (a.y - 3..=a.y + 3).any(|y| {
+                        x >= 0 && y >= 0 && x < mw && y < mh && b.en(x, y) == COMIDA && !cel.contains(&(x, y))
+                    }));
+                    bol_comida_vista += vista as i64;
+                }
+                abierto = None; // se volvió a cerrar (o entró a otro) antes de salir
+            } else {
+                bol_racha = 0;
+                if let Some((cel, t0)) = &abierto {
+                    if cel.iter().all(|&(x, y)| (x - a.x).abs() + (y - a.y).abs() > 3) {
+                        bol_sale_abre += 1;
+                        bol_espera_abre += t - t0;
+                        abierto = None;
+                    }
+                }
+            }
+            bol_prev = ahora;
         }
         if junto {
             expuesta += 1;
@@ -297,6 +374,18 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
             if bosque {
                 f(&format!("dg dist comida{suf}"), num(m(dg_dist[j], dg_dist_n[j])));
             }
+        }
+        if bosque {
+            f("dg % bolsillo", num((100 * bol_t) as f64 / tk));
+            f("dg bols entra", bol_entra.to_string());
+            f("dg bols abre", bol_abre.to_string());
+            f("dg bols sale abre", bol_sale_abre.to_string());
+            f("dg bols espera sale", num(m(bol_espera_abre as f64, bol_sale_abre)));
+            f("dg bols cruza", bol_cruza.to_string());
+            f("dg bols racha", bol_racha_max.to_string());
+            f("dg bols % hambre", num(100.0 * m(bol_hambre as f64, bol_t)));
+            f("dg bols % comida vista", num(100.0 * m(bol_comida_vista as f64, (bol_t + 9) / 10)));
+            f("dg bols desmayos", bol_desm.to_string());
         }
     }
     if let Some(p) = &a.mente.propia {
