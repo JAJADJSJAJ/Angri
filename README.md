@@ -1992,3 +1992,18 @@ desmayos en bolsillo 1.274 → 245: **sí las saca del bolsillo**. Pero trabadas
 z +2,8. Salen del bolsillo y quedan con hambre afuera. **Apagada.**
 
 Sigue: entender el ~60 % de la traba que no es bolsillo (dónde está y qué hace la vida trabada con hambre afuera).
+
+### Trabadas fuera del bolsillo: congelada en campo abierto (2026-11-27)
+
+Diagnóstico nuevo (`dg hh ...`: con hambre fuera del bolsillo; `dg hq p ...`: qué prefiere cuando está despierta y
+quieta), 64 vidas × 5 M, semillas 60000 (runs 46042033440, 46044771264). De las 9 trabadas: 3 en bolsillo, 1 en un
+corral de 4–15 celdas, 1 chocando (p choca 0,84) y **4 en campo abierto (60013, 60014, 60025, 60042) sin moverse en
+millones de ticks**: caja recorrida por cada 1.000 ticks de 1,1 celdas (sanas 27), 81 % despierta y quieta, y
+**p(quedarse) = 1,00** (sanas: libre 0,42, choca 0,38, quedarse 0,18).
+
+Causa (una vida, 60013, con prints temporales): no es máscara, ni NaN, ni temperatura baja (4–6), ni el cuerpo, ni
+una medición vieja. **El crítico de la propia se desboca** cerca de la decisión 25.200: el error TD pasa de ±3 a −433,
++2.411, −41.607. La tabla V y las unidades persiguen el mismo delta y juntas corrigen de más. Esos golpes entran al
+actor de las unidades de movimiento (sin freno) y dejan h(moverse) ≈ −460 a −1.060 contra h(quedarse) ≈ −170: con
+p = 1 el gradiente de lo elegido es 0 y lo demás no se sortea nunca más. Punto fijo sin salida. Falta confirmar en
+las otras tres.
