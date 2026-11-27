@@ -1877,3 +1877,35 @@ peor, apagado.
 qué tipo es malo), 512 × 300 k contra la vida de hoy: malestar −0,001 (z −0,6), mordidas −0,3 (z −1), pero heridas
 +17 (z 5,3) y heridas por tick expuesta +37 %: no sirve, apagado. Con más rasgos el freno por uso reparte el olvido en
 más pesos y aprende peor qué casilla pisar.
+
+`RASGO_MOVIL` (rama `medir-movil`, no se unió: cambiaba el formato del guardado): rasgos genéricos "algo de tipo k
+llegó cerca del destino" y "este paso me aleja / acerca del k más cercano", para cualquier tipo de celda. 512 × 300 k
+contra la vida de hoy: **mordidas 16,2 → 13,0 (z −10,8)**, % huye +2,5, pero malestar +0,019 (z 8,1), hambre +3,5,
+desmayos +10, heridas por tick expuesta +57 %: neto peor. Aprende a esquivar al predador, pero con ~150 rasgos más por
+movimiento aprende más lento lo demás. Apagado.
+
+### ¿Arreglar la mano o pasar a la propia? (2026-11-26)
+
+Vidas largas (5 M × 128, `--desde 60000`), las dos sin recetas: mano sin atajos y con freno contra la propia.
+
+| | mano sin atajos + freno | propia |
+|---|---|---|
+| malestar | 0,359 | **0,268** (z −9) |
+| malestar año 1 → 50 | 0,38 → 0,36 | 0,40 → 0,27 |
+| % hambre | 34,5 | **19,7** |
+| % malestar alto | 38,8 | **17,8** |
+| desmayos | 1.025 | **531** |
+| heridas / mordidas | 662 / 270 | **451 / 226** |
+| % trabadas | **0** | 10,9 |
+
+Sin recetas, la propia le gana a la mano en todo salvo las vidas trabadas, y empata con la mano **con** recetas
+(0,269). La propia aprende sola lo que a la mano hay que regalarle. Lo que le queda a la propia: 11 % de vidas
+trabadas y mordidas por tick cerca del predador más altas (65 contra 20 por mil).
+
+### La propia pasa a ser la mente por defecto (2026-11-26)
+
+`RASGOS = 'propios'` en `config.txt`. En la grilla (el mundo por defecto), 512 × 300 k contra la mano con recetas:
+malestar 0,118 contra 0,118 (z 0,4), malestar final 0,103 contra 0,115 (z −7,5), pero hambre 1,3 → 5,0 % y heridas
+19 → 47: la mano con recetas casi resuelve ese mundo chico. En el bosque con objetos, sin recetas, la propia le gana a
+la mano (vidas largas 0,268 contra 0,359). La mano queda con `RASGOS='mano'` y sigue con su freno prendido. Las
+configs de prueba no cambian (referencia igual).
