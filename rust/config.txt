@@ -141,6 +141,8 @@ ACTOR_POR_ACTIVOS = False     # (mano) el ritmo del actor se divide por cuántos
 DECAE_ACTOR = 0.0001             # (mano) cada tick los pesos activos del actor se achican en esta fracción (freno a que crezcan sin límite); 0 = no
 DECAE_ACTOR_MODO = 'presentes' # (mano) a qué pesos frena DECAE_ACTOR: 'reloj' = todos los vistos alguna vez, cada tick; 'presentes' = solo los rasgos de alguna acción de este tick (olvida por uso); 'huella' = proporcional a |huella|; 'elegida' = solo los rasgos de la acción elegida (olvida lo que hace, no lo que ve)
 DECAE_SOLO_POSITIVOS = False  # (mano) DECAE_ACTOR solo achica pesos > 0 (no borra lo que el dolor enseñó a evitar)
+ANCLA_V = 0                   # (propia) cada tick el valor v de las unidades del estado activas se achica en esta fracción: la tabla y las unidades persiguen el mismo δ y sin ancla su reparto deriva (vidas trabadas: unidades +227, tabla ≈ −240); 0 = no
+OLVIDAR_ULTIMO = False        # el hipocampo no vuelve a anotar el momento viejo en el tick sin aprendizaje (desmayo): sin esto se desparejan los sentires y esa noche la propia no repasa
 DECAE_PROPIO = 0              # (propia) cada tick los pesos de actor de las unidades activas se achican en esta fracción; 0 = no
 ATAJO_LUGARES = False         # (revisión, paso 4d; sacado: no regala nada) los lugares recordados por necesidad ("lo que alivia esto está para allá": rasgo de la mano y átomo de la propia); False = no se usan
 CRITICO_PROPIO = 'ambos'      # (revisión, paso 4e; solo propia) el valor V suma la tabla y las unidades, que persiguen el mismo error: "ambos" (viejo), "tabla" o "unidades" (solo uno)

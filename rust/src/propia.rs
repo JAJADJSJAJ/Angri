@@ -646,6 +646,15 @@ impl Propia {
                 }
             }
         }
+        if c.ancla_v > 0.0 {
+            // la tabla y las unidades persiguen el mismo δ: sin esto el reparto entre las dos deriva sin freno
+            let encoge = 1.0 - c.ancla_v;
+            for &(u, m) in &self.activas {
+                if m == DEL_ESTADO {
+                    self.unidades[u as usize].v *= encoge;
+                }
+            }
+        }
         if c.decae_propio > 0.0 {
             // olvidar por uso: solo las unidades activas este tick
             let encoge = 1.0 - c.decae_propio;
