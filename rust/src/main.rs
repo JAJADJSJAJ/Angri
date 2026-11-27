@@ -117,6 +117,13 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     let (mut bol_t, mut bol_entra, mut bol_abre, mut bol_sale_abre, mut bol_cruza) = (0i64, 0i64, 0i64, 0i64, 0i64);
     let (mut bol_racha, mut bol_racha_max, mut bol_comida_vista, mut bol_hambre) = (0i64, 0i64, 0i64, 0i64);
     let (mut bol_espera_abre, mut bol_desm) = (0i64, 0i64);
+    // Con hambre fuera del bolsillo (cada 10 ticks): tamaño del encierro sin pisar espinas (≤3 / 4–15 / 16–60 /
+    // >60 celdas) y si las espinas son la puerta; dormida, quieta despierta, comida pegada, en cueva; y cada
+    // 1.000 ticks mayormente con hambre, el lado de la caja que recorrió
+    let (mut hh_n, mut hh_enc, mut hh_puerta) = (0i64, [0i64; 4], 0i64);
+    let (mut hh_dorm, mut hh_quieta, mut hh_pegada, mut hh_cueva, mut hh_come) = (0i64, 0i64, 0i64, 0i64, 0i64);
+    let (mut caja, mut caja_h) = ((i64::MAX, i64::MAX, i64::MIN, i64::MIN), 0i64);
+    let (mut hh_lado, mut hh_lado_n) = (0f64, 0i64);
     for t in 0..ticks {
         a.evento = Evento::Nada;
         let cambios = match &a.mundo { Mundo::G(g) => g.cambios, _ => 0 };
@@ -197,6 +204,33 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
                         bol_espera_abre += t - t0;
                         abierto = None;
                     }
+                }
+            }
+            let hambrienta = a.cuerpo.v[ENERGIA] < 0.3;
+            caja = (caja.0.min(a.x), caja.1.min(a.y), caja.2.max(a.x), caja.3.max(a.y));
+            caja_h += hambrienta as i64;
+            if (t + 1) % 1000 == 0 {
+                if caja_h > 500 {
+                    hh_lado += ((caja.2 - caja.0).max(caja.3 - caja.1) + 1) as f64;
+                    hh_lado_n += 1;
+                }
+                caja = (i64::MAX, i64::MAX, i64::MIN, i64::MIN);
+                caja_h = 0;
+            }
+            if hambrienta && ahora.is_none() {
+                hh_come += (a.evento == Evento::Come) as i64;
+                if t % 10 == 0 {
+                    hh_n += 1;
+                    let sin = region(b, a.x, a.y, false, 60).len();
+                    hh_enc[if sin <= 3 { 0 } else if sin <= 15 { 1 } else if sin <= 60 { 2 } else { 3 }] += 1;
+                    if sin <= 60 && region(b, a.x, a.y, true, 60).len() > 60 {
+                        hh_puerta += 1;
+                    }
+                    hh_dorm += (!a.despierto) as i64;
+                    hh_quieta += (a.despierto && a.x == x0 && a.y == y0) as i64;
+                    hh_pegada += [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)].iter()
+                        .any(|&(dx, dy)| { let (x, y) = (a.x + dx, a.y + dy); x >= 0 && y >= 0 && x < mw && y < mh && b.en(x, y) == COMIDA }) as i64;
+                    hh_cueva += (b.zona_en(a.x, a.y) == Z_CUEVA) as i64;
                 }
             }
             bol_prev = ahora;
@@ -386,6 +420,18 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
             f("dg bols % hambre", num(100.0 * m(bol_hambre as f64, bol_t)));
             f("dg bols % comida vista", num(100.0 * m(bol_comida_vista as f64, (bol_t + 9) / 10)));
             f("dg bols desmayos", bol_desm.to_string());
+            let p = |x: i64| num(100.0 * m(x as f64, hh_n));
+            f("dg hh ticks", (10 * hh_n).to_string());
+            for (i, k) in ["<=3", "4-15", "16-60", ">60"].iter().enumerate() {
+                f(&format!("dg hh % encierro {k}"), p(hh_enc[i]));
+            }
+            f("dg hh % puerta espina", p(hh_puerta));
+            f("dg hh % dormida", p(hh_dorm));
+            f("dg hh % quieta", p(hh_quieta));
+            f("dg hh % comida pegada", p(hh_pegada));
+            f("dg hh % cueva", p(hh_cueva));
+            f("dg hh come/1k", num(1000.0 * m(hh_come as f64, 10 * hh_n)));
+            f("dg hh lado 1k", num(m(hh_lado, hh_lado_n)));
         }
     }
     if let Some(p) = &a.mente.propia {
