@@ -65,6 +65,8 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     let (mut desp, mut h_desp, mut h_dorm, mut cruda, mut tope) = (0i64, 0i64, 0i64, 0i64, 0i64);
     let (mut h_est, mut t_est) = ([0i64; 4], [0i64; 4]);
     let (mut cerca_pred, mut huye) = (0i64, 0i64);
+    // Exposición vs evitación: cuánto estuvo al lado del peligro y cuánto se lastimó estando ahí
+    let (mut expuesta, mut heridas_exp, mut pred2, mut mordidas_p2, mut recorrido) = (0i64, 0i64, 0i64, 0i64, 0i64);
     let mut anio = 0.0f64;
     let mut por_anio: Vec<f64> = vec![];
     let largo_anio = 4 * c.estacion_bosque;
@@ -81,7 +83,22 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
             let (px, py) = b.predador;
             d0 = if b.harto == 0 { (px - a.x).abs() + (py - a.y).abs() } else { 99 };
         }
+        let (x0, y0) = (a.x, a.y);
+        let (mw, mh) = a.mundo.ancho_alto();
+        let junto = [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|&(dx, dy)| {
+            let (x, y) = (x0 + dx, y0 + dy);
+            x >= 0 && y >= 0 && x < mw && y < mh && a.mundo.en(x, y) == PELIGRO
+        });
         a.tick(c);
+        recorrido += (a.x - x0).abs() + (a.y - y0).abs();
+        if junto {
+            expuesta += 1;
+            heridas_exp += (a.evento == Evento::Lastima) as i64;
+        }
+        if d0 <= 2 {
+            pred2 += 1;
+            mordidas_p2 += (a.evento == Evento::Muerde) as i64;
+        }
         let cerca = |a: &Angri, p: (i64, i64)| (a.x - p.0).abs() <= r && (a.y - p.1).abs() <= r;
         if let Mundo::G(g) = &a.mundo {
             if g.cambios != cambios {
@@ -196,10 +213,15 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     f("% cruda<0.15", num((100 * cruda) as f64 / tk));
     f("% mal tope", num((100 * tope) as f64 / tk));
     f("racha alta", racha_max.to_string());
+    f("% expuesta", num((100 * expuesta) as f64 / tk));
+    f("heridas/1k exp", num(1000.0 * heridas_exp as f64 / expuesta.max(1) as f64));
+    f("recorrido", recorrido.to_string());
     if bosque {
         f("% sed", num((100 * sed) as f64 / tk));
         f("% frío", num((100 * frio) as f64 / tk));
         f("mordidas", mordidas.to_string());
+        f("% pred<=2", num((100 * pred2) as f64 / tk));
+        f("mordidas/1k pred<=2", num(1000.0 * mordidas_p2 as f64 / pred2.max(1) as f64));
         f("enfermó", enfermo.to_string());
         f("bebe", bebidas.to_string());
         f("% duerme cueva", num((100 * refugio) as f64 / dormido.max(1) as f64));
@@ -280,8 +302,10 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
 fn una_vida(semilla: u64, ticks: i64, c: &Config) -> String {
     // Las métricas del paso 0 (revisión del diseño) solo miran la vida: quedan fuera de la referencia
     // para que la huella de la vida siga siendo la misma.
-    const PASO0: [&str; 10] = ["peor 10k hambre", "racha hambre", "% hambre desp", "% hambre dorm", "% cruda<0.15",
-        "% mal tope", "% hambre prim", "% hambre ver", "% hambre oto", "% hambre inv"];
+    const PASO0: [&str; 15] = ["peor 10k hambre", "racha hambre", "% hambre desp", "% hambre dorm", "% cruda<0.15",
+        "% mal tope", "% hambre prim", "% hambre ver", "% hambre oto", "% hambre inv",
+        // exposición vs evitación (también solo miran)
+        "% expuesta", "heridas/1k exp", "recorrido", "% pred<=2", "mordidas/1k pred<=2"];
     let partes: Vec<String> = metricas(semilla, ticks, c).iter().filter(|(k, _)| !PASO0.contains(&k.as_str())).map(|(k, v)| format!("\"{}\": {}", k, v)).collect();
     format!("{{{}}}", partes.join(", "))
 }
