@@ -326,15 +326,26 @@ impl Propia {
                 gusto[2 * j] = falta;
                 gusto[2 * j + 1] = -falta;
             }
+            let mut xa = [0.0f64; 5];
             for &(u, m) in &act {
                 if m != DEL_ESTADO {
                     let un = &self.unidades[u as usize];
                     let x: f64 = (0..2 * npred(c)).map(|i| gusto[i] * un.q[i]).sum::<f64>() * c.predice_actor * self.confianza(u as usize, c);
                     for a in 0..5 {
                         if m >> a & 1 == 1 {
-                            h[a] += x;
+                            if c.tope_actor > 0.0 {
+                                xa[a] += x;
+                            } else {
+                                h[a] += x;
+                            }
                         }
                     }
+                }
+            }
+            // (TOPE_ACTOR) lo que el alivio predicho suma o resta a cada movimiento no pasa de ±TOPE_ACTOR
+            if c.tope_actor > 0.0 {
+                for a in 0..5 {
+                    h[a] += xa[a].clamp(-c.tope_actor, c.tope_actor);
                 }
             }
         }
