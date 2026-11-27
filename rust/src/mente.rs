@@ -596,6 +596,13 @@ impl Ganglios {
                 } else if c.peligro_sin_malestar && b < 5 && vista.get(MOVIMIENTOS[b]) == Some(PELIGRO) {
                     // el miedo innato a lo que lastima se ablanda con el malestar en esta fracción
                     temp[b] = t0 + c.peligro_desespera * tm;
+                    // (DUDA_PROPIA) el miedo que hace mucho no se prueba también se pone en duda
+                    if c.duda_propia > 0.0 {
+                        if let Some(p) = &self.propia {
+                            let f = p.confianza(crate::propia::N_ESTADO + PELIGRO as usize, c);
+                            temp[b] = t0 + (t_todo - t0) * (1.0 - f);
+                        }
+                    }
                 }
             }
         }

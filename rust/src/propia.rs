@@ -120,6 +120,8 @@ pub struct Propia {
     // (PREDICE_PROPIO) las activas de s2 y el cuerpo del paso anterior
     activas2: Vec<(u32, u8)>,
     cuerpo_antes: [f64; 7],
+    /// (DUDA_PROPIA) último paso en que cada unidad de movimiento estuvo activa para el movimiento hecho
+    probada: Vec<i64>,
 }
 
 #[inline]
@@ -224,7 +226,7 @@ impl Propia {
             ev: vec![0.0; n], ew: vec![[0.0; NACC]; n], marca: vec![false; n], huella: vec![],
             cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0, salida: 0,
             t: 0, nacidas: 0, reiniciadas: 0, molde: Sentir::default(), molde_a: 4, molde_d: 0.0,
-            activas2: vec![], cuerpo_antes: [f64::NAN; 7],
+            activas2: vec![], cuerpo_antes: [f64::NAN; 7], probada: vec![0; n],
         }
     }
 
@@ -292,7 +294,28 @@ impl Propia {
             Some((ps, pa)) if ps == s => pa,
             _ => self.activas_de(&s),
         };
-        self.sumar(&act, h, na);
+        if c.duda_propia > 0.0 {
+            // lo que no se prueba se pone en duda: el peso de cada unidad de movimiento pesa según su confianza
+            for &(u, m) in &act {
+                let un = &self.unidades[u as usize];
+                if m == DEL_ESTADO {
+                    if u != 0 {
+                        for b in 0..na {
+                            h[b] += un.w[b];
+                        }
+                    }
+                } else {
+                    let f = self.confianza(u as usize, c);
+                    for a in 0..5 {
+                        if m >> a & 1 == 1 {
+                            h[a] += f * un.w[0];
+                        }
+                    }
+                }
+            }
+        } else {
+            self.sumar(&act, h, na);
+        }
         if c.predice_actor > 0.0 {
             // cuánto vale cada suba/baja predicha: lo que acercaría esa necesidad a su equilibrio
             let mut gusto = [0.0; NPRED];
@@ -304,7 +327,7 @@ impl Propia {
             for &(u, m) in &act {
                 if m != DEL_ESTADO {
                     let un = &self.unidades[u as usize];
-                    let x: f64 = (0..2 * npred(c)).map(|i| gusto[i] * un.q[i]).sum::<f64>() * c.predice_actor;
+                    let x: f64 = (0..2 * npred(c)).map(|i| gusto[i] * un.q[i]).sum::<f64>() * c.predice_actor * self.confianza(u as usize, c);
                     for a in 0..5 {
                         if m >> a & 1 == 1 {
                             h[a] += x;
@@ -329,6 +352,14 @@ impl Propia {
     /// el sentir de s (para que el hipocampo lo guarde)
     pub fn ahora(&self) -> &Sentir {
         &self.ahora
+    }
+
+    /// (DUDA_PROPIA) cuánto cree todavía lo que aprendió la unidad u: baja con el tiempo sin probarla
+    pub fn confianza(&self, u: usize, c: &Config) -> f64 {
+        if c.duda_propia <= 0.0 {
+            return 1.0;
+        }
+        c.duda_propia / (c.duda_propia + (self.t - self.probada[u]).max(0) as f64)
     }
 
     /// suma a cada acción lo que dicen estas unidades activas
@@ -561,6 +592,14 @@ impl Propia {
         }
         self.t += 1;
         self.elegida = a;
+        if a < 5 && c.duda_propia > 0.0 {
+            let t = self.t;
+            for &(u, m) in &self.activas {
+                if m != DEL_ESTADO && m >> a & 1 == 1 {
+                    self.probada[u as usize] = t;
+                }
+            }
+        }
         for &x in &self.ahora.estado {
             self.cuenta[x as usize] += 1;
         }
@@ -865,15 +904,19 @@ impl crate::guardar::Pieza for Propia {
         macro_rules! g { ($($f:ident),*) => { $( e.campo(stringify!($f)); crate::guardar::Pieza::guardar(&p.$f, e); )* } }
         g!(rng, unidades, indice, ev, ew, marca, huella, cuenta, ahora, activas, elegida, vs, t,
            nacidas, reiniciadas, molde, molde_a, molde_d, activas2, cuerpo_antes);
+        e.campo("probada");
+        crate::guardar::Pieza::guardar(&p.probada, e);
     }
     fn cargar(l: &mut crate::guardar::Lector) -> Self {
         let g = Guardada::cargar(l);
+        let n = g.unidades.len();
+        let probada = if l.campo_opcional("probada") { crate::guardar::Pieza::cargar(l) } else { vec![g.t; n] };
         let forma = g.unidades.iter().map(Forma::de).collect();
         Propia {
             rng: g.rng, unidades: g.unidades, indice: g.indice, forma, previa: None, ev: g.ev, ew: g.ew, marca: g.marca,
             huella: g.huella, cuenta: g.cuenta, ahora: g.ahora, activas: g.activas, elegida: g.elegida, vs: g.vs, salida: 0,
             t: g.t, nacidas: g.nacidas, reiniciadas: g.reiniciadas, molde: g.molde, molde_a: g.molde_a,
-            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes,
+            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes, probada,
         }
     }
 }
