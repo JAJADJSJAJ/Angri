@@ -1861,3 +1861,14 @@ largas neutro (−0,007, z −0,9) con heridas +69 %: apagado. `DECAE_ACTOR` no 
 
 Pruebas: config nueva `rust/pruebas/config-freno.txt` (objetos, sin atajos, freno prendido) en la referencia y en
 retomar; las demás configs de prueba no cambian.
+
+### Heridas: exposición, no peor evitación (2026-11-26)
+
+Métricas nuevas en `comparar` (no cambian la vida): `% expuesta` (ticks con un peligro al lado), `heridas/1k exp`,
+`recorrido`, `% pred<=2` y `mordidas/1k pred<=2`. Vidas largas sin freno contra con freno (5 M × 128): recorrido
+1,17 M → 2,14 M, % expuesta 4,5 → 5,7, **heridas por 1.000 ticks expuesta 2,4 → 1,8 (z −0,8)**: las heridas de más
+vienen de andar más, no de esquivar peor. Las mordidas sí: por tick con el predador a ≤ 2, 15 → 31 por mil (z 8,2)
+(sin freno ese tiempo cerca es mayor, 1,7 %, sobre todo en vidas trabadas).
+
+`CRITICO_VECINOS` (la clave del crítico suma la celda de adelante): malestar +0,012 (z 6,4), hambre +3, recorre más:
+peor, apagado.
