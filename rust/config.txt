@@ -83,6 +83,7 @@ FUEGO_TICKS = 120             # cuánto dura el fuego por cada unidad de largo q
 # "ambos": las dos cosas sumadas. Las unidades maduras que menos sirven se reinician de a poco
 # (contra la pérdida de plasticidad). Solo se tocan las activas.
 RASGOS = 'mano'
+RASGO_ALREDEDOR = False       # (mano) rasgo tipo-de-celda x necesidad por cada tipo que hay alrededor del destino de cada movimiento (apagado: la vida de siempre)
 PROPIOS = 4096                # unidades del banco (además de un átomo por unidad)
 NUEVOS_POR_TICK = 4           # mientras el banco no está lleno
 REEMPLAZO_CADA = 100          # cada cuántos pasos de aprendizaje mira cuáles reiniciar
@@ -100,6 +101,7 @@ CRITICO_CUERPO_PROPIO = 0      # (aprender las recetas, paso 3; solo propia; apa
 SALIDA_PROPIA = 3             # (aprender las recetas, paso 4; solo propia; prendido: 2 ayuda poco, 3 mejor: hambre −4,2 / −2,1) "hay salida a la vista" aprendida: el mejor alivio que predicen las unidades de movimiento (PREDICE_ACTOR) entre los movimientos de ahora, como fracción de lo lejos que está el cuerpo del equilibrio, entra en la clave de la tabla V en G franjas (0 = no)
 SALIDA_UMBRAL = 0.03          # (con SALIDA_PROPIA) umbral de la primera franja; cada franja siguiente pide 3 veces más (mediana ~0,01, 75 % ~0,03, 90 % ~0,1)
 SALIDA_LEJOS = 0              # (aprender las recetas, paso 6; solo propia, con SALIDA_PROPIA y PREDICE_TODAS < 2; apagado hasta medir) que la salida llegue más lejos que un paso: las unidades de movimiento aprenden (TD) a qué franja de salida lleva cada movimiento y eso empuja la elección. 0 = no; 1 = la franja del estado siguiente; 2 = horizonte largo (franja siguiente + 0,9 × la mejor que se predice desde ahí: "voy hacia la comida que veo a varios pasos")
+# CRITICO_VECINOS = False     # (freno, el crítico ve al lado; apagado hasta medir) la clave de V suma el código de la celda de adelante (dirección del último paso; 8 = quieto): V puede anticipar el dolor de al lado. Nada le dice qué celda duele
 SALIDA_LEJOS_PESO = 1.0       # (con SALIDA_LEJOS) cuánto empuja a la elección la salida predicha de cada movimiento
 NACER_SORPRESA = False        # las unidades nuevas nacen del momento más sorpresivo (mayor error TD) desde el último reinicio
 RITMO_RARO = 1                # ritmo por unidad: una rara aprende hasta esto veces más rápido (3 y 10 probados: no cambia el malestar)
@@ -135,6 +137,11 @@ CUEVA = 'vieja'               # (revisión, paso 3d) "vieja" (TEMP_CUEVA, menos 
 ATAJO_ALIVIA = True           # (revisión, paso 4a; mano) el rasgo "voy hacia lo que alivia mi foco" usa la receta alivia() (hambre->comida, sed->agua, frío->descanso); False = no existe (y llegar a un lugar recordado no se borra por "no ver su alivio")
 ATAJO_COMIDA = True           # (revisión, paso 4b; mano) el rasgo fijo "voy hacia la comida que veo" (dc); False = no existe
 ATAJO_VEO_COMIDA = True       # (revisión, paso 4c) el crítico (la tabla V) tiene un bit "veo comida"; False = no lo tiene
+ACTOR_POR_ACTIVOS = False     # (mano) el ritmo del actor se divide por cuántos rasgos tiene la acción elegida (como la propia divide por unidades activas)
+DECAE_ACTOR = 0.0001             # (mano) cada tick los pesos activos del actor se achican en esta fracción (freno a que crezcan sin límite); 0 = no
+DECAE_ACTOR_MODO = 'presentes' # (mano) a qué pesos frena DECAE_ACTOR: 'reloj' = todos los vistos alguna vez, cada tick; 'presentes' = solo los rasgos de alguna acción de este tick (olvida por uso); 'huella' = proporcional a |huella|; 'elegida' = solo los rasgos de la acción elegida (olvida lo que hace, no lo que ve)
+DECAE_SOLO_POSITIVOS = False  # (mano) DECAE_ACTOR solo achica pesos > 0 (no borra lo que el dolor enseñó a evitar)
+DECAE_PROPIO = 0              # (propia) cada tick los pesos de actor de las unidades activas se achican en esta fracción; 0 = no
 ATAJO_LUGARES = False         # (revisión, paso 4d; sacado: no regala nada) los lugares recordados por necesidad ("lo que alivia esto está para allá": rasgo de la mano y átomo de la propia); False = no se usan
 CRITICO_PROPIO = 'ambos'      # (revisión, paso 4e; solo propia) el valor V suma la tabla y las unidades, que persiguen el mismo error: "ambos" (viejo), "tabla" o "unidades" (solo uno)
 DISTANCIA_PROPIA = 'fina'     # (revisión, paso 4f; solo propia; prendido) "vieja": cada cosa vista da un átomo al movimiento de su eje principal, con su distancia en 4 franjas (1, 2, 3-4, 5+); "fina": a cada movimiento que la acerca, "me acerco a X a distancia d" (1..5, 6+), y a cada uno que la aleja, "me alejo de X"

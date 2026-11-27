@@ -1715,3 +1715,165 @@ que aprende es "a qué franja de salida lleva este movimiento", y la salida más
 peso 1 está en otra escala que el empuje de `PREDICE_ACTOR`. La variante 1 no se midió. **Queda apagado
 (`SALIDA_LEJOS = 0`)**; la vida por defecto no cambia, la referencia no se regenera, y `angri retomar` con la propia da
 `IDÉNTICO` (con 0 y con 2).
+
+### Aprender las recetas, cierre 2: mano contra propia con todo lo prendido (2026-11-26)
+
+Igual que el cierre anterior (A = mano, B = propia, `angri comparar 200000 512 "MUNDO=bosque OBJETOS=True"
+"... RASGOS=propios"`, `--desde 31000` y `--desde 1000`), ahora con todo lo que quedó prendido en la etapa
+(`PREDICE_ACTOR=16`, `SALIDA_PROPIA=3`; pasos 1, 3, 5 y 6 apagados). **Medido en GitHub Actions** (`medir.yml`, 20
+partes; runs 45901453849 y 45901457420), no en el i5: el corte de luz mató la tanda del i5. La mano da exactamente lo
+mismo que en el cierre anterior (25,7 / 25,9), así que se compara directo.
+
+| | mano 31000 | propia cierre 1 | propia cierre 2 | z | mano 1000 | propia cierre 1 | propia cierre 2 | z |
+|---|---|---|---|---|---|---|---|---|
+| % hambre | 25,7 | 39,4 | 35,5 | 9,2 | 25,9 | 37,7 | 35,9 | 9,3 |
+| % cruda < 0,15 | 29,2 | 43,2 | 40,2 | 11,9 | 29,7 | 42,4 | 40,9 | 12,0 |
+| peor 10k hambre | 75,9 | 87,4 | 85,1 | 8,0 | 77,7 | 86,5 | 84,6 | 6,3 |
+| % trabadas | 6,3 | 11,9 | 8,8 | 1,5 | 5,5 | 11,3 | 9,4 | 2,3 |
+| % sed | 23,7 | 32,9 | 31,1 | 8,4 | 23,1 | 32,7 | 31,8 | 10,3 |
+| desmayos | 30,7 | 43,9 | 37,1 | 3,5 | 31,3 | 40,9 | 37,7 | 3,4 |
+| % malestar alto | 26,3 | 39,2 | 35,0 | 7,3 | 26,7 | 37,7 | 35,8 | 7,6 |
+| malestar | 0,308 | | 0,345 | 8,3 | 0,308 | | 0,348 | 8,7 |
+| % duerme refugio propio | 1,7 | 5,7 | 5,8 | 8,9 | 1,6 | 5,7 | 6,2 | 10,9 |
+| % mal tope | 0 | 0 | 0 | | 0 | 0 | 0 | |
+
+(z = propia cierre 2 contra mano.) **Contra la vara (~16 puntos de crudas que regalan `alivia()` y "veo comida"): la
+distancia en crudas bajó de 16,5 (revisión) → 14,0 / 12,7 (cierre 1) → 11,0 / 11,2 ahora.** En hambre, de 16,3 →
+13,7 / 11,7 → 9,8 / 9,9. O sea, la propia ganó sola ~5,5 de los ~16 puntos: un tercio de la vara. El paso 4 ("hay
+salida a la vista") se nota sobre todo en una semilla (31000: hambre −3,9, desmayos −7) y en las trabadas (que ya no
+son claramente más que en la mano: z 1,5 / 2,3). El malestar nunca tocó el tope. Quedan ~11 puntos: sigue comiendo
+mucho menos seguido que la mano (1.033 contra 2.680 comidas) y aprende más lento el primer año (malestar año 1
+0,38 contra 0,32, z 13; en el año 2 ya casi igual, z ~3).
+
+Qué sigue: vidas largas (5 M de ticks, 128 pares, `--desde 60000`) mano contra propia con esto prendido, en Actions
+(run 45901483641), para ver si la propia pasa a la mano antes del año 16.
+
+### Aprender las recetas, vidas largas con todo lo prendido (2026-11-26)
+
+128 pares de 5 M de ticks (50 años), A = mano, B = propia con `PREDICE_ACTOR=16` y `SALIDA_PROPIA=3`,
+`angri comparar 5000000 128 "MUNDO=bosque OBJETOS=True" "... RASGOS=propios" --desde 60000`, **medido en GitHub
+Actions** (run 45901483641, 20 partes, ~19 min). B − A (z):
+
+| | mano | propia | z |
+|---|---|---|---|
+| malestar (toda la vida) | 0,414 | 0,268 | −10,0 |
+| malestar año 1 / 2 / 3 | 0,327 / 0,297 / 0,303 | 0,395 / 0,331 / 0,306 | 6,8 / 2,9 / 0,2 |
+| malestar año 4 / 5 / 10 | 0,318 / 0,320 / 0,382 | 0,285 / 0,274 / 0,256 | −2,3 / −3,0 / −8,1 |
+| malestar año 16 / 30 / 50 | 0,415 / 0,434 / 0,459 | 0,258 / 0,263 / 0,274 | −9,3 / −10,0 / −10,3 |
+| % hambre | 52,2 | 19,7 | −9,5 |
+| % cruda < 0,15 | 49,0 | 19,0 | −10,6 |
+| % trabadas | 44,5 | 10,9 | −6,3 |
+| % malestar alto | 54,8 | 17,8 | −10,1 |
+| racha alta (ticks) | 1,36 M | 0,55 M | −4,2 |
+| desmayos | 1.744 | 531 | −9,7 |
+| heridas / mordidas | 287 / 134 | 451 / 226 | 8,0 / 4,7 |
+| % duerme refugio propio | 4,2 | 6,2 | 1,2 |
+| % mal tope | 0 | 0 | |
+
+**La propia alcanza a la mano en el año 3 y la pasa desde el año 4** (antes de estos pasos: año 16 y ~34, con 24 pares).
+Desde ahí la distancia crece y se queda en ~0,17–0,19 de malestar (z ~−10) hasta el año 50. Las dos cosas pasan a la
+vez: la propia sigue mejorando (0,40 → 0,25) y **la mano empeora toda la vida** (0,30 en el año 2 → 0,46 en el 50; en
+vidas largas pasa la mitad del tiempo con hambre y se traba el 44 %). Por qué, probablemente: las recetas de la mano
+(`alivia()`, "veo comida") son atajos que no se corrigen cuando el bosque cambia (se vacía de comida cerca de donde
+vive, los objetos se acumulan), y la mano termina pasando el día con cosas en la mano y tomando agua (285.000 veces);
+la propia aprende de lo que predice y se adapta. Costo de la propia: se lastima más (heridas +57 %, mordidas +68 %):
+se mueve más y huye más. El malestar nunca tocó el tope, y el bucle de sufrimiento de las vidas largas (2/3 del tiempo
+con malestar alto) en la propia bajó a 18 %; en la mano sigue (55 %).
+
+Qué sigue (paso 3 del orden): sacar de la mano `alivia()` y el bit "veo comida" y volver a la etapa 14/15.
+
+## Sacar los atajos de la mano y frenar sus pesos (2026-11-26)
+
+**Por qué empeora la mano** (leído del código, a confirmar con un registro de pesos): sus pesos del actor no tienen
+freno (`CALMA = 1e12`: el ritmo nunca baja, y nada los achica), los rasgos que están casi siempre prendidos hacen de
+sesgo y juntan el error de toda la vida, la política se vuelve casi fija (temperatura 0,3) y el gradiente `1 − π` se
+apaga; las recetas fijas no siguen al bosque que cambia. La propia divide por unidades activas y reinicia lo que no sirve.
+
+**Sacar `alivia()` y "veo comida"** (`ATAJO_ALIVIA=False ATAJO_VEO_COMIDA=False`, 512 pares × 300 k, Actions): hambre
+24,3 → 45,5 % (z 21), desmayos 43 → 94, trabadas 4,7 → 20,5 %, malestar +0,107. La mano dependía de esas recetas.
+
+**Frenos a los pesos de la mano**, contra la mano sin atajos (512 pares × 300 k, Actions):
+
+| llave | hambre | trabadas | desmayos | heridas |
+|---|---|---|---|---|
+| (base sin atajos) | 45,5 % | 20,5 % | 94 | 78 |
+| `ACTOR_POR_ACTIVOS=True` (ritmo / rasgos de la acción) | 67,7 | 75,6 | 151 | 54 |
+| `DECAE_ACTOR=1e-5` (los pesos activos se achican) | 41,5 (z −4,3) | 7,8 | 82 | 113 |
+| `DECAE_ACTOR=1e-4` | 45,3 | 0,8 | 90 | 237 |
+
+Dividir el ritmo la deja sin aprender: apagado. El decaimiento destraba vidas y baja algo el hambre, pero olvida cuidarse
+(heridas +45 % / ×3). Queda apagado hasta ver vidas largas (5 M × 128) con 1e-5 y 1e-6.
+
+**Vidas largas** (5 M × 128 pares, Actions, mano sin atajos, `--desde 60000`):
+
+| | sin freno | `DECAE_ACTOR=1e-6` | `DECAE_ACTOR=1e-5` |
+|---|---|---|---|
+| malestar año 1 → 50 | 0,419 → 0,510 | 0,410 → 0,444 | 0,402 → 0,402 |
+| % hambre | 68,1 | 51,2 | 42,5 (z −11) |
+| % trabadas | 68,0 | 32,0 | 3,9 (z −14) |
+| desmayos | 2.365 | 1.793 | 1.342 |
+| heridas | 336 | 582 | 1.200 (×3,6) |
+
+**Con 1e-5 la mano deja de empeorar con los años**: el malestar queda plano 50 años. Confirma que la degradación era
+pérdida de plasticidad (pesos sin freno). Pero se lastima 3,6 veces más: lo que olvida incluye cuidarse. Sigue peor que
+la propia (0,27 a los 50 años). Queda apagado por ahora (ver docs/proxima-etapa.md): falta un freno que no borre el
+cuidado (decaer solo los rasgos-sesgo, o reiniciar como la propia).
+
+### Por qué el freno borraba el cuidado, y el freno por uso (2026-11-26)
+
+La mano solo anticipa un peligro con los pesos de rasgos raros ("peligro al lado" 54 / 20+n / 450+n, "fuego al lado"
+750+n): el crítico no ve la celda de al lado. Esos rasgos aprenden pocos ticks por encuentro, pero `activos` nunca se
+vacía, así que `DECAE_ACTOR` los achicaba **todos los ticks** (vida media ~69 k ticks con 1e-5; una mordida cada ~37 k).
+Los rasgos de comer y moverse se refrescan cada tick: por eso destrababa y a la vez olvidaba cuidarse.
+
+`DECAE_ACTOR_MODO`: `'reloj'` (el viejo), `'presentes'` (solo achica los rasgos de alguna acción de este tick: olvida
+por uso), `'huella'` (proporcional a |huella|). Contra la mano sin atajos, 512 pares × 300 k (Actions):
+
+| | malestar | hambre | trabadas | desmayos | heridas | mordidas |
+|---|---|---|---|---|---|---|
+| sin freno | 0,408 | 45,5 % | 20,5 % | 94 | 78 | 10,6 |
+| `reloj` 1e-4 | 0,406 | 45,3 | 0,8 | 90 | 237 | |
+| **`presentes` 1e-4** | **0,363** (z −15) | **35,8** | **0,6** | **65** | 73 | 15,1 |
+| `huella` 1e-4 | 0,386 | 40,5 | 7,4 | 82 | 75 | 12,2 |
+| `presentes` 1e-5 | 0,388 | 40,6 | 9,6 | 80 | 78 | 12,0 |
+
+Vidas largas, `presentes` 1e-4 (5 M × 128, `--desde 60000`): **malestar plano 0,38 → 0,36 en 50 años** (sin freno
+0,42 → 0,51; z −14,5 a los 50), hambre 68 → 34 %, **trabadas 68 → 0 %**, desmayos 2.365 → 1.025. Costo: heridas
+336 → 662 y mordidas 131 → 270 (×2; el freno viejo daba ×3,6). La propia está en 0,27 a los 50 años.
+
+### De dónde salen las heridas, y el freno por uso prendido (2026-11-26)
+
+Con `'presentes'` el freno achica los rasgos de lo que Angri **ve** al lado (54, 20+n "voy hacia el peligro") cada tick
+que hay un peligro pegado, y el dolor solo los refuerza el tick en que lo pisa. Probado contra `presentes` 1e-4 sin
+atajos (512 × 300 k): `'elegida'` (olvida solo lo que hace) malestar +0,016, trabadas 0,6 → 5 %, mordidas −1,2: peor.
+`DECAE_SOLO_POSITIVOS` (no achica pesos negativos) malestar +0,039, trabadas → 18 %: mucho peor (los pesos negativos
+también traban). 3e-4 ≈ 1e-4. Las mordidas de más vienen con cualquier freno que destrabe: anda más y se cruza más
+con el predador.
+
+**Con los atajos (la vida de hoy)**, `presentes` 1e-4: a 300 k malestar 0,300 → 0,267 (z −10), hambre 24 → 18 %,
+desmayos 43 → 27; en vidas largas (5 M × 128) **malestar 0,414 → 0,269 (z −14,6), plano 50 años (0,29 → 0,27; sin
+freno 0,33 → 0,46), trabadas 45 → 0 %, % malestar alto 55 → 18, desmayos 1.744 → 477**; heridas 287 → 542 y
+mordidas 134 → 286. La mano queda a la par de la propia (0,268). El malestar ya incluye el dolor de las heridas, y el
+tiempo sufriendo baja a un tercio: **prendido** (`DECAE_ACTOR = 0.0001`, `DECAE_ACTOR_MODO = 'presentes'`).
+
+`DECAE_PROPIO` (el mismo freno para las unidades de la propia): a 300 k 1e-4 malestar −0,014, hambre −4; en vidas
+largas neutro (−0,007, z −0,9) con heridas +69 %: apagado. `DECAE_ACTOR` no toca a la propia (no usa esos pesos).
+
+Pruebas: config nueva `rust/pruebas/config-freno.txt` (objetos, sin atajos, freno prendido) en la referencia y en
+retomar; las demás configs de prueba no cambian.
+
+### Heridas: exposición, no peor evitación (2026-11-26)
+
+Métricas nuevas en `comparar` (no cambian la vida): `% expuesta` (ticks con un peligro al lado), `heridas/1k exp`,
+`recorrido`, `% pred<=2` y `mordidas/1k pred<=2`. Vidas largas sin freno contra con freno (5 M × 128): recorrido
+1,17 M → 2,14 M, % expuesta 4,5 → 5,7, **heridas por 1.000 ticks expuesta 2,4 → 1,8 (z −0,8)**: las heridas de más
+vienen de andar más, no de esquivar peor. Las mordidas sí: por tick con el predador a ≤ 2, 15 → 31 por mil (z 8,2)
+(sin freno ese tiempo cerca es mayor, 1,7 %, sobre todo en vidas trabadas).
+
+`CRITICO_VECINOS` (la clave del crítico suma la celda de adelante): malestar +0,012 (z 6,4), hambre +3, recorre más:
+peor, apagado.
+
+`RASGO_ALREDEDOR` (rasgos genéricos tipo de celda × necesidad para lo que rodea el destino de cada acción; sin decir
+qué tipo es malo), 512 × 300 k contra la vida de hoy: malestar −0,001 (z −0,6), mordidas −0,3 (z −1), pero heridas
++17 (z 5,3) y heridas por tick expuesta +37 %: no sirve, apagado. Con más rasgos el freno por uso reparte el olvido en
+más pesos y aprende peor qué casilla pisar.

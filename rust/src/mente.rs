@@ -206,6 +206,10 @@ pub const ATAR: usize = 8;
 pub const GOLPEAR: usize = 9;
 pub const FROTAR: usize = 10;
 const N_RASGOS: usize = 764;
+/// (RASGO_ALREDEDOR) rasgos 764 + tipo*7 + n: qué hay alrededor del destino. Los vectores solo crecen
+/// a este tamaño con la llave prendida, así apagada la vida y lo guardado no cambian.
+const BASE_ALREDEDOR: usize = 764;
+const N_RASGOS_ALREDEDOR: usize = BASE_ALREDEDOR + 7 * 7;
 
 #[derive(Clone, Copy)]
 pub struct Rasgos {
@@ -236,7 +240,7 @@ fn posibles(t: &Tacto) -> u16 {
 }
 
 /// rasgos por acción: 8 de siempre + 8 de PALABRA_SUELTA + 28 de FRASE
-pub const MAXR: usize = 44;
+pub const MAXR: usize = 52;
 
 impl Default for Rasgos {
     fn default() -> Rasgos {
@@ -326,6 +330,27 @@ fn rasgos_de(vista: &Vista, n: usize, dc: usize, d_o: usize, dr: usize, a: usize
             }
         }
         if a == dd { push(417 + n); }
+    }
+    k as u8
+}
+
+/// (RASGO_ALREDEDOR) para cada tipo de celda que hay en alguna vecina del destino de `a` (sin contar
+/// la celda donde está ahora), un rasgo tipo×necesidad. No dice qué tipo es malo: solo qué hay cerca.
+fn rasgos_alrededor(vista: &Vista, n: usize, a: usize, out: &mut [u16; MAXR], k0: u8) -> u8 {
+    let mut k = k0 as usize;
+    let (dx, dy) = MOVIMIENTOS[a];
+    let mut vistos = 0u8;
+    for &(mx, my) in &MOVIMIENTOS[..4] {
+        let p = (dx + mx, dy + my);
+        if p == (0, 0) { continue; }
+        if let Some(t) = vista.get(p) {
+            let t = t as usize;
+            if t < 7 && vistos & (1 << t) == 0 {
+                vistos |= 1 << t;
+                out[k] = (BASE_ALREDEDOR + t * 7 + n.min(6)) as u16;
+                k += 1;
+            }
+        }
     }
     k as u8
 }
@@ -466,6 +491,14 @@ impl Ganglios {
             None => s,
             Some(t) => s * 4 + t.lleva.is_some() as u32 * 2 + t.cubierto as u32,
         };
+        // (CRITICO_VECINOS) lo que tengo adelante: el código de la celda en la dirección del último paso
+        // (8 = me quedé quieto). Nada le dice qué celda duele: V aprende sola si lo de adelante duele.
+        let s = if c.critico_vecinos {
+            let adelante = if self.a < 4 { vista.get(MOVIMIENTOS[self.a]).unwrap_or(7) as u32 } else { 8 };
+            s * 9 + adelante
+        } else {
+            s
+        };
         // (aprender las recetas, paso 4) la propia: "hay salida a la vista" aprendida (SALIDA_PROPIA)
         match &self.propia {
             Some(p) if c.salida_propia > 0 => s * c.salida_propia as u32 + p.salida,
@@ -508,11 +541,20 @@ impl Ganglios {
         if let Some(t) = tacto {
             rasgos.posibles = posibles(t);
         }
+        if c.rasgo_alrededor && self.w.len() < N_RASGOS_ALREDEDOR {
+            self.w.resize(N_RASGOS_ALREDEDOR, 0.0);
+            self.exp_w.resize(N_RASGOS_ALREDEDOR, 0);
+            self.huella_w.resize(N_RASGOS_ALREDEDOR, 0.0);
+            self.activo.resize(N_RASGOS_ALREDEDOR, false);
+        }
         if c.rasgos_mano {
             for a in 0..5 {
                 rasgos.n[a] = rasgos_de(vista, n, dc, d_o, dr, a, dicha, palabras, c, &mut rasgos.idx[a]);
                 if let Some(t) = tacto {
                     rasgos.n[a] = rasgos_mover(t, n, a, &mut rasgos.idx[a], rasgos.n[a]);
+                }
+                if c.rasgo_alrededor {
+                    rasgos.n[a] = rasgos_alrededor(vista, n, a, &mut rasgos.idx[a], rasgos.n[a]);
                 }
             }
             if let Some(t) = tacto {
@@ -655,8 +697,47 @@ impl Ganglios {
                 }
             }
         }
+        // (mano) ritmo dividido por cuántos rasgos tiene la acción elegida, como la propia
+        let div = if c.actor_por_activos { (self.rasgos.de(self.a).len().max(1)) as f64 } else { 1.0 };
+        let sp = c.decae_solo_positivos;
+        let encoge_de = |w: f64| if sp && w <= 0.0 { 1.0 } else { 1.0 - c.decae_actor };
         for &i in &self.activos {
-            self.w[i] += Self::ritmo(c.aprende_actor, self.exp_w[i], c) * delta * hw[i];
+            self.w[i] += Self::ritmo(c.aprende_actor, self.exp_w[i], c) / div * delta * hw[i];
+            if c.decae_actor > 0.0 {
+                match c.decae_actor_modo {
+                    0 => self.w[i] *= encoge_de(self.w[i]),
+                    2 => if !(sp && self.w[i] <= 0.0) { self.w[i] *= 1.0 - c.decae_actor * hw[i].abs().min(1.0) },
+                    _ => {}
+                }
+            }
+        }
+        if c.decae_actor > 0.0 && c.decae_actor_modo == 1 {
+            // olvidar por uso: solo los rasgos presentes en alguna acción de este tick, una vez cada uno
+            let mut vistos = [0u16; NACC * MAXR];
+            let mut nv = 0usize;
+            for b in 0..self.rasgos.na as usize {
+                for &i in self.rasgos.de(b) {
+                    if !vistos[..nv].contains(&i) {
+                        vistos[nv] = i;
+                        nv += 1;
+                        let k = i as usize;
+                        self.w[k] *= encoge_de(self.w[k]);
+                    }
+                }
+            }
+        }
+        if c.decae_actor > 0.0 && c.decae_actor_modo == 3 {
+            // olvidar por hacer: solo los rasgos de la acción elegida, una vez cada uno
+            let mut vistos = [0u16; MAXR];
+            let mut nv = 0usize;
+            for &i in self.rasgos.de(self.a) {
+                if !vistos[..nv].contains(&i) {
+                    vistos[nv] = i;
+                    nv += 1;
+                    let k = i as usize;
+                    self.w[k] *= encoge_de(self.w[k]);
+                }
+            }
         }
         if let Some(p) = &mut self.propia {
             p.aprender(delta, &self.probs, self.a, self.rasgos.na as usize, cuerpo, c);
@@ -743,7 +824,8 @@ impl Ganglios {
             let g = gv[k];
             if g != 0.0 {
                 let i = gi[k] as usize;
-                self.w[i] += fraccion * rho * Self::ritmo(c.aprende_actor, self.exp_w[i], c) * delta * g;
+                let div = if c.actor_por_activos { (m.rasgos.de(m.a).len().max(1)) as f64 } else { 1.0 };
+                self.w[i] += fraccion * rho * Self::ritmo(c.aprende_actor, self.exp_w[i], c) / div * delta * g;
             }
         }
         delta

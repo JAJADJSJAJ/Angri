@@ -21,7 +21,7 @@ use crate::azar::{splitmix64, Azar};
 use crate::config::Config;
 use crate::vida::{Angri, Evento};
 
-const CONFIGS: [&str; 9] = ["grilla", "bosque", "corteza-talamo", "corteza-talamo-bosque", "pide", "azar", "todo", "objetos", "propios"];
+const CONFIGS: [&str; 10] = ["grilla", "bosque", "corteza-talamo", "corteza-talamo-bosque", "pide", "azar", "todo", "objetos", "propios", "freno"];
 
 fn carpeta() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("pruebas")
