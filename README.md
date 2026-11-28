@@ -2098,3 +2098,27 @@ Lección (tres llaves seguidas, `TOPE_ACTOR`, `TOPE_COSTO`, `TEMP_COSTO`): sacar
 cualquier cambio que la haga cruzar más espinas reparte de nuevo qué vidas caen en la **traba de chocar** en campo
 abierto (que ya existe en la base: 60017). El encierro y la traba de chocar compiten por las mismas vidas; la que
 hay que entender ahora es la de chocar.
+
+### La traba de chocar (2026-11-27, diagnóstico sin llave)
+
+Investigación con 9 hipótesis, cada una con verificación adversarial, y vidas sueltas instrumentadas (60017 A,
+60063 A/B, 60002 B y 60010 B). "Chocar" es elegir un movimiento hacia una celda no transitable (roca, borde o pila)
+y quedarse en el lugar.
+
+- **Lo que la arma son los pesos `w` de las unidades de movimiento de la propia.** No es `PREDICE_ACTOR`, ni el
+  crítico, ni el desmayo. En 60017 A la ventaja de chocar sobre moverse a una celda libre es 10,97: `w` pone +10,88 y
+  `PREDICE_ACTOR` +0,10.
+- **Para el cuerpo, chocar y quedarse son lo mismo** (no se mueve, no gasta). Aun así el actor aprende chocar +2,92 y
+  quedarse −2,16: le acredita al movimiento intentado lo que en realidad fue quedarse.
+- **El 93–99,7 % de esas muestras cae en el borde del mapa.**
+- **Lo refutado:**
+  - El crítico apagado: `dg V` es solo la parte de las unidades, y la V total ≈ r/(1−γ) es correcta.
+  - El |δ| chico: llega después de trabarse.
+  - Que haya dos subtipos (pinchadas y silenciosas): es un continuo, y la mitad no entra en ninguno.
+  - Un evento previo común: no hay ninguno. El hambre, los desmayos y el recorrido corto son consecuencias.
+- **Bug aparte:** con `TOPE_COSTO` la predicción `q` de energía se desborda (−1e12 a −1e300 en 60054, 60063, 90115 y
+  90123), porque el tope no frena lo que se aprende. En la base, `dg q energía` da NaN en 90036 (la congelada) y en
+  90126.
+
+Sigue: la llave `CHOQUE_ES_QUEDARSE`. Cuando elige moverse y no cambia de celda, el crédito va a quedarse, que es lo
+que pasó. Se mide en pares, y `hq p queda` no tiene que reemplazar a `choca`.
