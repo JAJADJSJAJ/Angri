@@ -134,6 +134,7 @@ impl Angri {
             Mundo::G(g) => g.avanzar(c),
         }
         let mut se_movio = false;
+        let mut choco = false;
         let mut sorpresa = 0.0;
         let mut encontrado = VACIO;
         let mut quemado = false;
@@ -196,6 +197,7 @@ impl Angri {
                            (self.x, self.y), c);
             }
             se_movio = (nx, ny) != (self.x, self.y);
+            choco = accion < 4 && !se_movio;
             if c.lexico && se_movio {
                 let d = match (dx, dy) { (0, -1) => 0, (0, 1) => 1, (-1, 0) => 2, _ => 3 };
                 self.oido.caminar(d);
@@ -288,7 +290,7 @@ impl Angri {
             let tacto = self.tacto(c);
             let clima = self.clima(c);
             self.mente.aprender(recompensa, &sentida, &self.cuerpo.v, foco, (self.x, self.y), tacto.as_ref(),
-                                clima, self.cuerpo.n, fin.is_some(), c);
+                                clima, self.cuerpo.n, fin.is_some(), choco, c);
             if let Some(t) = &mut self.talamo {
                 t.aprender(self.mente.dopamina, c);
             }

@@ -657,7 +657,7 @@ impl Ganglios {
     }
 
     pub fn aprender(&mut self, recompensa: f64, vista: &Vista, cuerpo: &[f64; 7], n: usize,
-                    pos: (i64, i64), tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, fin: bool, c: &Config) {
+                    pos: (i64, i64), tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, fin: bool, choco: bool, c: &Config) {
         let s = match self.s { None => return, Some(s) => s };
         for l in self.lugares.iter_mut() {
             l.decaer(c.recuerdo_decae);
@@ -789,7 +789,9 @@ impl Ganglios {
             }
         }
         if let Some(p) = &mut self.propia {
-            p.aprender(delta, &self.probs, self.a, self.rasgos.na as usize, cuerpo, c);
+            // (CHOQUE_ES_QUEDARSE) si eligió moverse y no se movió, aprende lo que pasó: quedarse
+            let a = if c.choque_es_quedarse && choco { 4 } else { self.a };
+            p.aprender(delta, &self.probs, a, self.rasgos.na as usize, cuerpo, c);
         }
     }
 
