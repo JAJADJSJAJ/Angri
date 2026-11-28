@@ -115,6 +115,7 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
     let mut bol_prev: Option<Vec<(i64, i64)>> = None;
     let mut abierto: Option<(Vec<(i64, i64)>, i64)> = None; // (celdas del bolsillo que se abrió, tick)
     let (mut bol_t, mut bol_entra, mut bol_abre, mut bol_sale_abre, mut bol_cruza) = (0i64, 0i64, 0i64, 0i64, 0i64);
+    let mut enc15_t = 0i64;
     let (mut bol_racha, mut bol_racha_max, mut bol_comida_vista, mut bol_hambre) = (0i64, 0i64, 0i64, 0i64);
     let (mut bol_espera_abre, mut bol_desm) = (0i64, 0i64);
     // Con hambre fuera del bolsillo (cada 10 ticks): tamaño del encierro sin pisar espinas (≤3 / 4–15 / 16–60 /
@@ -182,6 +183,10 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
         }
         if let Mundo::B(b) = &a.mundo {
             let ahora = bolsillo(b, a.x, a.y);
+            // encierro de hasta 15 celdas cuya salida es pisar una espina (bolsillo grande incluido)
+            if b.en(a.x, a.y) != PELIGRO && region(b, a.x, a.y, false, 15).len() <= 15 && region(b, a.x, a.y, true, 15).len() > 15 {
+                enc15_t += 1;
+            }
             match (&bol_prev, &ahora) {
                 (None, Some(_)) => bol_entra += 1,
                 (Some(p), None) => {
@@ -435,6 +440,7 @@ fn metricas(semilla: u64, ticks: i64, c: &Config) -> Vec<(String, String)> {
         }
         if bosque {
             f("dg % bolsillo", num((100 * bol_t) as f64 / tk));
+            f("dg % encierro espina", num((100 * enc15_t) as f64 / tk));
             f("dg bols entra", bol_entra.to_string());
             f("dg bols abre", bol_abre.to_string());
             f("dg bols sale abre", bol_sale_abre.to_string());

@@ -124,6 +124,7 @@ pub struct Propia {
     probada: Vec<i64>,
     /// (VALE_LA_PENA) qué pasos hacia una espina valen la pena por lo de detrás (no se guarda: se recalcula al elegir)
     pub vale: [bool; 5],
+    pub costo: [f64; 5],
 }
 
 #[inline]
@@ -228,7 +229,7 @@ impl Propia {
             ev: vec![0.0; n], ew: vec![[0.0; NACC]; n], marca: vec![false; n], huella: vec![],
             cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0, salida: 0,
             t: 0, nacidas: 0, reiniciadas: 0, molde: Sentir::default(), molde_a: 4, molde_d: 0.0,
-            activas2: vec![], cuerpo_antes: [f64::NAN; 7], probada: vec![0; n], vale: [false; 5],
+            activas2: vec![], cuerpo_antes: [f64::NAN; 7], probada: vec![0; n], vale: [false; 5], costo: [0.0; 5],
         }
     }
 
@@ -333,7 +334,7 @@ impl Propia {
                     let x: f64 = (0..2 * npred(c)).map(|i| gusto[i] * un.q[i]).sum::<f64>() * c.predice_actor * self.confianza(u as usize, c);
                     for a in 0..5 {
                         if m >> a & 1 == 1 {
-                            if c.tope_actor > 0.0 || c.tope_costo > 0.0 {
+                            if c.tope_actor > 0.0 || c.tope_costo > 0.0 || c.temp_costo {
                                 xa[a] += x;
                             } else {
                                 h[a] += x;
@@ -351,6 +352,12 @@ impl Propia {
                 // (TOPE_COSTO) solo el costo predicho tiene tope; el alivio entra entero
                 for a in 0..5 {
                     h[a] += xa[a].max(-c.tope_costo);
+                }
+            } else if c.temp_costo {
+                // (TEMP_COSTO) entra entero, pero se anota el costo para que la elección lo entibie con el malestar
+                for a in 0..5 {
+                    h[a] += xa[a];
+                    self.costo[a] = xa[a].min(0.0);
                 }
             }
         }
@@ -982,7 +989,7 @@ impl crate::guardar::Pieza for Propia {
             rng: g.rng, unidades: g.unidades, indice: g.indice, forma, previa: None, ev: g.ev, ew: g.ew, marca: g.marca,
             huella: g.huella, cuenta: g.cuenta, ahora: g.ahora, activas: g.activas, elegida: g.elegida, vs: g.vs, salida: 0,
             t: g.t, nacidas: g.nacidas, reiniciadas: g.reiniciadas, molde: g.molde, molde_a: g.molde_a,
-            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes, probada, vale: [false; 5],
+            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes, probada, vale: [false; 5], costo: [0.0; 5],
         }
     }
 }

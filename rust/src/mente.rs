@@ -614,9 +614,31 @@ impl Ganglios {
             }
         }
         let mut e = [0.0f64; NACC];
-        for b in 0..na {
-            if rasgos.puede(b) {
-                e[b] = crate::mate::exp((h[b] - m) / temp[b]);
+        if c.temp_costo && c.peligro_sin_malestar && self.propia.is_some() {
+            // (TEMP_COSTO) hacia un PELIGRO visible, el costo predicho va a la temperatura del malestar
+            // y el resto (el miedo del actor) a la suya; cada uno con su temperatura, sin aplanar nada
+            let costo = self.propia.as_ref().map_or([0.0; 5], |p| p.costo);
+            let mut l = [f64::NEG_INFINITY; NACC];
+            for b in 0..na {
+                if rasgos.puede(b) {
+                    l[b] = if b < 5 && temp[b] < t_todo && vista.get(MOVIMIENTOS[b]) == Some(PELIGRO) {
+                        (h[b] - costo[b] - m) / temp[b] + costo[b] / t_todo
+                    } else {
+                        (h[b] - m) / temp[b]
+                    };
+                }
+            }
+            let ml = l[..na].iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            for b in 0..na {
+                if rasgos.puede(b) {
+                    e[b] = crate::mate::exp(l[b] - ml);
+                }
+            }
+        } else {
+            for b in 0..na {
+                if rasgos.puede(b) {
+                    e[b] = crate::mate::exp((h[b] - m) / temp[b]);
+                }
             }
         }
         let z = psum(e[..na].iter().copied());
