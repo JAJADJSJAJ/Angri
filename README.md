@@ -2139,3 +2139,19 @@ Desastre: casi todas las vidas caen en la traba de chocar. Por qué: el actor ap
 (le fue mal) eso lo **sube**. Chocar se refuerza cada vez que le va mal y nunca se castiga. **Apagada.** Confirma
 que la traba vive en el crédito del actor a los movimientos bloqueados: tocar ese crédito la mueve de 8 a 87 %.
 Lección: cualquier arreglo tiene que seguir acreditando la acción elegida.
+
+### `CHOQUE_COMPARTE` (2026-11-28)
+
+Si chocó, la propia acredita la elegida como siempre y además quedarse (dos términos de gradiente). 128 pares × 5 M:
+
+| | semillas 60000 (run 46106265797) | semillas 90000 (run 46106268585) |
+|---|---|---|
+| malestar | 0,253 → 0,558 | 0,243 → 0,555 |
+| % trabadas | 7,8 → 99,2 | 3,9 → 100 |
+| p chocar (quieta con hambre) | 0,37 → 0,96 | 0,36 → 0,97 |
+
+Peor que `CHOQUE_ES_QUEDARSE`. Por qué: sumando los dos términos, chocar recibe `α·δ·(1 − 2·p_chocar)`.
+Cuando p_chocar pasa de 0,5, con δ negativo (le fue mal) el peso **sube** igual: es el mismo pozo, corrido a 0,5.
+(La prueba de humo de 2 vidas × 200 k daba bien: con pocas vidas cortas no se ve.) **Apagada.** La forma
+estable de "aprender lo que pasó" sería el gradiente del evento "no se movió", `∇log(p_chocar + p_quedarse)`:
+a cada una le toca `p_b/(p_chocar+p_quedarse) − p_b`, que nunca cambia de signo.
