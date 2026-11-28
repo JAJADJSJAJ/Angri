@@ -575,6 +575,9 @@ impl Ganglios {
         if let Some(p) = &mut self.propia {
             let at = crate::propia::sentir(vista, cuerpo, ncuerpo, n, dr, dicha, tacto, clima, c.distancia_fina);
             p.preferencias(at, &mut h, na, cuerpo, c);
+            if c.vale_la_pena > 0.0 {
+                p.mirar_detras(vista, cuerpo, ncuerpo, n, clima, &mut h, c);
+            }
         }
         let mut tm = c.temperatura_malestar * malestar;
         if c.temperatura_malestar_tope > 0.0 {
@@ -603,13 +606,39 @@ impl Ganglios {
                             temp[b] = temp[b].max(t0 + (t_todo - t0) * (1.0 - f));
                         }
                     }
+                    // (VALE_LA_PENA) si lo de detrás suma, el paso recupera la temperatura del malestar
+                    if c.vale_la_pena > 0.0 && self.propia.as_ref().map_or(false, |p| p.vale[b]) {
+                        temp[b] = t_todo;
+                    }
                 }
             }
         }
         let mut e = [0.0f64; NACC];
-        for b in 0..na {
-            if rasgos.puede(b) {
-                e[b] = crate::mate::exp((h[b] - m) / temp[b]);
+        if c.temp_costo && c.peligro_sin_malestar && self.propia.is_some() {
+            // (TEMP_COSTO) hacia un PELIGRO visible, el costo predicho va a la temperatura del malestar
+            // y el resto (el miedo del actor) a la suya; cada uno con su temperatura, sin aplanar nada
+            let costo = self.propia.as_ref().map_or([0.0; 5], |p| p.costo);
+            let mut l = [f64::NEG_INFINITY; NACC];
+            for b in 0..na {
+                if rasgos.puede(b) {
+                    l[b] = if b < 5 && temp[b] < t_todo && vista.get(MOVIMIENTOS[b]) == Some(PELIGRO) {
+                        (h[b] - costo[b] - m) / temp[b] + costo[b] / t_todo
+                    } else {
+                        (h[b] - m) / temp[b]
+                    };
+                }
+            }
+            let ml = l[..na].iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            for b in 0..na {
+                if rasgos.puede(b) {
+                    e[b] = crate::mate::exp(l[b] - ml);
+                }
+            }
+        } else {
+            for b in 0..na {
+                if rasgos.puede(b) {
+                    e[b] = crate::mate::exp((h[b] - m) / temp[b]);
+                }
             }
         }
         let z = psum(e[..na].iter().copied());
@@ -628,7 +657,7 @@ impl Ganglios {
     }
 
     pub fn aprender(&mut self, recompensa: f64, vista: &Vista, cuerpo: &[f64; 7], n: usize,
-                    pos: (i64, i64), tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, fin: bool, c: &Config) {
+                    pos: (i64, i64), tacto: Option<&Tacto>, clima: u8, ncuerpo: usize, fin: bool, choco: bool, c: &Config) {
         let s = match self.s { None => return, Some(s) => s };
         for l in self.lugares.iter_mut() {
             l.decaer(c.recuerdo_decae);
@@ -673,6 +702,13 @@ impl Ganglios {
                 d
             }
             _ => recompensa + g2 * v2_tabla - v,
+        };
+        // TOPE_DELTA_PROPIO: ninguna sorpresa más grande que lo peor posible (la tabla y las unidades persiguen el
+        // mismo delta y juntas pueden corregir de más hasta desbocarse y clavar al actor)
+        let delta = if c.tope_delta_propio > 0.0 && self.propia.is_some() {
+            delta.clamp(-c.tope_delta_propio, c.tope_delta_propio)
+        } else {
+            delta
         };
         self.dopamina = delta;
         let decae = c.serotonina * c.huella;
@@ -753,7 +789,11 @@ impl Ganglios {
             }
         }
         if let Some(p) = &mut self.propia {
-            p.aprender(delta, &self.probs, self.a, self.rasgos.na as usize, cuerpo, c);
+            // (CHOQUE_ES_QUEDARSE) si eligió moverse y no se movió, aprende lo que pasó: quedarse
+            let a = if c.choque_es_quedarse && choco { 4 } else { self.a };
+            p.choco = c.choque_comparte && choco;
+            p.choco_ev = c.choque_evento && choco;
+            p.aprender(delta, &self.probs, a, self.rasgos.na as usize, cuerpo, c);
         }
     }
 

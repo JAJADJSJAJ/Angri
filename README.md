@@ -1959,3 +1959,215 @@ PELIGRO se afloja igual), semillas 60000: D=200 heridas 451 → 814 (z +14), mal
 temperatura; se toma la mayor): malestar +0,017, trabadas 10,2 %, año 2 peor (z +4,1). **Apagadas.** Runs: 45995071744,
 45995087539, 45995103665, 46015646526. Ninguna de las cinco llaves de esta vuelta destraba de forma que se confirme:
 las trabadas (7–11 %) siguen; lo que sí se sostiene es que `PELIGRO_DESESPERA` baja heridas un tercio.
+
+### Trabadas: ¿la espina de la puerta se corre? y `VALE_LA_PENA` (2026-11-27)
+
+Diagnóstico nuevo en comparar (`dg bols ...`, solo mira, misma vida): un **bolsillo** es donde, sin pisar espinas, llega
+a 3 celdas o menos, pero pisándolas sale. Cuenta entradas, **aperturas** (la espina se corre sola y queda salida
+libre), salidas por esa apertura, cruces pisando la espina, racha, desmayos y comida a la vista. 64 vidas × 5 M,
+semillas 60000 (run 46028117693), separando por vida:
+
+| | sanas (55) | trabadas (9) |
+|---|---|---|
+| % hambre | 10,8 | 94,8 |
+| % del tiempo en bolsillo | 0,0 | 32,3 |
+| entradas a bolsillo | 18,2 | 1,1 |
+| aperturas (la espina se corre) | 1,3 | **0,0** |
+| salidas por apertura | 1,3 | 0,0 |
+| cruces pisando la espina | 14,4 | 0,8 |
+| racha máxima en bolsillo (ticks) | 388 | 1,6 M |
+| desmayos en bolsillo | 0 | 987 |
+
+Lecturas: 1) las sanas entran a bolsillos seguido y salen enseguida, **casi siempre pisando la espina** (14 de 18);
+cuando la espina se corre, salen siempre. 2) en las trabadas la espina de la puerta **nunca se corre** (solo se mueve
+a celdas vacías y una al azar de todas por vez): la pregunta "si se corre, ¿por qué no sale?" no aplica, nunca tuvo la
+salida libre. 3) **las trabadas pasan solo ~1/3 del tiempo en el bolsillo**: el otro ~60 % están con hambre afuera. El
+bolsillo es una parte, no toda la traba.
+
+`VALE_LA_PENA` (propia; al paso hacia PELIGRO se le suma lo que sus unidades ya aprendidas dirían del paso siguiente
+en la misma dirección, mirando desde la espina; si suma, ese paso recupera la temperatura del malestar), 1, 128 pares
+× 5 M, semillas 60000 (run 46028985424): en las trabadas el tiempo en bolsillo **41 → 8 %**, la racha 2,1 M → 0,26 M,
+desmayos en bolsillo 1.274 → 245: **sí las saca del bolsillo**. Pero trabadas 10,9 → 9,4 % (z −0,4), malestar +0,006
+(z 0,4), hambre de las sanas 10,7 → 13,3 %, novedades −126 (z −6,4), quieta +5 puntos (z 2,9), peor 10k hambre
+z +2,8. Salen del bolsillo y quedan con hambre afuera. **Apagada.**
+
+Sigue: entender el ~60 % de la traba que no es bolsillo (dónde está y qué hace la vida trabada con hambre afuera).
+
+### Trabadas fuera del bolsillo: congelada en campo abierto (2026-11-27)
+
+Diagnóstico nuevo (`dg hh ...`: con hambre fuera del bolsillo; `dg hq p ...`: qué prefiere cuando está despierta y
+quieta), 64 vidas × 5 M, semillas 60000 (runs 46042033440, 46044771264). De las 9 trabadas: 3 en bolsillo, 1 en un
+corral de 4–15 celdas, 1 chocando (p choca 0,84) y **4 en campo abierto (60013, 60014, 60025, 60042) sin moverse en
+millones de ticks**: caja recorrida por cada 1.000 ticks de 1,1 celdas (sanas 27), 81 % despierta y quieta, y
+**p(quedarse) = 1,00** (sanas: libre 0,42, choca 0,38, quedarse 0,18).
+
+Causa (una vida, 60013, con prints temporales): no es máscara, ni NaN, ni temperatura baja (4–6), ni el cuerpo, ni
+una medición vieja. **El crítico de la propia se desboca** cerca de la decisión 25.200: el error TD pasa de ±3 a −433,
++2.411, −41.607. La tabla V y las unidades persiguen el mismo delta y juntas corrigen de más. Esos golpes entran al
+actor de las unidades de movimiento (sin freno) y dejan h(moverse) ≈ −460 a −1.060 contra h(quedarse) ≈ −170: con
+p = 1 el gradiente de lo elegido es 0 y lo demás no se sortea nunca más. Punto fijo sin salida. Falta confirmar en
+las otras tres.
+
+`TOPE_DELTA_PROPIO` (tope al error TD cuando la mente es la propia; 17 ≈ MALESTAR_MAXIMO/(1−γ)). Diagnóstico nuevo:
+`dg td max`, `dg td >100 tick`, `dg % p>=0.999`. Semillas 60000, 128 pares × 5 M (run 46057470365): sin tope, 8 de
+128 vidas tienen |delta| > 100 (hasta 1,6 M), **todas las congeladas** (60013, 60014, 60025, 60042, más 60075 y
+60120); en las sanas nunca pasa de ~25. Con tope: 60013 hambre 94 → 8 %, 60014 95 → 6, 60120 95 → 13, 60075 72 → 7,
+60025 95 → 33, 60042 95 → 80 (se descongela pero cae en un bolsillo); congelada (p ≥ 0,999) 81 % → 0–3 %.
+
+| | semillas 60000 | semillas 90000 (run 46061266930) |
+|---|---|---|
+| malestar | 0,268 → 0,253 (z −2,2) | 0,253 → 0,243 (z −1,8) |
+| % hambre | 19,7 → 16,3 (z −2,2) | 15,7 → 13,5 (z −1,7) |
+| % trabadas | 10,9 → 7,8 (z −1,6) | 7,0 → 3,9 (z −2,0) |
+| desmayos | 531 → 393 (z −2,3) | 392 → 310 (z −1,7) |
+| heridas | 451 → 471 (z 1,6) | 467 → 488 (z 1,5) |
+| vidas con \|delta\| > 100 | 8 → 0 | 5 → 0 |
+
+Las dos corridas van para el mismo lado (256 pares juntos: malestar z ≈ −2,8, trabadas z ≈ −2,6); heridas +4 %.
+**Prendido** (`TOPE_DELTA_PROPIO = 17`). La referencia no cambia (en las vidas cortas de prueba el delta nunca pasa
+de 17). Las trabadas que quedan son casi todas de bolsillo (la espina por puerta).
+
+### Trabadas de bolsillo: por qué no vuelve a cruzar, y `TOPE_ACTOR` (2026-11-27)
+
+Vidas sueltas instrumentadas (60035, 60116 y sanas): **entra al bolsillo pisando la espina desde afuera** (la
+espina no se mueve atrás suyo, no hay desmayo). Adentro, el paso a la espina es el único evaluado sin la temperatura
+del malestar (0,3 contra 4–5,4, por `PELIGRO_SIN_MALESTAR`) y `PREDICE_ACTOR` le pone −3 a −9: entra pinchada, la
+integridad no vuelve mientras pasa hambre, y con `gusto = peso × (equilibrio − cuerpo)` la pérdida de integridad
+predicha pesa más cuanto menos le queda. p(espina) ≈ 1e−7 a 1e−13, y empeora con el tiempo. Las sanas que cruzan
+llegan enteras (el −9 casi no está) y ya aprendieron un término positivo para esa dirección (+3 a +6,5).
+
+`TOPE_ACTOR` (tope ±T a lo que `PREDICE_ACTOR` suma o resta a cada movimiento), T=2, 128 pares × 5 M:
+
+| | semillas 60000 (run 46072513643) | semillas 90000 (run 46072517084) |
+|---|---|---|
+| malestar | 0,253 → 0,257 (z 0,5) | 0,243 → 0,246 (z 0,3) |
+| % trabadas | 7,8 → 7,8 | 3,9 → 5,5 (z 0,6) |
+| % en bolsillo | 5,7 → 3,0 (z −2,0) | 2,7 → 1,7 |
+| cruces de espina | 14,7 → 24,1 (z 5,0) | 14,0 → 18,6 (z 2,5) |
+| heridas | 471 → 590 (z 5,3) | 488 → 598 (z 2,5) |
+
+Vida por vida: **libera muchas de bolsillo** (60035 hambre 95 → 13 %, 60105 93 → 11, 60116 96 → 17, 60117 79 → 7,
+90064 87 → 25), **pero traba otras nuevas en campo abierto** (60013 8 → 95, 60070 3 → 88, 90046 10 → 95, 90061
+5 → 95; quietas 50–70 %, sin congelarse). El tope achica también el alivio predicho que la lleva a comer. Neto: nada,
+y +24 % de heridas. **Apagada.** Lección: el tope tiene que tocar solo el costo predicho (el lado negativo), no el
+alivio.
+
+`TOPE_COSTO` (tope solo al costo: lo que `PREDICE_ACTOR` resta no pasa de −T; el alivio entra entero), T=2,
+128 pares × 5 M:
+
+| | semillas 60000 (run 46082966813) | semillas 90000 (run 46082969953) |
+|---|---|---|
+| malestar | 0,253 → 0,253 (z 0) | 0,243 → 0,249 (z 0,6) |
+| % trabadas | 7,8 → 7,0 (z −0,4) | 3,9 → 4,7 (z 0,3) |
+| cruces de espina | 14,7 → 18,3 (z 2,0) | 14,0 → 17,5 (z 2,1) |
+| racha más larga en bolsillo | 285 k → 166 k (z −2,1) | 121 k → 47 k (z −1,1) |
+| heridas | 471 → 573 (z 4,0) | 488 → 676 (z 1,4) |
+
+Vida por vida (corrige una primera lectura del promedio): **libera 8 trabadas** (60017 95 → 12 %, 60035 95 → 9,
+60116 96 → 40, 60117 79 → 7, 90036 96 → 17, 90064 87 → 26, 90069 92 → 11, 90082 91 → 39) **pero traba 8 sanas**
+(60010, 60054, 60063, 90000, 90005, 90013, 90115, 90123: de 5–20 % a 62–95 %). Las nuevas quedan en campo abierto,
+quietas 50–77 % con hambre y eligiendo **chocar** contra algo (p 0,6–0,95), con 2.000–4.500 desmayos. Lectura: con
+hambre casi todos los movimientos predicen costo; con el tope todos quedan iguales en −2 y se borra la diferencia
+entre "malo" y "menos malo" que la guiaba (lo mismo que pasó con `TOPE_ACTOR`). Neto cero en trabadas y malestar,
++22 a +38 % de heridas. **Apagada.** Lección: un tope fijo al costo aplana justo cuando tiene hambre; si se toca el
+costo, tiene que ser sin borrar las diferencias entre movimientos.
+
+Además, revisando las 15 trabadas de la base: 11 viven 77–99,6 % del tiempo en un bolsillo de ≤3 celdas (racha
+3–5 M ticks), 2 (60057, 90074) en un encierro de 4–15 celdas con espina en la puerta que `dg bols` no ve (solo mira
+≤3 celdas), y solo 2 (60017, 90036) tienen hambre en campo abierto de verdad. "Sale del bolsillo y sigue con hambre
+afuera" era falso. Lo refutado: que la red se desinfle (|w| bajo y V≈0 llegan **después** de trabarse; se traba de
+golpe en ~10 k ticks con la red sana) y que el bucle de desmayos deje sin dopamina (|δ| no se apaga).
+
+### `TEMP_COSTO`: el costo predicho de la espina con la temperatura del malestar (2026-11-27)
+
+`TEMP_COSTO=True`: hacia un PELIGRO visible, el costo que `PREDICE_ACTOR` predice se divide por la temperatura
+del malestar y el miedo del actor sigue con la base (no aplana diferencias como `TOPE_COSTO`). Nueva métrica
+`dg % encierro espina` (encierros de hasta 15 celdas con espina por salida). 128 pares × 5 M:
+
+| | semillas 60000 (run 46091636445) | semillas 90000 (run 46091639013) |
+|---|---|---|
+| malestar | 0,253 → 0,263 (z 1,1) | 0,243 → 0,241 (z −0,4) |
+| % trabadas | 7,8 → 9,4 (z 0,6) | 3,9 → 3,1 (z −0,4) |
+| % encierro espina | 6,5 → 3,9 (z −2,2) | 3,2 → 0,8 (z −2,2) |
+| cruces de espina | 14,7 → 27,1 (z 4,7) | 14,0 → 26,3 (z 3,8) |
+| heridas | 471 → 635 (z 7,9) | 488 → 724 (z 3,0) |
+
+Vida por vida: libera 9 trabadas, pero traba 10 sanas en campo abierto, casi todas en el mismo patrón que con
+`TOPE_COSTO`: quietas con hambre y eligiendo chocar (p 0,66–0,90). Neto cero y +35–48 % de heridas. **Apagada.**
+Lección (tres llaves seguidas, `TOPE_ACTOR`, `TOPE_COSTO`, `TEMP_COSTO`): sacarlas del encierro se logra, pero
+cualquier cambio que la haga cruzar más espinas reparte de nuevo qué vidas caen en la **traba de chocar** en campo
+abierto (que ya existe en la base: 60017). El encierro y la traba de chocar compiten por las mismas vidas; la que
+hay que entender ahora es la de chocar.
+
+### La traba de chocar (2026-11-27, diagnóstico sin llave)
+
+Investigación con 9 hipótesis, cada una con verificación adversarial, y vidas sueltas instrumentadas (60017 A,
+60063 A/B, 60002 B y 60010 B). "Chocar" es elegir un movimiento hacia una celda no transitable (roca, borde o pila)
+y quedarse en el lugar.
+
+- **Lo que la arma son los pesos `w` de las unidades de movimiento de la propia.** No es `PREDICE_ACTOR`, ni el
+  crítico, ni el desmayo. En 60017 A la ventaja de chocar sobre moverse a una celda libre es 10,97: `w` pone +10,88 y
+  `PREDICE_ACTOR` +0,10.
+- **Para el cuerpo, chocar y quedarse son lo mismo** (no se mueve, no gasta). Aun así el actor aprende chocar +2,92 y
+  quedarse −2,16: le acredita al movimiento intentado lo que en realidad fue quedarse.
+- **El 93–99,7 % de esas muestras cae en el borde del mapa.**
+- **Lo refutado:**
+  - El crítico apagado: `dg V` es solo la parte de las unidades, y la V total ≈ r/(1−γ) es correcta.
+  - El |δ| chico: llega después de trabarse.
+  - Que haya dos subtipos (pinchadas y silenciosas): es un continuo, y la mitad no entra en ninguno.
+  - Un evento previo común: no hay ninguno. El hambre, los desmayos y el recorrido corto son consecuencias.
+- **Bug aparte:** con `TOPE_COSTO` la predicción `q` de energía se desborda (−1e12 a −1e300 en 60054, 60063, 90115 y
+  90123), porque el tope no frena lo que se aprende. En la base, `dg q energía` da NaN en 90036 (la congelada) y en
+  90126.
+
+Sigue: la llave `CHOQUE_ES_QUEDARSE`. Cuando elige moverse y no cambia de celda, el crédito va a quedarse, que es lo
+que pasó. Se mide en pares, y `hq p queda` no tiene que reemplazar a `choca`.
+
+### `CHOQUE_ES_QUEDARSE` (2026-11-28)
+
+Si eligió moverse y no se movió, la propia aprende "quedarse" en lugar del movimiento intentado. 128 pares × 5 M:
+
+| | semillas 60000 (run 46100568460) | semillas 90000 (run 46100570979) |
+|---|---|---|
+| malestar | 0,253 → 0,509 (z 30) | 0,243 → 0,506 (z 36) |
+| % trabadas | 7,8 → 85,9 | 3,9 → 87,5 |
+| p chocar (quieta con hambre) | 0,37 → 0,94 | 0,36 → 0,96 |
+| desmayos | 393 → 2.182 | 310 → 2.146 |
+
+Desastre: casi todas las vidas caen en la traba de chocar. Por qué: el actor aprende con
+`w_b += α·δ·(1[b=a] − p_b)`. Si chocar nunca es "la elegida", su peso solo recibe `−α·δ·p_b`, y con δ negativo
+(le fue mal) eso lo **sube**. Chocar se refuerza cada vez que le va mal y nunca se castiga. **Apagada.** Confirma
+que la traba vive en el crédito del actor a los movimientos bloqueados: tocar ese crédito la mueve de 8 a 87 %.
+Lección: cualquier arreglo tiene que seguir acreditando la acción elegida.
+
+### `CHOQUE_COMPARTE` (2026-11-28)
+
+Si chocó, la propia acredita la elegida como siempre y además quedarse (dos términos de gradiente). 128 pares × 5 M:
+
+| | semillas 60000 (run 46106265797) | semillas 90000 (run 46106268585) |
+|---|---|---|
+| malestar | 0,253 → 0,558 | 0,243 → 0,555 |
+| % trabadas | 7,8 → 99,2 | 3,9 → 100 |
+| p chocar (quieta con hambre) | 0,37 → 0,96 | 0,36 → 0,97 |
+
+Peor que `CHOQUE_ES_QUEDARSE`. Por qué: sumando los dos términos, chocar recibe `α·δ·(1 − 2·p_chocar)`.
+Cuando p_chocar pasa de 0,5, con δ negativo (le fue mal) el peso **sube** igual: es el mismo pozo, corrido a 0,5.
+(La prueba de humo de 2 vidas × 200 k daba bien: con pocas vidas cortas no se ve.) **Apagada.** La forma
+estable de "aprender lo que pasó" sería el gradiente del evento "no se movió", `∇log(p_chocar + p_quedarse)`:
+a cada una le toca `p_b/(p_chocar+p_quedarse) − p_b`, que nunca cambia de signo.
+
+### `CHOQUE_EVENTO` (2026-11-28)
+
+Si chocó, la propia aprende el evento "no se movió": el gradiente de `log(p_elegida + p_quedarse)`, que a cada una
+le da `p/(suma) − p` y no cambia de signo. 128 pares × 5 M:
+
+| | semillas 60000 (run 46114696250) | semillas 90000 (run 46114698557) |
+|---|---|---|
+| malestar | 0,253 → 0,253 (z −0,1) | 0,243 → 0,244 (z 0,1) |
+| % trabadas | 7,8 → 6,3 (z −1,0) | 3,9 → 5,5 (z 1,0) |
+| p chocar / p quedarse | 0,37 → 0,42 / 0,20 → 0,16 | 0,36 → 0,44 / 0,20 → 0,15 |
+| heridas | 471 → 503 (z 2,4) | 488 → 493 (z 0,3) |
+
+Estable, sin pozo, pero neutra. Vida por vida libera 4 (60017 95 → 45, 60047 95 → 9, 60078 92 → 54, 90036 96 → 59)
+y traba 4 (60045, 90000, 90004, 90086): es ruido. Chocar y quedarse pasan a aprender lo mismo, pero eso no saca a
+las trabadas: la ventaja de chocar no venía solo del crédito del choque. **Apagada.**
