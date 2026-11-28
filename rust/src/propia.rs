@@ -126,6 +126,7 @@ pub struct Propia {
     pub vale: [bool; 5],
     pub costo: [f64; 5],
     pub choco: bool,
+    pub choco_ev: bool,
 }
 
 #[inline]
@@ -230,7 +231,7 @@ impl Propia {
             ev: vec![0.0; n], ew: vec![[0.0; NACC]; n], marca: vec![false; n], huella: vec![],
             cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0, salida: 0,
             t: 0, nacidas: 0, reiniciadas: 0, molde: Sentir::default(), molde_a: 4, molde_d: 0.0,
-            activas2: vec![], cuerpo_antes: [f64::NAN; 7], probada: vec![0; n], vale: [false; 5], costo: [0.0; 5], choco: false,
+            activas2: vec![], cuerpo_antes: [f64::NAN; 7], probada: vec![0; n], vale: [false; 5], costo: [0.0; 5], choco: false, choco_ev: false,
         }
     }
 
@@ -726,6 +727,12 @@ impl Propia {
                     }
                     e[4] += 1.0;
                 }
+                if self.choco_ev && a < 4 {
+                    // (CHOQUE_EVENTO) chocó: se acredita el evento "no se movió", ∇log(p_a + p_quedarse)
+                    let s = (probs[a] + probs[4]).max(1e-300);
+                    e[a] += probs[a] / s - 1.0;
+                    e[4] += probs[4] / s;
+                }
             } else {
                 // d log π(a) / d w: [a está entre los suyos] − Σ π de los suyos
                 let mut g = if a < 5 && m >> a & 1 == 1 { 1.0 } else { 0.0 };
@@ -742,6 +749,16 @@ impl Propia {
                         if m >> b & 1 == 1 {
                             g -= probs[b];
                         }
+                    }
+                }
+                if self.choco_ev && a < 4 {
+                    // (CHOQUE_EVENTO) en vez de [a está entre los suyos]: su parte del evento "no se movió"
+                    let s = (probs[a] + probs[4]).max(1e-300);
+                    if m >> a & 1 == 1 {
+                        g += probs[a] / s - 1.0;
+                    }
+                    if m >> 4 & 1 == 1 {
+                        g += probs[4] / s;
                     }
                 }
                 e[0] += g;
@@ -1007,7 +1024,7 @@ impl crate::guardar::Pieza for Propia {
             rng: g.rng, unidades: g.unidades, indice: g.indice, forma, previa: None, ev: g.ev, ew: g.ew, marca: g.marca,
             huella: g.huella, cuenta: g.cuenta, ahora: g.ahora, activas: g.activas, elegida: g.elegida, vs: g.vs, salida: 0,
             t: g.t, nacidas: g.nacidas, reiniciadas: g.reiniciadas, molde: g.molde, molde_a: g.molde_a,
-            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes, probada, vale: [false; 5], costo: [0.0; 5], choco: false,
+            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes, probada, vale: [false; 5], costo: [0.0; 5], choco: false, choco_ev: false,
         }
     }
 }
