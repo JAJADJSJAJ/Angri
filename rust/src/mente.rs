@@ -791,6 +791,7 @@ impl Ganglios {
         if let Some(p) = &mut self.propia {
             // (CHOQUE_ES_QUEDARSE) si eligió moverse y no se movió, aprende lo que pasó: quedarse
             let a = if c.choque_es_quedarse && choco { 4 } else { self.a };
+            p.choco = c.choque_comparte && choco;
             p.aprender(delta, &self.probs, a, self.rasgos.na as usize, cuerpo, c);
         }
     }

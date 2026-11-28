@@ -125,6 +125,7 @@ pub struct Propia {
     /// (VALE_LA_PENA) qué pasos hacia una espina valen la pena por lo de detrás (no se guarda: se recalcula al elegir)
     pub vale: [bool; 5],
     pub costo: [f64; 5],
+    pub choco: bool,
 }
 
 #[inline]
@@ -229,7 +230,7 @@ impl Propia {
             ev: vec![0.0; n], ew: vec![[0.0; NACC]; n], marca: vec![false; n], huella: vec![],
             cuenta: vec![0; N_ATOMOS], ahora: Sentir::default(), activas: vec![], elegida: 4, vs: 0.0, salida: 0,
             t: 0, nacidas: 0, reiniciadas: 0, molde: Sentir::default(), molde_a: 4, molde_d: 0.0,
-            activas2: vec![], cuerpo_antes: [f64::NAN; 7], probada: vec![0; n], vale: [false; 5], costo: [0.0; 5],
+            activas2: vec![], cuerpo_antes: [f64::NAN; 7], probada: vec![0; n], vale: [false; 5], costo: [0.0; 5], choco: false,
         }
     }
 
@@ -718,12 +719,29 @@ impl Propia {
                     e[b] -= probs[b];
                 }
                 e[a] += 1.0;
+                if self.choco {
+                    // (CHOQUE_COMPARTE) chocó: además de la elegida, se acredita lo que pasó (quedarse)
+                    for b in 0..na {
+                        e[b] -= probs[b];
+                    }
+                    e[4] += 1.0;
+                }
             } else {
                 // d log π(a) / d w: [a está entre los suyos] − Σ π de los suyos
                 let mut g = if a < 5 && m >> a & 1 == 1 { 1.0 } else { 0.0 };
                 for b in 0..5 {
                     if m >> b & 1 == 1 {
                         g -= probs[b];
+                    }
+                }
+                if self.choco {
+                    if m >> 4 & 1 == 1 {
+                        g += 1.0;
+                    }
+                    for b in 0..5 {
+                        if m >> b & 1 == 1 {
+                            g -= probs[b];
+                        }
                     }
                 }
                 e[0] += g;
@@ -989,7 +1007,7 @@ impl crate::guardar::Pieza for Propia {
             rng: g.rng, unidades: g.unidades, indice: g.indice, forma, previa: None, ev: g.ev, ew: g.ew, marca: g.marca,
             huella: g.huella, cuenta: g.cuenta, ahora: g.ahora, activas: g.activas, elegida: g.elegida, vs: g.vs, salida: 0,
             t: g.t, nacidas: g.nacidas, reiniciadas: g.reiniciadas, molde: g.molde, molde_a: g.molde_a,
-            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes, probada, vale: [false; 5], costo: [0.0; 5],
+            molde_d: g.molde_d, activas2: g.activas2, cuerpo_antes: g.cuerpo_antes, probada, vale: [false; 5], costo: [0.0; 5], choco: false,
         }
     }
 }
