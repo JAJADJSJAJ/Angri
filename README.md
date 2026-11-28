@@ -2063,7 +2063,17 @@ alivio.
 | racha más larga en bolsillo | 285 k → 166 k (z −2,1) | 121 k → 47 k (z −1,1) |
 | heridas | 471 → 573 (z 4,0) | 488 → 676 (z 1,4) |
 
-Ya no traba vidas nuevas en campo abierto (el hambre no sube) y las encerradas salen antes del bolsillo, pero las
-trabadas no bajan: al salir siguen con hambre afuera. Sin mejora en malestar, con +22 a +38 % de heridas.
-**Apagada.** Lección: el costo predicho de la espina no es lo que las tiene trabadas; sacarlas del bolsillo no
-alcanza (lo mismo que con `VALE_LA_PENA`).
+Vida por vida (corrige una primera lectura del promedio): **libera 8 trabadas** (60017 95 → 12 %, 60035 95 → 9,
+60116 96 → 40, 60117 79 → 7, 90036 96 → 17, 90064 87 → 26, 90069 92 → 11, 90082 91 → 39) **pero traba 8 sanas**
+(60010, 60054, 60063, 90000, 90005, 90013, 90115, 90123: de 5–20 % a 62–95 %). Las nuevas quedan en campo abierto,
+quietas 50–77 % con hambre y eligiendo **chocar** contra algo (p 0,6–0,95), con 2.000–4.500 desmayos. Lectura: con
+hambre casi todos los movimientos predicen costo; con el tope todos quedan iguales en −2 y se borra la diferencia
+entre "malo" y "menos malo" que la guiaba (lo mismo que pasó con `TOPE_ACTOR`). Neto cero en trabadas y malestar,
++22 a +38 % de heridas. **Apagada.** Lección: un tope fijo al costo aplana justo cuando tiene hambre; si se toca el
+costo, tiene que ser sin borrar las diferencias entre movimientos.
+
+Además, revisando las 15 trabadas de la base: 11 viven 77–99,6 % del tiempo en un bolsillo de ≤3 celdas (racha
+3–5 M ticks), 2 (60057, 90074) en un encierro de 4–15 celdas con espina en la puerta que `dg bols` no ve (solo mira
+≤3 celdas), y solo 2 (60017, 90036) tienen hambre en campo abierto de verdad. "Sale del bolsillo y sigue con hambre
+afuera" era falso. Lo refutado: que la red se desinfle (|w| bajo y V≈0 llegan **después** de trabarse; se traba de
+golpe en ~10 k ticks con la red sana) y que el bucle de desmayos deje sin dopamina (|δ| no se apaga).
