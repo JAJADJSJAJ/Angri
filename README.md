@@ -2077,3 +2077,24 @@ Además, revisando las 15 trabadas de la base: 11 viven 77–99,6 % del tiempo e
 ≤3 celdas), y solo 2 (60017, 90036) tienen hambre en campo abierto de verdad. "Sale del bolsillo y sigue con hambre
 afuera" era falso. Lo refutado: que la red se desinfle (|w| bajo y V≈0 llegan **después** de trabarse; se traba de
 golpe en ~10 k ticks con la red sana) y que el bucle de desmayos deje sin dopamina (|δ| no se apaga).
+
+### `TEMP_COSTO`: el costo predicho de la espina con la temperatura del malestar (2026-11-27)
+
+`TEMP_COSTO=True`: hacia un PELIGRO visible, el costo que `PREDICE_ACTOR` predice se divide por la temperatura
+del malestar y el miedo del actor sigue con la base (no aplana diferencias como `TOPE_COSTO`). Nueva métrica
+`dg % encierro espina` (encierros de hasta 15 celdas con espina por salida). 128 pares × 5 M:
+
+| | semillas 60000 (run 46091636445) | semillas 90000 (run 46091639013) |
+|---|---|---|
+| malestar | 0,253 → 0,263 (z 1,1) | 0,243 → 0,241 (z −0,4) |
+| % trabadas | 7,8 → 9,4 (z 0,6) | 3,9 → 3,1 (z −0,4) |
+| % encierro espina | 6,5 → 3,9 (z −2,2) | 3,2 → 0,8 (z −2,2) |
+| cruces de espina | 14,7 → 27,1 (z 4,7) | 14,0 → 26,3 (z 3,8) |
+| heridas | 471 → 635 (z 7,9) | 488 → 724 (z 3,0) |
+
+Vida por vida: libera 9 trabadas, pero traba 10 sanas en campo abierto, casi todas en el mismo patrón que con
+`TOPE_COSTO`: quietas con hambre y eligiendo chocar (p 0,66–0,90). Neto cero y +35–48 % de heridas. **Apagada.**
+Lección (tres llaves seguidas, `TOPE_ACTOR`, `TOPE_COSTO`, `TEMP_COSTO`): sacarlas del encierro se logra, pero
+cualquier cambio que la haga cruzar más espinas reparte de nuevo qué vidas caen en la **traba de chocar** en campo
+abierto (que ya existe en la base: 60017). El encierro y la traba de chocar compiten por las mismas vidas; la que
+hay que entender ahora es la de chocar.
