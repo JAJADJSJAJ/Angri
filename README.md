@@ -2122,3 +2122,20 @@ y quedarse en el lugar.
 
 Sigue: la llave `CHOQUE_ES_QUEDARSE`. Cuando elige moverse y no cambia de celda, el crédito va a quedarse, que es lo
 que pasó. Se mide en pares, y `hq p queda` no tiene que reemplazar a `choca`.
+
+### `CHOQUE_ES_QUEDARSE` (2026-11-28)
+
+Si eligió moverse y no se movió, la propia aprende "quedarse" en lugar del movimiento intentado. 128 pares × 5 M:
+
+| | semillas 60000 (run 46100568460) | semillas 90000 (run 46100570979) |
+|---|---|---|
+| malestar | 0,253 → 0,509 (z 30) | 0,243 → 0,506 (z 36) |
+| % trabadas | 7,8 → 85,9 | 3,9 → 87,5 |
+| p chocar (quieta con hambre) | 0,37 → 0,94 | 0,36 → 0,96 |
+| desmayos | 393 → 2.182 | 310 → 2.146 |
+
+Desastre: casi todas las vidas caen en la traba de chocar. Por qué: el actor aprende con
+`w_b += α·δ·(1[b=a] − p_b)`. Si chocar nunca es "la elegida", su peso solo recibe `−α·δ·p_b`, y con δ negativo
+(le fue mal) eso lo **sube**. Chocar se refuerza cada vez que le va mal y nunca se castiga. **Apagada.** Confirma
+que la traba vive en el crédito del actor a los movimientos bloqueados: tocar ese crédito la mueve de 8 a 87 %.
+Lección: cualquier arreglo tiene que seguir acreditando la acción elegida.
