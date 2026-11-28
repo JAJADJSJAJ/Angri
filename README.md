@@ -2051,3 +2051,19 @@ Vida por vida: **libera muchas de bolsillo** (60035 hambre 95 → 13 %, 60105 93
 5 → 95; quietas 50–70 %, sin congelarse). El tope achica también el alivio predicho que la lleva a comer. Neto: nada,
 y +24 % de heridas. **Apagada.** Lección: el tope tiene que tocar solo el costo predicho (el lado negativo), no el
 alivio.
+
+`TOPE_COSTO` (tope solo al costo: lo que `PREDICE_ACTOR` resta no pasa de −T; el alivio entra entero), T=2,
+128 pares × 5 M:
+
+| | semillas 60000 (run 46082966813) | semillas 90000 (run 46082969953) |
+|---|---|---|
+| malestar | 0,253 → 0,253 (z 0) | 0,243 → 0,249 (z 0,6) |
+| % trabadas | 7,8 → 7,0 (z −0,4) | 3,9 → 4,7 (z 0,3) |
+| cruces de espina | 14,7 → 18,3 (z 2,0) | 14,0 → 17,5 (z 2,1) |
+| racha más larga en bolsillo | 285 k → 166 k (z −2,1) | 121 k → 47 k (z −1,1) |
+| heridas | 471 → 573 (z 4,0) | 488 → 676 (z 1,4) |
+
+Ya no traba vidas nuevas en campo abierto (el hambre no sube) y las encerradas salen antes del bolsillo, pero las
+trabadas no bajan: al salir siguen con hambre afuera. Sin mejora en malestar, con +22 a +38 % de heridas.
+**Apagada.** Lección: el costo predicho de la espina no es lo que las tiene trabadas; sacarlas del bolsillo no
+alcanza (lo mismo que con `VALE_LA_PENA`).
