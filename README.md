@@ -2155,3 +2155,19 @@ Cuando p_chocar pasa de 0,5, con δ negativo (le fue mal) el peso **sube** igual
 (La prueba de humo de 2 vidas × 200 k daba bien: con pocas vidas cortas no se ve.) **Apagada.** La forma
 estable de "aprender lo que pasó" sería el gradiente del evento "no se movió", `∇log(p_chocar + p_quedarse)`:
 a cada una le toca `p_b/(p_chocar+p_quedarse) − p_b`, que nunca cambia de signo.
+
+### `CHOQUE_EVENTO` (2026-11-28)
+
+Si chocó, la propia aprende el evento "no se movió": el gradiente de `log(p_elegida + p_quedarse)`, que a cada una
+le da `p/(suma) − p` y no cambia de signo. 128 pares × 5 M:
+
+| | semillas 60000 (run 46114696250) | semillas 90000 (run 46114698557) |
+|---|---|---|
+| malestar | 0,253 → 0,253 (z −0,1) | 0,243 → 0,244 (z 0,1) |
+| % trabadas | 7,8 → 6,3 (z −1,0) | 3,9 → 5,5 (z 1,0) |
+| p chocar / p quedarse | 0,37 → 0,42 / 0,20 → 0,16 | 0,36 → 0,44 / 0,20 → 0,15 |
+| heridas | 471 → 503 (z 2,4) | 488 → 493 (z 0,3) |
+
+Estable, sin pozo, pero neutra. Vida por vida libera 4 (60017 95 → 45, 60047 95 → 9, 60078 92 → 54, 90036 96 → 59)
+y traba 4 (60045, 90000, 90004, 90086): es ruido. Chocar y quedarse pasan a aprender lo mismo, pero eso no saca a
+las trabadas: la ventaja de chocar no venía solo del crédito del choque. **Apagada.**
